@@ -160,3 +160,15 @@ git tag v1.0.0 && git push origin v1.0.0
   from Foursquare are Apache 2.0 (© 2024 Foursquare Labs, Inc.).
 - **GTFS timetables**: public transport, under each publisher's licence.
 - **SRTM elevation**: route elevation and the topo map's terrain.
+
+## Licence
+
+Nav Cat is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
+You can run, change and share it freely; if you run a modified version that other people use
+over a network, you must offer them its source code. The map data and the services it runs
+(GraphHopper, OpenTripPlanner, Photon, TileServer GL, Planetiler) keep their own licences.
+
+The `navcat-graphhopper` image contains GraphHopper (Apache-2.0), modified by
+`docker_maps/graphhopper/traffic-signals.patch`. That patch is Apache-2.0 too, and the image ships
+GraphHopper's `LICENSE.txt` and `NOTICE.md` with a note of the change
+([`MODIFICATIONS.md`](docker_maps/graphhopper/MODIFICATIONS.md)).

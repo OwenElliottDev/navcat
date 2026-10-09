@@ -2,6 +2,7 @@ FROM maven:3.9-eclipse-temurin-25 AS build
 
 # A pinned master commit: our profiles use the cycleway encoded value, which isn't in a release
 # yet (11.1 is the latest). Move to the 12.0 tag once it's out.
+# MODIFICATIONS.md names this commit too.
 ARG GH_REF=1cc4d7bfdea655166c0dc1dce25dec8524a3acc0
 
 RUN apt-get update \
@@ -36,6 +37,9 @@ RUN mkdir -p /data
 WORKDIR /graphhopper
 
 COPY --from=build /graphhopper/web/target/graphhopper*.jar ./
+# GraphHopper is Apache-2.0: ship its licence and notices, and what we changed
+COPY --from=build /graphhopper/LICENSE.txt /graphhopper/NOTICE.md ./
+COPY MODIFICATIONS.md ./
 # Profiles: changing them or their encoded values needs the graph rebuilt (./maps update routing)
 COPY graphhopper.sh config.yml traffic-signals.patch ./
 COPY custom_models ./custom_models
