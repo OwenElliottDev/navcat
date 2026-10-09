@@ -157,21 +157,21 @@ build_transit() {
 update_search() {
   log "Downloading a new search index"
   in_data 'rm -rf photon.new'
-  docker rm -f maps-photon-update >/dev/null 2>&1 || true
+  docker rm -f navcat-photon-update >/dev/null 2>&1 || true
   export PHOTON_DATA_DIR=photon.new
-  compose run -d --no-deps --name maps-photon-update maps-photon >/dev/null
+  compose run -d --no-deps --name navcat-photon-update maps-photon >/dev/null
   unset PHOTON_DATA_DIR
-  until docker exec maps-photon-update curl -sf localhost:2322/status >/dev/null 2>&1; do
-    if [ -z "$(docker ps -q --filter name=maps-photon-update)" ]; then
+  until docker exec navcat-photon-update curl -sf localhost:2322/status >/dev/null 2>&1; do
+    if [ -z "$(docker ps -q --filter name=navcat-photon-update)" ]; then
       echo "Downloading the search index failed:"
-      docker logs --tail 20 maps-photon-update
-      docker rm -f maps-photon-update >/dev/null
+      docker logs --tail 20 navcat-photon-update
+      docker rm -f navcat-photon-update >/dev/null
       in_data 'rm -rf photon.new'
       return 1
     fi
     sleep 30
   done
-  docker rm -f maps-photon-update >/dev/null
+  docker rm -f navcat-photon-update >/dev/null
 
   log "Swapping in the new search index"
   compose stop maps-photon

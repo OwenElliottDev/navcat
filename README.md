@@ -1,7 +1,7 @@
-# Self-hosted Maps
+# Nav Cat
 
-A self-hosted, Google Maps–style web app that runs entirely on your own hardware. Once the data
-is downloaded, it works fully offline: no API keys and no calls to outside services.
+Nav Cat is a self-hosted, Google Maps–style web app that runs entirely on your own hardware. Once
+the data is downloaded, it works fully offline: no API keys and no calls to outside services.
 
 - **Map** with vector tiles, plus a topographic style with hill shading
 - **Search** for addresses and places, and browse places nearby by category
@@ -143,7 +143,7 @@ Run the ones covering what you changed before opening a pull request; CI runs th
 ### CI and releases
 
 Every push and pull request runs lint, formatting checks, type checks, and the unit, UI
-(with screenshots) and API tests, and builds every image. Pushing a `v*` tag builds every image and publishes it to Docker Hub as `owenelliottdev/maps-*`,
+(with screenshots) and API tests, and builds every image. Pushing a `v*` tag builds every image and publishes it to Docker Hub as `owenelliottdev/navcat-*`,
 tagged `latest`, with the version and with the commit:
 
 ```

@@ -16,7 +16,7 @@ async def lifespan(_app: FastAPI):
     await pool.close()
 
 
-app = FastAPI(title="Maps backend", lifespan=lifespan)
+app = FastAPI(title="Nav Cat backend", lifespan=lifespan)
 
 
 # Cross-site HTML forms can only send form or plain-text bodies, so accepting nothing but

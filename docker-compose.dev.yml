@@ -8,30 +8,30 @@
 services:
   maps-web:
     build: ./maps_web
-    image: maps-web:dev
+    image: navcat-web:dev
   maps-backend:
     build: ./maps_backend
-    image: maps-backend:dev
+    image: navcat-backend:dev
   maps-db:
     build: ./docker_maps/db
-    image: maps-db:dev
+    image: navcat-db:dev
   maps-poi-import:
-    image: maps-db:dev
+    image: navcat-db:dev
   maps-terrain-build:
     build: ./docker_maps/terrain
-    image: maps-terrain:dev
+    image: navcat-terrain:dev
   maps-graphhopper:
     build: ./docker_maps/graphhopper
-    image: maps-graphhopper:dev
+    image: navcat-graphhopper:dev
   maps-graphhopper-import:
-    image: maps-graphhopper:dev
+    image: navcat-graphhopper:dev
   maps-updater:
     build: ./docker_maps/updater
-    image: maps-updater:dev
+    image: navcat-updater:dev
   maps-download:
     build: ./docker_maps/download
-    image: maps-download:dev
+    image: navcat-download:dev
   maps-data:
-    image: maps-download:dev
+    image: navcat-download:dev
   maps-transit-download:
-    image: maps-download:dev
+    image: navcat-download:dev

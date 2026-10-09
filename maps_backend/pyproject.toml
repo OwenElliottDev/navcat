@@ -1,7 +1,7 @@
 [project]
 name = "maps-backend"
 version = "0.1.0"
-description = "Accounts and browse API for the self-hosted maps"
+description = "Accounts and browse API for Nav Cat"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

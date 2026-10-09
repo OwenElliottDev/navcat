@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A self-hosted Google-Maps-style app run with Docker Compose: map tiles (TileServer GL + Planetiler),
-search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small FastAPI
-backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to
+Nav Cat, a self-hosted Google-Maps-style app run with Docker Compose: map tiles (TileServer GL +
+Planetiler), search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small
+FastAPI backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to
 Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.env` (see `.env.example`).
 
 **Hard rule: the running stack makes no internet calls.** Data is downloaded only by the
@@ -26,7 +26,7 @@ docker compose up -d --build maps-web     # after frontend changes
 docker compose up -d --build maps-backend # after backend changes
 ```
 
-`docker-compose.yml` (prod) runs the published `owenelliottdev/maps-*` images and mounts no
+`docker-compose.yml` (prod) runs the published `owenelliottdev/navcat-*` images and mounts no
 source; `docker-compose.dev.yml` overrides it to build them from the checkout, enabled with
 `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in `.env`. Scripts and config (POI import,
 GraphHopper profiles, terrain builder) are baked into the images, so a new image needs adding to

@@ -21,19 +21,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: maps-web
+          - image: navcat-web
             context: maps_web
-          - image: maps-backend
+          - image: navcat-backend
             context: maps_backend
-          - image: maps-db
+          - image: navcat-db
             context: docker_maps/db
-          - image: maps-graphhopper
+          - image: navcat-graphhopper
             context: docker_maps/graphhopper
-          - image: maps-download
+          - image: navcat-download
             context: docker_maps/download
-          - image: maps-terrain
+          - image: navcat-terrain
             context: docker_maps/terrain
-          - image: maps-updater
+          - image: navcat-updater
             context: docker_maps/updater
 
     steps:

@@ -1,7 +1,7 @@
 # Settings such as download URLs, regions and memory come from .env (see .env.example);
 # the defaults cover Australia, with public transport for VIC, south-east QLD, SA and WA.
 #
-# This file runs the published images (owenelliottdev/maps-*, built by
+# This file runs the published images (owenelliottdev/navcat-*, built by
 # .github/workflows/docker.yml; MAPS_TAG picks a release). To build them from this checkout
 # instead, add docker-compose.dev.yml: COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 # in .env, which ./maps also follows.
@@ -17,8 +17,8 @@ services:
 
   # The web app, plus the /api proxy to every backend below
   maps-web:
-    image: owenelliottdev/maps-web:${MAPS_TAG:-latest}
-    container_name: maps-web
+    image: owenelliottdev/navcat-web:${MAPS_TAG:-latest}
+    container_name: navcat-web
     restart: unless-stopped
     ports:
       - "7000:80"
@@ -33,8 +33,8 @@ services:
 
   # Accounts and browse API
   maps-backend:
-    image: owenelliottdev/maps-backend:${MAPS_TAG:-latest}
-    container_name: maps-backend
+    image: owenelliottdev/navcat-backend:${MAPS_TAG:-latest}
+    container_name: navcat-backend
     restart: unless-stopped
     ports:
       - "127.0.0.1:7800:8000"
@@ -53,8 +53,8 @@ services:
 
   # Postgres + PostGIS: accounts, and POIs for browsing. Only reachable by the backend.
   maps-db:
-    image: owenelliottdev/maps-db:${MAPS_TAG:-latest}
-    container_name: maps-db
+    image: owenelliottdev/navcat-db:${MAPS_TAG:-latest}
+    container_name: navcat-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: maps
@@ -72,8 +72,8 @@ services:
   # then exits. Runs on every `up` but only imports when they've changed, so browse stays in
   # sync with routing and the map.
   maps-poi-import:
-    image: owenelliottdev/maps-db:${MAPS_TAG:-latest}
-    container_name: maps-poi-import
+    image: owenelliottdev/navcat-db:${MAPS_TAG:-latest}
+    container_name: navcat-poi-import
     depends_on:
       maps-db:
         condition: service_healthy
@@ -91,8 +91,8 @@ services:
   # exits. Runs on every `up`: waits for GraphHopper to be ready, then only builds when the
   # elevation files have changed. Nothing is fetched from the internet.
   maps-terrain-build:
-    image: owenelliottdev/maps-terrain:${MAPS_TAG:-latest}
-    container_name: maps-terrain-build
+    image: owenelliottdev/navcat-terrain:${MAPS_TAG:-latest}
+    container_name: navcat-terrain-build
     environment:
       WAIT_FOR: http://maps-graphhopper:8989/health
     volumes:
@@ -104,8 +104,8 @@ services:
   # Walking, cycling and driving. Profiles are in docker_maps/graphhopper/config.yml. Serves the graph
   # maps-graphhopper-import builds; serving needs far less memory than building.
   maps-graphhopper:
-    image: owenelliottdev/maps-graphhopper:${MAPS_TAG:-latest}
-    container_name: maps-graphhopper
+    image: owenelliottdev/navcat-graphhopper:${MAPS_TAG:-latest}
+    container_name: navcat-graphhopper
     restart: unless-stopped
     ports:
       - "127.0.0.1:7989:8989"
@@ -125,7 +125,7 @@ services:
   # Public transport, from the graph maps-otp-build makes.
   maps-otp:
     image: opentripplanner/opentripplanner:2.10.0
-    container_name: maps-otp
+    container_name: navcat-otp
     restart: unless-stopped
     ports:
       - "127.0.0.1:7088:8080"
@@ -138,7 +138,7 @@ services:
   # Search and reverse geocoding. Downloads its index on first start, then runs offline.
   maps-photon:
     image: rtuszik/photon-docker:latest
-    container_name: maps-photon
+    container_name: navcat-photon
     restart: unless-stopped
     ports:
       - "127.0.0.1:7322:2322"
@@ -154,7 +154,7 @@ services:
   # Map tiles, style and fonts
   maps-tileserver:
     image: maptiler/tileserver-gl:latest
-    container_name: maps-tileserver
+    container_name: navcat-tileserver
     restart: unless-stopped
     ports:
       - "127.0.0.1:7080:8080"
@@ -169,8 +169,8 @@ services:
   # its relative paths mean the same thing to Docker from in here. Can control Docker, as it
   # restarts the other services, so it only runs when turned on.
   maps-updater:
-    image: owenelliottdev/maps-updater:${MAPS_TAG:-latest}
-    container_name: maps-updater
+    image: owenelliottdev/navcat-updater:${MAPS_TAG:-latest}
+    container_name: navcat-updater
     profiles: ["updates"]
     restart: unless-stopped
     environment:
@@ -187,7 +187,7 @@ services:
   # Overture Maps places for the same area (merged into browse and search by maps-poi-import).
   # `... maps-download osm` or `... maps-download places` fetches just one.
   maps-download:
-    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    image: owenelliottdev/navcat-download:${MAPS_TAG:-latest}
     profiles: ["setup"]
     environment:
       OSM_URL: ${OSM_URL:-https://download.geofabrik.de/australia-oceania/australia-latest.osm.pbf}
@@ -200,7 +200,7 @@ services:
 
   # The whole data folder, for ./maps to check on and swap in freshly built data
   maps-data:
-    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    image: owenelliottdev/navcat-download:${MAPS_TAG:-latest}
     profiles: ["setup"]
     environment:
       OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
@@ -213,7 +213,7 @@ services:
   # Builds the routing graph from the OSM extract, into /data/$GRAPHHOPPER_GRAPH (default-gh,
   # where maps-graphhopper reads it; ./maps update builds into another folder, then swaps).
   maps-graphhopper-import:
-    image: owenelliottdev/maps-graphhopper:${MAPS_TAG:-latest}
+    image: owenelliottdev/navcat-graphhopper:${MAPS_TAG:-latest}
     profiles: ["setup"]
     environment:
       JAVA_OPTS: "-Xmx${GRAPHHOPPER_IMPORT_MEMORY:-8g}"
@@ -248,7 +248,7 @@ services:
   # Downloads the timetables for public transport, and cuts the streets around them from the
   # OSM extract (or downloads TRANSIT_OSM_URL, if set).
   maps-transit-download:
-    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    image: owenelliottdev/navcat-download:${MAPS_TAG:-latest}
     profiles: ["setup"]
     environment:
       OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
