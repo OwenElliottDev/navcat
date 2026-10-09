@@ -1,0 +1,39 @@
+.search-this-area {
+  position: absolute;
+  top: 16px;
+  /* Centred over the map to the right of the side panel (412px wide with its margin) */
+  left: calc(50% + 206px);
+  z-index: 2;
+  transform: translateX(-50%);
+  height: 40px;
+  padding: 0 18px;
+  font: inherit;
+  font-weight: 650;
+  color: var(--ink);
+  border: 0;
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  animation: search-this-area-in 0.25s var(--ease-out);
+}
+
+.search-this-area:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* On phones: centred, just above the sheet */
+@media (max-width: 640px) {
+  .search-this-area {
+    top: auto;
+    left: 50%;
+    bottom: calc(var(--sheet-visible) + 16px);
+    transition: bottom 0.32s var(--ease-out);
+  }
+}
+
+@keyframes search-this-area-in {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}

@@ -1,0 +1,13 @@
+// "Road bike": sealed roads, ideally with a bike lane; avoid slow shared paths.
+// Applied on top of racingbike.json, which handles access, rough surfaces and road-bike speeds.
+{
+  "priority": [
+    { "if": "cycleway == LANE || cycleway == TRACK || cycleway == SHOULDER", "multiply_by": "1.4" },
+    // Shared paths are slow on a road bike (walkers, dogs, give-ways)
+    { "if": "road_class == FOOTWAY || road_class == PATH || road_class == PEDESTRIAN", "multiply_by": "0.3" },
+    { "else_if": "road_class == CYCLEWAY", "multiply_by": "0.7" },
+    // Main roads only where there's somewhere to ride
+    { "if": "(road_class == PRIMARY || road_class == TRUNK) && cycleway != LANE && cycleway != TRACK && cycleway != SHOULDER", "multiply_by": "0.5" },
+    { "if": "surface != MISSING && surface != ASPHALT && surface != CONCRETE && surface != PAVED", "multiply_by": "0.2" }
+  ]
+}

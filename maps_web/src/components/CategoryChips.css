@@ -1,0 +1,13 @@
+.category-chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Let chips scroll to the panel's edge rather than stopping at the padding */
+  margin: 0 -10px;
+  padding: 0 10px 2px;
+}
+
+.category-chips::-webkit-scrollbar {
+  display: none;
+}

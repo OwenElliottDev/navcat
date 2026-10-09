@@ -1,0 +1,62 @@
+.hours__summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.hours__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A small chevron that turns when the week is open */
+.hours__summary::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 0 3px 8px;
+  border-right: 1.6px solid var(--muted);
+  border-bottom: 1.6px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.hours[open] .hours__summary::after {
+  transform: rotate(-135deg);
+  margin-bottom: 0;
+}
+
+.hours__open {
+  color: var(--start);
+  font-weight: 650;
+}
+
+.hours__closed {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.hours__week {
+  width: 100%;
+  margin-top: 8px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.hours__week th,
+.hours__week td {
+  padding: 3px 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.hours__week th {
+  width: 7.5em;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.hours__today th,
+.hours__today td {
+  font-weight: 650;
+  color: var(--ink);
+}

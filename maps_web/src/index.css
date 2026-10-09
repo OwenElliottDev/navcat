@@ -1,0 +1,263 @@
+/* ---------- design tokens ---------- */
+
+:root {
+  --paper: #f7f8f6;
+  --surface: #ffffff;
+  --ink: #1c2526;
+  --muted: #5e6a6b;
+  --line: #d9dedc;
+  --accent: #1a5fc8;
+  --start: #0f7a66;
+
+  /* Translucent surfaces floating over the map */
+  --glass: rgba(247, 248, 246, 0.82);
+  --shadow: 0 2px 12px rgba(20, 32, 32, 0.16);
+  --shadow-lg: 0 10px 36px rgba(20, 32, 32, 0.22);
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  /* Height of tappable controls: bigger on phones */
+  --control: 40px;
+
+  /* Set by the bottom sheet on phones, so map controls can sit above it */
+  --sheet-visible: 0px;
+
+  --font:
+    -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1a2122;
+    --surface: #232c2d;
+    --ink: #e8eceb;
+    --muted: #9aa6a5;
+    --line: #35413f;
+    --accent: #4d8ef0;
+    --start: #2bb596;
+    --glass: rgba(26, 33, 34, 0.8);
+    --shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 10px 36px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --control: 44px;
+  }
+}
+
+/* ---------- base ---------- */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  /* A full-screen map: the page itself never scrolls (panels and dialogs scroll inside) */
+  overflow: hidden;
+}
+
+/* Phones zoom the page in when a field with text under 16px is focused, which leaves it
+   too wide for the screen; 16px avoids that without turning off pinch-zoom */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+body {
+  font: 15px/1.45 var(--font);
+  color: var(--ink);
+  background: #e9ecea;
+  /* No pull-to-refresh or rubber-banding fighting with map gestures */
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    animation-duration: 0s !important;
+  }
+}
+
+/* The hidden attribute always hides, even on elements that set their own display */
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- shared building blocks ---------- */
+
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--paper);
+  }
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.button {
+  height: var(--control);
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-weight: 550;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(0.97);
+}
+
+.button:focus-visible,
+.icon-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.button--icon {
+  width: var(--control);
+  padding: 0;
+}
+
+.button--primary {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.button--primary:hover {
+  filter: brightness(1.08);
+}
+
+/* Borderless round button, e.g. inside the search bar */
+.icon-button {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Small rounded toggle, e.g. categories, cycling styles and transit modes */
+.chip {
+  height: 32px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  filter: brightness(0.97);
+}
+
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.chip:disabled {
+  cursor: not-allowed;
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.chip .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.note {
+  margin: 0;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0;
+  color: var(--accent);
+}
+
+/* Read by screen readers, not shown */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

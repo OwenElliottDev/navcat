@@ -1,0 +1,151 @@
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  text-decoration: none;
+  font-weight: 550;
+}
+
+/* ---------- round actions ---------- */
+
+.place-actions {
+  display: flex;
+  gap: 4px;
+  margin: 16px -4px 0;
+}
+
+.action {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font: inherit;
+  color: var(--ink);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.action__circle {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  transition: transform 0.12s var(--ease-out);
+}
+
+.action:hover .action__circle {
+  filter: brightness(0.97);
+}
+
+.action:active .action__circle {
+  transform: scale(0.94);
+}
+
+.action--primary .action__circle {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.action[aria-pressed='true'] .action__circle {
+  color: #fff;
+  background: var(--start);
+  border-color: var(--start);
+}
+
+.action__label {
+  font-size: 12px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+/* ---------- details ---------- */
+
+.place-details {
+  margin: 16px 0 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.place-details__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 6px 10px 12px;
+}
+
+.place-details__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.place-details__row + .place-details__row {
+  border-top: 1px solid var(--line);
+}
+
+.place-details dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.place-details dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.place-details a {
+  color: var(--accent);
+  font-weight: 550;
+  text-decoration: none;
+}
+
+.place-details a:hover {
+  text-decoration: underline;
+}
+
+.home-work {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.place-rating {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.place-description {
+  margin: 12px 0 0;
+}
+
+.place-source {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.edit-link {
+  display: block;
+  margin-top: 14px;
+  font-size: 14px;
+}

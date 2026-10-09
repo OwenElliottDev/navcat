@@ -1,0 +1,15 @@
+// "Gravel": unsealed roads and wide tracks, but not technical singletrack.
+// Applied on top of bike.json, which handles access and already rules out hard trails.
+{
+  "priority": [
+    { "if": "road_class == TRACK", "multiply_by": "1.5" },
+    // Paths and bridleways off-road are usually singletrack
+    { "else_if": "road_class == PATH || road_class == BRIDLEWAY", "multiply_by": "0.4" },
+    { "else_if": "road_class == PRIMARY || road_class == TRUNK || road_class == SECONDARY", "multiply_by": "0.1" },
+
+    { "if": "surface == GRAVEL || surface == FINE_GRAVEL || surface == COMPACTED || surface == UNPAVED || surface == DIRT || surface == GROUND", "multiply_by": "1.5" },
+    // The roughest tracks (grade 4–5) and anything rated as a real mountain-bike trail
+    { "if": "track_type == GRADE4 || track_type == GRADE5", "multiply_by": "0.5" },
+    { "if": "mtb_rating > 1", "multiply_by": "0.2" }
+  ]
+}

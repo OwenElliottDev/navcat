@@ -1,0 +1,5 @@
+maps_data/
+.venv/
+.env
+.update.lock/
+__pycache__/

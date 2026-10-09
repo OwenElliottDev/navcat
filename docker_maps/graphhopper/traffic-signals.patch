@@ -1,0 +1,14 @@
+diff --git a/core/src/main/java/com/graphhopper/routing/util/parsers/OSMCrossingParser.java b/core/src/main/java/com/graphhopper/routing/util/parsers/OSMCrossingParser.java
+index 5f46371..18297be 100644
+--- a/core/src/main/java/com/graphhopper/routing/util/parsers/OSMCrossingParser.java
++++ b/core/src/main/java/com/graphhopper/routing/util/parsers/OSMCrossingParser.java
+@@ -35,7 +35,8 @@ public class OSMCrossingParser implements TagParser {
+             }
+ 
+             String crossingSignals = (String) tags.get("crossing:signals");
+-            if ("yes".equals(crossingSignals)) {
++            // Lights at a junction are usually only highway=traffic_signals on the junction node
++            if ("yes".equals(crossingSignals) || "traffic_signals".equals(tags.get("highway"))) {
+                 crossingEnc.setEnum(false, edgeId, edgeIntAccess, Crossing.TRAFFIC_SIGNALS);
+                 return;
+             }

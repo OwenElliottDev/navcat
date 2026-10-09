@@ -1,0 +1,12 @@
+// "Off-road": prefer tracks, trails and unsealed surfaces; avoid busy roads.
+// Applied on top of mtb.json, which handles mountain-bike access, trail difficulty and speeds.
+{
+  "priority": [
+    { "if": "road_class == TRACK || road_class == PATH || road_class == BRIDLEWAY", "multiply_by": "1.5" },
+    { "else_if": "road_class == PRIMARY || road_class == TRUNK || road_class == SECONDARY", "multiply_by": "0.1" },
+    { "else": "", "multiply_by": "0.5" },
+
+    { "if": "surface == DIRT || surface == GROUND || surface == GRAVEL || surface == FINE_GRAVEL || surface == COMPACTED || surface == UNPAVED || surface == GRASS", "multiply_by": "1.4" },
+    { "else_if": "surface == ASPHALT || surface == CONCRETE || surface == PAVED", "multiply_by": "0.6" }
+  ]
+}

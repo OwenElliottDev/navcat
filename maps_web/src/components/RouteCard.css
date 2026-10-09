@@ -1,0 +1,77 @@
+.route-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.route-summary__time {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.route-summary__distance,
+.route-summary__climb {
+  color: var(--muted);
+}
+
+.route-summary__climb {
+  font-variant-numeric: tabular-nums;
+}
+
+.route-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.route-start {
+  border-radius: 22px;
+  padding: 0 22px;
+}
+
+.steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.step {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 6px;
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.step:hover {
+  background: var(--surface);
+}
+
+.step:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.step__distance {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.turn-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}

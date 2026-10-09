@@ -1,0 +1,291 @@
+#!/bin/sh
+# Sets up, updates and checks on the maps. A wrapper around docker compose.
+#
+#   ./maps setup             Downloads and builds everything that's missing, then starts it all
+#   ./maps update [what...]  Refreshes data while everything keeps running. what is any of:
+#                              map      OSM map data: tiles, routing, browse (and places)
+#                              places   just the Overture places in browse and search
+#                              routing  rebuild the routing graph, e.g. after editing its config
+#                              transit  public transport timetables
+#                              search   the search index
+#                              all      all of the above (the default)
+#   ./maps status            How old each piece of data is
+#   ./maps schedule on|off   Runs updates automatically (schedules are in .env)
+#
+# Updates build the new data alongside the old and swap it in, so each part only stops for a
+# restart. With under 20 GB of memory for Docker, public transport is paused while the big
+# builds run, since there isn't room for them and everything else at once.
+set -eu
+cd "$(dirname "$0")"
+
+LOW_MEMORY_BYTES=$((20 * 1024 * 1024 * 1024))
+
+compose() { docker compose "$@"; }
+
+# Gets the latest of the app's images (or the named services'): pulls the published ones, and
+# builds any that docker-compose.dev.yml builds from this checkout
+get_images() {
+  compose --profile setup --profile updates pull -q --ignore-buildable "$@"
+  compose --profile setup --profile updates build -q "$@"
+}
+
+log() { printf '\n==> %s %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+# Runs a shell command in the data folder, in the maps-data container. Single-quote it so
+# variables like $OSM_FILE are filled in there, from .env.
+in_data() { compose run --rm --no-deps maps-data "$1"; }
+data_has() { in_data "test -e $1" >/dev/null 2>&1; }
+
+is_running() { [ -n "$(compose ps -q --status running "$1")" ]; }
+
+low_memory() { [ "$(docker info --format '{{.MemTotal}}')" -lt "$LOW_MEMORY_BYTES" ]; }
+
+# Runs a memory-hungry build, pausing public transport around it when memory is short.
+# Leaves $paused set if it did.
+heavy() {
+  paused=""
+  if low_memory && is_running maps-otp; then
+    echo "Pausing public transport while this builds (Docker has under 20 GB of memory)"
+    compose stop maps-otp
+    paused=1
+  fi
+  result=0
+  "$@" || result=$?
+  if [ -n "$paused" ]; then compose start maps-otp; fi
+  return "$result"
+}
+
+# A new maps-graphhopper image with other profiles or encoded values can't serve the old graph.
+# The import stores the image's config fingerprint with the graph (graphhopper.sh).
+routing_config_changed() {
+  data_has graphhopper/default-gh && ! compose run --rm --no-deps --entrypoint sh maps-graphhopper \
+    -c 'cmp -s graph-config.sha /data/default-gh/graph-config.sha' >/dev/null 2>&1
+}
+
+# ---------- the steps ----------
+
+download_map() {
+  log "Downloading OSM map data and Overture places"
+  compose run --rm maps-download
+}
+
+download_places() {
+  log "Downloading Overture places"
+  compose run --rm maps-download places
+}
+
+import_pois() {
+  log "Importing places for browse and search"
+  compose run --rm maps-poi-import
+}
+
+run_planetiler() {
+  log "Building map tiles"
+  compose run --rm maps-planetiler
+}
+
+run_graphhopper_import() {
+  log "Building the routing graph (about 20 minutes for Australia)"
+  compose run --rm maps-graphhopper-import
+}
+
+run_otp_build() {
+  log "Building the public transport graph"
+  compose run --rm maps-otp-build
+}
+
+# Planetiler builds into another file, which replaces the old tiles once it's finished
+build_tiles() {
+  export TILES_BUILD_FILE=building.mbtiles
+  heavy run_planetiler || { unset TILES_BUILD_FILE; return 1; }
+  unset TILES_BUILD_FILE
+  in_data 'mv tiles/building.mbtiles "tiles/$TILES_FILE"'
+  if is_running maps-tileserver; then compose restart maps-tileserver; fi
+}
+
+# GraphHopper builds into default-gh.new, which replaces default-gh once it's finished
+build_routing() {
+  in_data 'rm -rf graphhopper/default-gh.new'
+  export GRAPHHOPPER_GRAPH=default-gh.new
+  stopped=""
+  if low_memory && is_running maps-graphhopper; then
+    echo "Stopping routing while this builds (Docker has under 20 GB of memory)"
+    compose stop maps-graphhopper
+    stopped=1
+  fi
+  result=0
+  heavy run_graphhopper_import || result=$?
+  unset GRAPHHOPPER_GRAPH
+  if [ "$result" != 0 ]; then
+    in_data 'rm -rf graphhopper/default-gh.new'
+    if [ -n "$stopped" ]; then compose start maps-graphhopper; fi
+    return "$result"
+  fi
+
+  log "Swapping in the new routing graph"
+  compose stop maps-graphhopper
+  in_data 'rm -rf graphhopper/default-gh.old
+    if [ -e graphhopper/default-gh ]; then mv graphhopper/default-gh graphhopper/default-gh.old; fi
+    mv graphhopper/default-gh.new graphhopper/default-gh'
+  compose up -d --wait maps-graphhopper
+  in_data 'rm -rf graphhopper/default-gh.old'
+  # The speed limit and bike lane overlays are cached from the old graph
+  if is_running maps-web; then
+    compose exec -T maps-web sh -c 'rm -rf /var/cache/nginx/road-data/*'
+  fi
+}
+
+download_transit() {
+  log "Downloading public transport timetables"
+  compose run --rm maps-transit-download
+}
+
+# OTP writes graph.obj in place; the old one is kept until the new one is built
+build_transit() {
+  in_data 'if [ -e transit/graph.obj ]; then mv transit/graph.obj transit/graph.obj.old; fi'
+  if ! heavy run_otp_build; then
+    in_data 'if [ -e transit/graph.obj.old ]; then mv transit/graph.obj.old transit/graph.obj; fi'
+    return 1
+  fi
+  in_data 'rm -f transit/graph.obj.old'
+  # Paused for the build, it has already started again on the new graph
+  if [ -z "$paused" ] && is_running maps-otp; then compose restart maps-otp; fi
+}
+
+# A second Photon downloads the new index into photon.new; once it's serving, the folders are
+# swapped and the real one restarts on the new index
+update_search() {
+  log "Downloading a new search index"
+  in_data 'rm -rf photon.new'
+  docker rm -f maps-photon-update >/dev/null 2>&1 || true
+  export PHOTON_DATA_DIR=photon.new
+  compose run -d --no-deps --name maps-photon-update maps-photon >/dev/null
+  unset PHOTON_DATA_DIR
+  until docker exec maps-photon-update curl -sf localhost:2322/status >/dev/null 2>&1; do
+    if [ -z "$(docker ps -q --filter name=maps-photon-update)" ]; then
+      echo "Downloading the search index failed:"
+      docker logs --tail 20 maps-photon-update
+      docker rm -f maps-photon-update >/dev/null
+      in_data 'rm -rf photon.new'
+      return 1
+    fi
+    sleep 30
+  done
+  docker rm -f maps-photon-update >/dev/null
+
+  log "Swapping in the new search index"
+  compose stop maps-photon
+  in_data 'rm -rf photon.old && mv photon photon.old && mv photon.new photon'
+  compose up -d maps-photon
+  in_data 'rm -rf photon.old'
+}
+
+# ---------- commands ----------
+
+setup() {
+  log "Getting images"
+  get_images
+
+  if ! data_has 'osm/$OSM_FILE'; then
+    download_map
+  elif ! data_has 'osm/${OSM_FILE%.osm.pbf}.places.csv.gz'; then
+    download_places
+  fi
+  if ! data_has 'tiles/$TILES_FILE'; then
+    run_planetiler
+  fi
+  if ! data_has graphhopper/default-gh; then
+    run_graphhopper_import
+  elif routing_config_changed; then
+    echo "The routing config has changed since the graph was built"
+    build_routing
+  fi
+  if ! in_data 'ls transit/*gtfs*.zip' >/dev/null 2>&1; then
+    download_transit
+  fi
+  if ! data_has transit/graph.obj; then
+    run_otp_build
+  fi
+
+  log "Starting everything"
+  compose up -d
+  echo
+  echo "Done: open http://localhost:7000"
+  echo "Search downloads its index on first start, so it takes a few minutes to work."
+}
+
+update() {
+  what="${*:-all}"
+  if [ "$what" = all ]; then what="map transit search"; fi
+
+  for part in $what; do
+    case "$part" in
+      map | places | routing | transit | search) ;;
+      *) echo "Unknown update: $part (map, places, routing, transit, search or all)" >&2; exit 2 ;;
+    esac
+  done
+
+  # One update at a time (e.g. a scheduled one and one run by hand)
+  if ! mkdir .update.lock 2>/dev/null; then
+    echo "Another update is running. If it isn't, remove the .update.lock folder." >&2
+    exit 1
+  fi
+  trap 'rmdir .update.lock' EXIT
+
+  # The download and import scripts and routing profiles are in these, so pick up any changes
+  get_images maps-download maps-db maps-graphhopper
+  case " $what " in
+    *" map "* | *" routing "*) ;;
+    *) if routing_config_changed; then
+      echo "The routing config has changed since the graph was built, so routing updates too"
+      what="$what routing"
+    fi ;;
+  esac
+
+  # A part that fails is reported, and the rest still update
+  failed=""
+  for part in $what; do
+    case "$part" in
+      map) download_map && build_tiles && import_pois && build_routing ;;
+      places) download_places && import_pois ;;
+      routing) build_routing ;;
+      transit) download_transit && build_transit ;;
+      search) update_search ;;
+    esac || failed="$failed $part"
+  done
+
+  if [ -n "$failed" ]; then
+    log "Failed to update:$failed (the rest updated; what was there before is still in use)"
+    exit 1
+  fi
+  log "Updated: $what"
+}
+
+usage() {
+  # The comment at the top of this file
+  awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"
+}
+
+schedule() {
+  case "${1:-}" in
+    on)
+      export MAPS_PROJECT_DIR="$PWD"
+      get_images maps-updater
+      compose --profile updates up -d maps-updater
+      compose logs maps-updater | tail -n 3
+      ;;
+    off) compose --profile updates rm -sf maps-updater ;;
+    *) echo "Usage: ./maps schedule on|off" >&2; exit 2 ;;
+  esac
+}
+
+command="${1:-}"
+[ $# -gt 0 ] && shift
+case "$command" in
+  setup) setup ;;
+  update) update "$@" ;;
+  status) in_data 'python3 /status.py' 2>/dev/null ;;
+  schedule) schedule "$@" ;;
+  -h | --help | help | "") usage ;;
+  *) usage >&2; exit 2 ;;
+esac

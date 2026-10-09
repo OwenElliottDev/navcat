@@ -1,0 +1,82 @@
+.directions {
+  align-items: center;
+}
+
+.directions__ends {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.directions__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- travel modes: a segmented control ---------- */
+
+.profiles {
+  display: flex;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 3px;
+  background: var(--line);
+  border-radius: var(--radius);
+}
+
+.profiles__option {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+
+.profiles__option:hover {
+  color: var(--ink);
+}
+
+.profiles__option[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: 0 1px 3px rgba(20, 32, 32, 0.15);
+}
+
+.profiles__option:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* Icons alone on narrow phones */
+@media (max-width: 400px) {
+  .profiles__option span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+}
+
+.cycling-styles {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}

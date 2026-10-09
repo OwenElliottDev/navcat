@@ -1,0 +1,37 @@
+.transit-options {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transit-options__control {
+  height: 34px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.transit-options__control:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.transit-options__time {
+  flex: 1;
+  min-width: 0;
+}
+
+.transit-options__modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Off modes are struck through, so it's clear they're excluded rather than just unselected */
+.mode-chip[aria-pressed='false'] {
+  text-decoration: line-through;
+}

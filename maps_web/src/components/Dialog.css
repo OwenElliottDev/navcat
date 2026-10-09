@@ -1,0 +1,94 @@
+.dialog {
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  color: var(--ink);
+  background: var(--paper);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog::backdrop {
+  background: rgba(10, 16, 16, 0.45);
+}
+
+.dialog__header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 12px 4px 20px;
+  background: var(--paper);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ---------- forms inside dialogs ---------- */
+
+.form {
+  padding: 8px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.form__field input,
+.form__field select,
+.form__field textarea {
+  min-height: var(--control);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: normal;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.form__field textarea {
+  resize: vertical;
+}
+
+.form__field input:focus,
+.form__field select:focus,
+.form__field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.form__hint {
+  font-size: 13px;
+  font-weight: normal;
+  color: var(--muted);
+}
+
+.form__row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+}
+
+.form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}

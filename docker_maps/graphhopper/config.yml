@@ -1,0 +1,91 @@
+# GraphHopper config, built into the maps-graphhopper image.
+# Changing profiles, encoded values or CH/LM settings needs the graph rebuilt:
+# ./maps update routing
+
+graphhopper:
+  datareader.file: ""
+  graph.location: graph-cache
+
+  # Built-in models (car.json, bike.json, mtb.json, ...) are found by name;
+  # our own are in graphhopper/custom_models
+  custom_models.directory: custom_models
+
+  profiles:
+    - name: car
+      custom_model_files: [car.json]
+    - name: foot
+      custom_model_files: [foot.json, foot_elevation.json]
+
+    # Cycling: GraphHopper's models, plus our own bias for each style
+    - name: bike
+      custom_model_files: [bike.json, bike_elevation.json]
+    - name: bike_paths
+      custom_model_files: [bike.json, bike_elevation.json, bike_paths.json]
+    - name: racingbike
+      custom_model_files: [racingbike.json, bike_elevation.json, road_bike.json]
+    - name: gravel
+      custom_model_files: [bike.json, bike_elevation.json, gravel.json]
+    - name: mtb
+      custom_model_files: [mtb.json, bike_elevation.json, offroad.json]
+
+  # CH makes plain car routes fast; LM keeps them quick with the app's avoid options (tolls,
+  # traffic lights...), which are sent as a custom model and so can't use CH
+  profiles_ch:
+    - profile: car
+  profiles_lm:
+    - profile: car
+
+  # osm_way_id lets the app look up a route's turn lanes (maps_backend/app/routes/lanes.py);
+  # crossing (TRAFFIC_SIGNALS also covers junction lights, see traffic-signals.patch) and toll
+  # are for the avoid options
+  graph.encoded_values: |
+    car_access, car_average_speed, country, road_class, roundabout, max_speed, road_environment,
+    foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, average_slope,
+    bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed,
+    mtb_access, mtb_average_speed, mtb_priority, mtb_network,
+    racingbike_access, racingbike_average_speed, racingbike_priority,
+    surface, track_type, cycleway, crossing, toll,
+    osm_way_id
+
+  graph.elevation.provider: srtm
+  # Downloaded elevation tiles; kept in the mounted data folder so they're only fetched once
+  graph.elevation.cache_dir: /data/srtm
+  prepare.min_network_size: 200
+  prepare.subnetworks.threads: 1
+  routing.snap_preventions_default: tunnel, bridge, ferry
+  routing.non_ch.max_waypoint_distance: 1000000
+  import.osm.ignored_highways: ''
+  graph.dataaccess.default_type: RAM
+
+server:
+  application_connectors:
+  - type: http
+    port: 8989
+    max_request_header_size: 50k
+  request_log:
+      appenders: []
+  admin_connectors:
+  - type: http
+    port: 8990
+logging:
+  appenders:
+    - type: file
+      time_zone: UTC
+      current_log_filename: logs/graphhopper.log
+      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      archive: true
+      archived_log_filename_pattern: ./logs/graphhopper-%d.log.gz
+      archived_file_count: 30
+      never_block: true
+    - type: console
+      time_zone: UTC
+      log_format: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  loggers:
+    "com.graphhopper.osm_warnings":
+      level: DEBUG
+      additive: false
+      appenders:
+        - type: file
+          currentLogFilename: logs/osm_warnings.log
+          archive: false
+          logFormat: '[%level] %msg%n'

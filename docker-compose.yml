@@ -1,0 +1,270 @@
+# Settings such as download URLs, regions and memory come from .env (see .env.example);
+# the defaults cover Australia, with public transport for VIC, south-east QLD, SA and WA.
+#
+# This file runs the published images (owenelliottdev/maps-*, built by
+# .github/workflows/docker.yml; MAPS_TAG picks a release). To build them from this checkout
+# instead, add docker-compose.dev.yml: COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+# in .env, which ./maps also follows.
+#
+# ./maps setup downloads and builds everything below, ./maps update refreshes it while the
+# stack keeps running, and ./maps status shows how old it all is (see README.md).
+#
+# Only the web app is published to the network (port 7000). The other ports are bound to
+# localhost so the Vite dev server can reach the backends while developing.
+
+services:
+  # ---------- the app ----------
+
+  # The web app, plus the /api proxy to every backend below
+  maps-web:
+    image: owenelliottdev/maps-web:${MAPS_TAG:-latest}
+    container_name: maps-web
+    restart: unless-stopped
+    ports:
+      - "7000:80"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/terrain:/terrain:ro # topo tiles from maps-terrain-build
+    depends_on:
+      - maps-backend
+      - maps-graphhopper
+      - maps-otp
+      - maps-photon
+      - maps-tileserver
+
+  # Accounts and browse API
+  maps-backend:
+    image: owenelliottdev/maps-backend:${MAPS_TAG:-latest}
+    container_name: maps-backend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7800:8000"
+    environment:
+      DATABASE_URL: postgresql://maps:${MAPS_POSTGRES_PASSWORD}@maps-db/maps
+      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      SESSION_DAYS: ${SESSION_DAYS:-30}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      PHOTOS_DIR: /data/photos
+      GRAPHHOPPER_URL: http://maps-graphhopper:8989 # road data for map overlays
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/photos:/data/photos # people's uploaded place photos
+    depends_on:
+      maps-db:
+        condition: service_healthy
+
+  # Postgres + PostGIS: accounts, and POIs for browsing. Only reachable by the backend.
+  maps-db:
+    image: owenelliottdev/maps-db:${MAPS_TAG:-latest}
+    container_name: maps-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: maps
+      POSTGRES_USER: maps
+      POSTGRES_PASSWORD: ${MAPS_POSTGRES_PASSWORD:?set MAPS_POSTGRES_PASSWORD in .env (see .env.example)}
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "maps", "-d", "maps"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Loads POIs for browsing from OSM_FILE, merged with the Overture places downloaded with it,
+  # then exits. Runs on every `up` but only imports when they've changed, so browse stays in
+  # sync with routing and the map.
+  maps-poi-import:
+    image: owenelliottdev/maps-db:${MAPS_TAG:-latest}
+    container_name: maps-poi-import
+    depends_on:
+      maps-db:
+        condition: service_healthy
+    environment:
+      OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
+      PGHOST: maps-db
+      PGDATABASE: maps
+      PGUSER: maps
+      PGPASSWORD: ${MAPS_POSTGRES_PASSWORD}
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
+    entrypoint: ["sh", "/import/import-pois.sh"]
+
+  # Builds terrain tiles for the topo map from the elevation data GraphHopper downloads, then
+  # exits. Runs on every `up`: waits for GraphHopper to be ready, then only builds when the
+  # elevation files have changed. Nothing is fetched from the internet.
+  maps-terrain-build:
+    image: owenelliottdev/maps-terrain:${MAPS_TAG:-latest}
+    container_name: maps-terrain-build
+    environment:
+      WAIT_FOR: http://maps-graphhopper:8989/health
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/graphhopper/srtm:/elevation:ro
+      - ${MAPS_DATA_DIR:-./maps_data}/terrain:/terrain
+
+  # ---------- routing, search and the map ----------
+
+  # Walking, cycling and driving. Profiles are in docker_maps/graphhopper/config.yml. Serves the graph
+  # maps-graphhopper-import builds; serving needs far less memory than building.
+  maps-graphhopper:
+    image: owenelliottdev/maps-graphhopper:${MAPS_TAG:-latest}
+    container_name: maps-graphhopper
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7989:8989"
+    environment:
+      JAVA_OPTS: "-Xmx${GRAPHHOPPER_MEMORY:-3g}"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/graphhopper:/data # graph cache (default-gh) and elevation tiles (srtm)
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
+    command: ["-i", "/osm/${OSM_FILE:-australia.osm.pbf}", "--host", "0.0.0.0"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8989/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 60m
+
+  # Public transport, from the graph maps-otp-build makes.
+  maps-otp:
+    image: opentripplanner/opentripplanner:2.10.0
+    container_name: maps-otp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7088:8080"
+    environment:
+      JAVA_OPTS: "-Xmx${OTP_MEMORY:-5g}"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/transit:/var/opentripplanner
+    command: ["--load"]
+
+  # Search and reverse geocoding. Downloads its index on first start, then runs offline.
+  maps-photon:
+    image: rtuszik/photon-docker:latest
+    container_name: maps-photon
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7322:2322"
+    environment:
+      REGION: ${PHOTON_REGION:-australia-oceania}
+      # The index is downloaded on first start (setup). After that, never phone home:
+      # this stack runs offline. ./maps update search downloads a new one alongside (into
+      # PHOTON_DATA_DIR) and swaps it in.
+      UPDATE_STRATEGY: DISABLED
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/${PHOTON_DATA_DIR:-photon}:/photon/data
+
+  # Map tiles, style and fonts
+  maps-tileserver:
+    image: maptiler/tileserver-gl:latest
+    container_name: maps-tileserver
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:7080:8080"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/tiles:/data
+    command: ["--file", "/data/${TILES_FILE:-australia.mbtiles}"]
+
+  # ---------- setup and updates: run by ./maps, or docker compose run --rm <name> ----------
+
+  # Keeps the data up to date on a schedule (see .env.example). Started by `./maps schedule on`,
+  # which fills in MAPS_PROJECT_DIR: the repo is mounted at the same path as on the host, so
+  # its relative paths mean the same thing to Docker from in here. Can control Docker, as it
+  # restarts the other services, so it only runs when turned on.
+  maps-updater:
+    image: owenelliottdev/maps-updater:${MAPS_TAG:-latest}
+    container_name: maps-updater
+    profiles: ["updates"]
+    restart: unless-stopped
+    environment:
+      MAPS_PROJECT_DIR: ${MAPS_PROJECT_DIR:-}
+      TZ: ${TZ:-UTC}
+      UPDATE_TRANSIT_SCHEDULE: ${UPDATE_TRANSIT_SCHEDULE-0 3 * * 1}
+      UPDATE_MAP_SCHEDULE: ${UPDATE_MAP_SCHEDULE-0 4 1 * *}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:${MAPS_PROJECT_DIR:-/maps}
+    working_dir: ${MAPS_PROJECT_DIR:-/maps}
+
+  # Downloads the OSM extract that GraphHopper, Planetiler and the POI import read, and
+  # Overture Maps places for the same area (merged into browse and search by maps-poi-import).
+  # `... maps-download osm` or `... maps-download places` fetches just one.
+  maps-download:
+    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    profiles: ["setup"]
+    environment:
+      OSM_URL: ${OSM_URL:-https://download.geofabrik.de/australia-oceania/australia-latest.osm.pbf}
+      OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
+      OVERTURE_PLACES: ${OVERTURE_PLACES:-true}
+      OVERTURE_COUNTRIES: ${OVERTURE_COUNTRIES:-AU}
+      OVERTURE_RELEASE: ${OVERTURE_RELEASE:-}
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm
+
+  # The whole data folder, for ./maps to check on and swap in freshly built data
+  maps-data:
+    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    profiles: ["setup"]
+    environment:
+      OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
+      TILES_FILE: ${TILES_FILE:-australia.mbtiles}
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}:/data
+    working_dir: /data
+    entrypoint: ["sh", "-c"]
+
+  # Builds the routing graph from the OSM extract, into /data/$GRAPHHOPPER_GRAPH (default-gh,
+  # where maps-graphhopper reads it; ./maps update builds into another folder, then swaps).
+  maps-graphhopper-import:
+    image: owenelliottdev/maps-graphhopper:${MAPS_TAG:-latest}
+    profiles: ["setup"]
+    environment:
+      JAVA_OPTS: "-Xmx${GRAPHHOPPER_IMPORT_MEMORY:-8g}"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/graphhopper:/data
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
+    command:
+      - --import
+      - -i
+      - /osm/${OSM_FILE:-australia.osm.pbf}
+      - -o
+      - /data/${GRAPHHOPPER_GRAPH:-default-gh}
+
+  # Builds the map tiles from the OSM extract.
+  maps-planetiler:
+    image: ghcr.io/onthegomap/planetiler:latest
+    profiles: ["setup"]
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xmx6g"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/tiles:/data
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
+    # --download still fetches coastline and lake data into the tiles/sources folder
+    command:
+      - --download
+      - --area=${TILES_AREA:-australia}
+      - --osm_path=/osm/${OSM_FILE:-australia.osm.pbf}
+      # ./maps update builds into another file, then swaps it in
+      - --output=/data/${TILES_BUILD_FILE:-${TILES_FILE:-australia.mbtiles}}
+      - --force
+
+  # Downloads the timetables for public transport, and cuts the streets around them from the
+  # OSM extract (or downloads TRANSIT_OSM_URL, if set).
+  maps-transit-download:
+    image: owenelliottdev/maps-download:${MAPS_TAG:-latest}
+    profiles: ["setup"]
+    environment:
+      OSM_FILE: ${OSM_FILE:-australia.osm.pbf}
+      TRANSIT_OSM_URL: ${TRANSIT_OSM_URL:-}
+      TRANSIT_GTFS_URLS: ${TRANSIT_GTFS_URLS:-https://data.ptv.vic.gov.au/downloads/gtfs.zip https://gtfsrt.api.translink.com.au/GTFS/SEQ_GTFS.zip https://gtfs.adelaidemetro.com.au/v1/static/latest/google_transit.zip https://www.transperth.wa.gov.au/TimetablePDFs/GoogleTransit/Production/google_transit.zip}
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/transit:/data
+      - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
+    entrypoint: ["sh", "/transit.sh"]
+
+  # Builds the public transport graph (graph.obj). Re-run after downloading new timetables.
+  maps-otp-build:
+    image: opentripplanner/opentripplanner:2.10.0
+    profiles: ["setup"]
+    environment:
+      JAVA_OPTS: "-Xmx${OTP_BUILD_MEMORY:-8g}"
+    volumes:
+      - ${MAPS_DATA_DIR:-./maps_data}/transit:/var/opentripplanner
+    command: ["--build", "--save"]

@@ -1,0 +1,37 @@
+# Builds the app's images from this checkout instead of pulling the published ones. Use it on
+# top of docker-compose.yml by putting this in .env (./maps follows it too):
+#
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+#
+# Then `docker compose up -d --build maps-web` (or any service) rebuilds after a change.
+
+services:
+  maps-web:
+    build: ./maps_web
+    image: maps-web:dev
+  maps-backend:
+    build: ./maps_backend
+    image: maps-backend:dev
+  maps-db:
+    build: ./docker_maps/db
+    image: maps-db:dev
+  maps-poi-import:
+    image: maps-db:dev
+  maps-terrain-build:
+    build: ./docker_maps/terrain
+    image: maps-terrain:dev
+  maps-graphhopper:
+    build: ./docker_maps/graphhopper
+    image: maps-graphhopper:dev
+  maps-graphhopper-import:
+    image: maps-graphhopper:dev
+  maps-updater:
+    build: ./docker_maps/updater
+    image: maps-updater:dev
+  maps-download:
+    build: ./docker_maps/download
+    image: maps-download:dev
+  maps-data:
+    image: maps-download:dev
+  maps-transit-download:
+    image: maps-download:dev

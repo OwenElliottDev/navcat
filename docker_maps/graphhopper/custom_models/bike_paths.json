@@ -1,0 +1,17 @@
+// "Bike paths": stick to cycleways and paths, and only use roads to connect them.
+// Applied on top of bike.json, which already handles access and surfaces.
+{
+  "priority": [
+    { "if": "road_class == CYCLEWAY", "multiply_by": "1.5" },
+    { "else_if": "road_class == PATH || road_class == FOOTWAY || road_class == PEDESTRIAN || road_class == TRACK || road_class == BRIDLEWAY", "multiply_by": "1.2" },
+    { "else_if": "road_class == LIVING_STREET", "multiply_by": "0.6" },
+    { "else_if": "road_class == RESIDENTIAL || road_class == SERVICE || road_class == UNCLASSIFIED", "multiply_by": "0.3" },
+    { "else_if": "road_class == TERTIARY", "multiply_by": "0.1" },
+    { "else": "", "multiply_by": "0.05" },
+
+    // A protected track beside a road is nearly as good as a path
+    { "if": "cycleway == TRACK", "multiply_by": "3" },
+    // The road's cycleway is mapped as its own way: use that instead
+    { "if": "cycleway == SEPARATE", "multiply_by": "0.5" }
+  ]
+}

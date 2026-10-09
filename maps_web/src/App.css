@@ -1,0 +1,147 @@
+.map {
+  position: absolute;
+  inset: 0;
+}
+
+/* ---------- panel: a floating column on desktop ---------- */
+
+.panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2;
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  /* Only as tall as its content, up to the full column */
+  pointer-events: none;
+}
+
+/* The panel lets taps through to the map; its parts take them */
+.panel__top,
+.panel__body {
+  pointer-events: auto;
+}
+
+.panel__problem {
+  font-size: 14px;
+}
+
+.panel__top {
+  flex: none;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+
+.panel__body {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-top: 10px;
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  background: var(--paper);
+}
+
+.panel__body:empty {
+  display: none;
+}
+
+/* ---------- phones: a floating top bar plus the bottom sheet ---------- */
+
+@media (max-width: 640px) {
+  .panel {
+    display: contents;
+  }
+
+  .panel__top {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    left: 8px;
+    right: 8px;
+    z-index: 3;
+  }
+
+  /* Map controls ride above the sheet instead of hiding behind it */
+  .maplibregl-ctrl-bottom-right,
+  .maplibregl-ctrl-bottom-left {
+    bottom: var(--sheet-visible);
+    transition: bottom 0.32s var(--ease-out);
+  }
+
+  /* Above the bottom-right corner, where the attribution button sits */
+  .maplibregl-ctrl-top-right {
+    top: auto;
+    bottom: calc(var(--sheet-visible) + 44px);
+    transition: bottom 0.32s var(--ease-out);
+  }
+
+  /* Pinch to zoom; keep the compass and locate buttons */
+  .maplibregl-ctrl-zoom-in,
+  .maplibregl-ctrl-zoom-out,
+  .maplibregl-ctrl-scale {
+    display: none !important;
+  }
+}
+
+/* While navigating: the navigation screen has its own controls, and the map credit sits
+   just above the trip bar rather than above the (hidden) planning sheet */
+.is-navigating .maplibregl-ctrl-top-right {
+  display: none;
+}
+
+.is-navigating .maplibregl-ctrl-bottom-right,
+.is-navigating .maplibregl-ctrl-bottom-left {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+}
+
+/* Map controls: one size for MapLibre's and ours (the layers button), bigger on phones */
+:root {
+  --map-control: 36px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --map-control: 42px;
+  }
+}
+
+.maplibregl-ctrl-group button {
+  width: var(--map-control) !important;
+  height: var(--map-control) !important;
+}
+
+/* Rounder map controls to match */
+.maplibregl-ctrl-group {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow) !important;
+  overflow: hidden;
+}
+
+/* ---------- cards inside the panel ---------- */
+
+.card {
+  padding: 16px;
+}
+
+.card + .card {
+  border-top: 1px solid var(--line);
+}
+
+.card__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.card__kind {
+  margin: 4px 0 0;
+  color: var(--muted);
+}

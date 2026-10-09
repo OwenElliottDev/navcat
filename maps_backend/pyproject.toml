@@ -1,0 +1,27 @@
+[project]
+name = "maps-backend"
+version = "0.1.0"
+description = "Accounts and browse API for the self-hosted maps"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "fastapi>=0.142.2",
+    "mapbox-vector-tile>=2.2.0",
+    "pillow>=12.3.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "pycurl>=7.48.0",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100

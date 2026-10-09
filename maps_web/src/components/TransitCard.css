@@ -1,0 +1,116 @@
+.itineraries,
+.legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- journey options ---------- */
+
+.itinerary {
+  width: 100%;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.itinerary:hover {
+  background: var(--surface);
+}
+
+.itinerary[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.itinerary__times {
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.itinerary__duration {
+  color: var(--muted);
+}
+
+.itinerary__legs {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.route-badge {
+  display: inline-block;
+  min-width: 24px;
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 20px;
+  text-align: center;
+  color: var(--paper);
+  background: var(--ink);
+  border-radius: 4px;
+}
+
+/* ---------- legs of the selected journey ---------- */
+
+.leg {
+  width: 100%;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: inherit;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-left: 4px solid var(--leg-color, var(--ink));
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  cursor: pointer;
+}
+
+.leg:hover {
+  background: var(--surface);
+}
+
+.leg:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.leg--walk {
+  border-left: 4px dotted var(--muted);
+}
+
+.leg__title {
+  font-weight: 600;
+}
+
+.leg__stop time {
+  display: inline-block;
+  min-width: 64px;
+  font-variant-numeric: tabular-nums;
+}
+
+.leg__meta {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.transit-start {
+  margin-bottom: 12px;
+  border-radius: 22px;
+  padding: 0 22px;
+}

@@ -1,0 +1,15 @@
+.car-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.car-options__label {
+  flex: none;
+  margin-right: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}

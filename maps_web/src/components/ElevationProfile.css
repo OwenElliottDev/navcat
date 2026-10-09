@@ -1,0 +1,83 @@
+.elevation {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  margin: 14px 0 0;
+}
+
+.elevation__scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.elevation__chart {
+  position: relative;
+  height: 80px;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+.elevation__chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.elevation__area {
+  fill: var(--accent);
+  opacity: 0.16;
+}
+
+.elevation__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.elevation__cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.elevation__readout {
+  position: absolute;
+  top: -4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  transform: translateX(6px);
+}
+
+.elevation__readout[data-side='left'] {
+  transform: translateX(calc(-100% - 6px));
+}
+
+.elevation__axis {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
