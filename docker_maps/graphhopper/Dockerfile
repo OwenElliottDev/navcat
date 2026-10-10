@@ -1,4 +1,5 @@
-FROM maven:3.9-eclipse-temurin-25 AS build
+# The jar runs anywhere, so build it natively rather than under emulation for each platform
+FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-25 AS build
 
 # A pinned master commit: our profiles use the cycleway encoded value, which isn't in a release
 # yet (11.1 is the latest). Move to the 12.0 tag once it's out.
