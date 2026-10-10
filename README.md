@@ -32,8 +32,8 @@ and GTFS timetables works.
 ## Getting started
 
 ```
-git clone https://github.com/OwenElliottDev/maps.git
-cd maps
+git clone https://github.com/OwenElliottDev/navcat.git
+cd navcat
 cp .env.example .env    # then set MAPS_POSTGRES_PASSWORD
 ./maps setup
 ```
