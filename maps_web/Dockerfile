@@ -1,5 +1,6 @@
 # Builds the app, then serves it with nginx (which also proxies /api to the backends)
-FROM node:24-alpine AS build
+# The built files are the same on every platform, so build them natively (no emulation)
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
