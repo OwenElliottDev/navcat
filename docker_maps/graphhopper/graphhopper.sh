@@ -69,6 +69,12 @@ mkdir -p $(dirname "${GRAPH}")
 echo "## Executing $ACTION. JAVA_OPTS=$JAVA_OPTS"
 
 if [ "$ACTION" = import ]; then
+  # Removing small subnetworks runs once per profile, so threads speed it up. Set here, not in
+  # config.yml, so a different thread count doesn't change graph-config.sha and force a rebuild
+  if [ -n "$SUBNETWORK_THREADS" ]; then
+    sed "s/^\( *prepare\.subnetworks\.threads:\).*/\1 $SUBNETWORK_THREADS/" "$CONFIG" > import-config.yml
+    CONFIG=import-config.yml
+  fi
   "$JAVA" $JAVA_OPTS ${FILE:+-Ddw.graphhopper.datareader.file="$FILE"} -Ddw.graphhopper.graph.location="$GRAPH" \
         $GH_WEB_OPTS -jar "$JAR" $ACTION $CONFIG || exit $?
   # Records the config the graph was built with, so ./maps can tell when it needs rebuilding

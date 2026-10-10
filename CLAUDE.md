@@ -21,16 +21,18 @@ Stack (from repo root; see README.md):
 ./maps setup                              # first time: download and build everything, then start
 ./maps update [map|places|routing|transit|search]  # refresh data on the running stack
 ./maps status                             # data ages, timetable expiry
+./maps dev [command]                      # the same (setup if none), built from this checkout
 docker compose up -d --build              # everything; web app at http://localhost:7000
 docker compose up -d --build maps-web     # after frontend changes
 docker compose up -d --build maps-backend # after backend changes
 ```
 
 `docker-compose.yml` (prod) runs the published `owenelliottdev/navcat-*` images and mounts no
-source; `docker-compose.dev.yml` overrides it to build them from the checkout, enabled with
-`COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in `.env`. Scripts and config (POI import,
-GraphHopper profiles, terrain builder) are baked into the images, so a new image needs adding to
-both compose files and the matrix in `.github/workflows/docker.yml` (pushes on `v*` tags).
+source; `docker-compose.dev.yml` overrides it to build them from the checkout, for one command
+with `./maps dev`, or always with `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in
+`.env`. Scripts and config (POI import, GraphHopper profiles, terrain builder) are baked into the
+images, so a new image needs adding to both compose files and the matrix in
+`.github/workflows/docker.yml` (pushes on `v*` tags).
 
 Frontend (`maps_web/`, React 19 + TypeScript + Vite + MapLibre):
 
