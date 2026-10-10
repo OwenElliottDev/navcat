@@ -41,6 +41,7 @@ import { useMapInteractions, type MapPoi } from './map/useMapInteractions'
 import { useFollowCamera } from './map/useFollowCamera'
 import { useMapLook } from './map/useMapLook'
 import { UserLocation } from './map/UserLocation'
+import { useIsTilted } from './map/useIsTilted'
 import { useTerrainInfo } from './map/useTerrainInfo'
 import { useMoveCount } from './map/useMoveCount'
 import type {
@@ -120,7 +121,8 @@ export default function App() {
   // Map type and overlays, remembered on this device
   const [look, setLook] = useStoredLook()
   const terrain = useTerrainInfo()
-  useMapLook(look, terrain)
+  const isTilted = useIsTilted()
+  useMapLook(look, terrain, isTilted)
 
   const [mode, setMode] = useState<Mode>('search')
   const [place, setPlace] = useState<PhotonFeature | null>(null)
@@ -561,7 +563,7 @@ export default function App() {
         <LayerPicker look={look} onChange={setLook} hasTerrain={terrain !== null} />
       </MapControl>
       <MapControl position="top-right">
-        <PitchToggle />
+        <PitchToggle is3d={isTilted} />
       </MapControl>
       <RouteLine segments={routeSegments} />
       <PoiLayer pois={isBrowsing ? pois : NO_POIS} selectedKey={selectedKey} />
