@@ -12,6 +12,7 @@ on:
 
 jobs:
   docker:
+    name: ${{ matrix.image }}
     runs-on: ubuntu-latest
 
     permissions:
