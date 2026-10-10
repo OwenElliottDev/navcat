@@ -83,6 +83,12 @@
   cursor: pointer;
 }
 
+.nav-round--text {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+}
+
 .nav-recentre {
   height: 44px;
   padding: 0 18px;

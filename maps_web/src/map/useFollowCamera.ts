@@ -15,6 +15,7 @@ export function useFollowCamera(
   at: LngLat | null,
   heading: number,
   travel: keyof typeof ZOOM,
+  is3d: boolean,
 ) {
   const map = useMap()
   const [isFollowing, setIsFollowing] = useState(true)
@@ -38,14 +39,14 @@ export function useFollowCamera(
     map.easeTo({
       center: [at.lng, at.lat],
       bearing: heading,
-      pitch: 55,
+      pitch: is3d ? 55 : 0,
       zoom: ZOOM[travel],
       // Room for the instruction banner above and the trip bar below; you sit low on screen
       padding: { top: window.innerHeight * 0.4, bottom: 110, left: 20, right: 20 },
       duration: 900,
       easing: (t) => t,
     })
-  }, [map, active, at, heading, travel, isFollowing])
+  }, [map, active, at, heading, travel, isFollowing, is3d])
 
   // Back to a flat, north-up map when navigation ends
   useEffect(() => {

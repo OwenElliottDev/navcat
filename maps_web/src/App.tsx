@@ -9,6 +9,7 @@ import { LayerPicker } from './components/LayerPicker'
 import { CarOptions } from './components/CarOptions'
 import { AdditionalOptions } from './components/AdditionalOptions'
 import { DirectionsForm } from './components/DirectionsForm'
+import { PitchToggle } from './components/PitchToggle'
 import { PlaceCard } from './components/PlaceCard'
 import { PlaceEditor, type PlaceDraft } from './components/PlaceEditor'
 import { RouteCard } from './components/RouteCard'
@@ -224,7 +225,8 @@ export default function App() {
   const heading = ahead
     ? bearingBetween(progress!.snapped, ahead)
     : (fix?.heading ?? progress?.bearing ?? 0)
-  const follow = useFollowCamera(isNavigating, youAt, heading, travel)
+  const [isNavigation3d, setIsNavigation3d] = useState(true)
+  const follow = useFollowCamera(isNavigating, youAt, heading, travel, isNavigation3d)
 
   function startNavigation() {
     // Location (and so navigation) needs a secure connection: HTTPS, or localhost
@@ -246,10 +248,16 @@ export default function App() {
     document.documentElement.classList.toggle('is-navigating', isNavigating)
   }, [isNavigating])
 
+  // After navigating, the route is shown flat again (its fit would otherwise keep the tilt)
+  const wasNavigating = useRef(false)
   useEffect(() => {
-    if (isNavigating) return // the camera follows you instead
+    if (isNavigating) {
+      wasNavigating.current = true
+      return // the camera follows you instead
+    }
     const bounds = boundsOf(routeSegments.map((segment) => segment.geometry))
-    if (bounds) camera.fitBounds(bounds)
+    if (bounds) camera.fitBounds(bounds, wasNavigating.current)
+    wasNavigating.current = false
   }, [routeSegments, camera, isNavigating])
 
   /* ---------- browse ---------- */
@@ -552,6 +560,9 @@ export default function App() {
       <MapControl position="top-right">
         <LayerPicker look={look} onChange={setLook} hasTerrain={terrain !== null} />
       </MapControl>
+      <MapControl position="top-right">
+        <PitchToggle />
+      </MapControl>
       <RouteLine segments={routeSegments} />
       <PoiLayer pois={isBrowsing ? pois : NO_POIS} selectedKey={selectedKey} />
 
@@ -590,6 +601,8 @@ export default function App() {
           onToggleMute={voice.toggleMuted}
           isFollowing={follow.isFollowing}
           onRecentre={follow.recentre}
+          is3d={isNavigation3d}
+          onToggle3d={() => setIsNavigation3d(!isNavigation3d)}
           onEnd={() => setNavigationProfile(null)}
         />
       )}

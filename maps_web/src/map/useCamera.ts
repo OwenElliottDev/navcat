@@ -59,13 +59,18 @@ export function useCamera(overlays: Overlays) {
           padding: paddingAround(overlays),
         })
       },
-      fitBounds([west, south, east, north]: Bounds) {
+      /** `flat` also turns the map back to top-down and north-up */
+      fitBounds([west, south, east, north]: Bounds, flat = false) {
         map?.fitBounds(
           [
             [west, south],
             [east, north],
           ],
-          { padding: paddingAround(overlays), maxZoom: 16 },
+          {
+            padding: paddingAround(overlays),
+            maxZoom: 16,
+            ...(flat && { pitch: 0, bearing: 0 }),
+          },
         )
       },
       /** The part of the map not hidden by the panel, and its middle. */
