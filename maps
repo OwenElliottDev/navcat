@@ -11,6 +11,9 @@
 #                              all      all of the above (the default)
 #   ./maps status            How old each piece of data is
 #   ./maps schedule on|off   Runs updates automatically (schedules are in .env)
+#   ./maps dev [command]     Runs a command (setup if none) with the app built from this
+#                            checkout instead of the published images, e.g. ./maps dev to try
+#                            out changes, or ./maps dev update routing
 #
 # Updates build the new data alongside the old and swap it in, so each part only stops for a
 # restart. With under 20 GB of memory for Docker, public transport is paused while the big
@@ -211,7 +214,7 @@ setup() {
   compose up -d
   echo
   echo "Done: open http://localhost:7000"
-  echo "Search downloads its index on first start, so it takes a few minutes to work."
+  echo "Place search must download its index on first start, it may take a few minutes to become operational."
 }
 
 update() {
@@ -279,13 +282,23 @@ schedule() {
   esac
 }
 
-command="${1:-}"
-[ $# -gt 0 ] && shift
-case "$command" in
-  setup) setup ;;
-  update) update "$@" ;;
-  status) in_data 'python3 /status.py' 2>/dev/null ;;
-  schedule) schedule "$@" ;;
-  -h | --help | help | "") usage ;;
-  *) usage >&2; exit 2 ;;
-esac
+main() {
+  command="${1:-}"
+  [ $# -gt 0 ] && shift
+  case "$command" in
+    setup) setup ;;
+    update) update "$@" ;;
+    status) in_data 'python3 /status.py' 2>/dev/null ;;
+    schedule) schedule "$@" ;;
+    dev)
+      # Builds the app's images from this checkout (docker-compose.dev.yml) for this command
+      export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
+      if [ $# -eq 0 ]; then set -- setup; fi
+      main "$@"
+      ;;
+    -h | --help | help | "") usage ;;
+    *) usage >&2; exit 2 ;;
+  esac
+}
+
+main "$@"

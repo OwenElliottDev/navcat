@@ -7,6 +7,7 @@ import { CategoryChips } from './components/CategoryChips'
 import { ContextMenu, type MenuAction } from './components/ContextMenu'
 import { LayerPicker } from './components/LayerPicker'
 import { CarOptions } from './components/CarOptions'
+import { AdditionalOptions } from './components/AdditionalOptions'
 import { DirectionsForm } from './components/DirectionsForm'
 import { PlaceCard } from './components/PlaceCard'
 import { PlaceEditor, type PlaceDraft } from './components/PlaceEditor'
@@ -130,7 +131,7 @@ export default function App() {
 
   /* ---------- routing ---------- */
 
-  const { profiles, carAvoids } = useProfiles()
+  const { profiles, carAvoids, steepHills: canAvoidSteepHills } = useProfiles()
   const [chosenProfile, setChosenProfile] = useState<string | null>(null)
   // Fixed when navigation starts, so every reroute uses the same kind of route
   // (e.g. the gravel bike profile), whatever the travel-mode buttons say
@@ -144,13 +145,19 @@ export default function App() {
 
   // Walking, cycling and driving come from GraphHopper; public transport from OpenTripPlanner
   const [avoid, setAvoid] = useState<CarAvoid[]>([])
+  const [avoidSteepHills, setAvoidSteepHills] = useState(false)
+  const isOnFootOrBike = profile === 'foot' || profile in CYCLING_STYLES
   /** The point on the route under the elevation chart's cursor */
   const [elevationAt, setElevationAt] = useState<LngLat | null>(null)
   const route = useRoute(
     isTransit ? null : from,
     isTransit ? null : to,
     profile,
-    profile === 'car' ? avoid.filter((name) => carAvoids.includes(name)) : undefined,
+    profile === 'car'
+      ? { avoid: avoid.filter((name) => carAvoids.includes(name)) }
+      : isOnFootOrBike && canAvoidSteepHills
+        ? { avoidSteepHills }
+        : undefined,
   )
   const [tripTime, setTripTime] = useState<TripTime | null>(null)
   const transitModes = useTransitModes(isTransit)
@@ -387,7 +394,7 @@ export default function App() {
   }
 
   // Walks and rides can be taken to a GPS or bike computer
-  const canExportGpx = profile === 'foot' || profile in CYCLING_STYLES
+  const canExportGpx = isOnFootOrBike
 
   function exportGpx() {
     if (!routePath) return
@@ -625,6 +632,12 @@ export default function App() {
           )}
           {mode === 'directions' && profile === 'car' && (
             <CarOptions available={carAvoids} avoid={avoid} onChange={setAvoid} />
+          )}
+          {mode === 'directions' && isOnFootOrBike && canAvoidSteepHills && (
+            <AdditionalOptions
+              avoidSteepHills={avoidSteepHills}
+              onAvoidSteepHillsChange={setAvoidSteepHills}
+            />
           )}
           {mode === 'directions' && isTransit && (
             <TransitOptions

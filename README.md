@@ -92,15 +92,27 @@ services, so it's off by default. `./maps schedule off` turns it off again.
 
 ## Development
 
-`docker-compose.yml` runs the published images. To build the images from your checkout instead,
-add the dev override to `.env`:
+`docker-compose.yml` runs the published images, which only change with a release. To run your
+checkout instead, one command builds its images, rebuilds whatever data its changes need (e.g.
+the routing graph, when the GraphHopper config has changed) and starts everything:
+
+```
+./maps dev
+```
+
+Run it again after any change. `./maps dev <command>` runs any other command the same way, e.g.
+`./maps dev update routing`. On a Mac with Apple Silicon this is also much faster for the big
+builds, as the published images are built for Intel and run emulated.
+
+A plain `./maps setup` or `./maps update` goes back to the published images, and rebuilds the
+routing graph if your checkout's routing config differs from theirs. To always use your checkout
+(including for `docker compose` itself), put the dev override in `.env` instead:
 
 ```
 COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 ```
 
-`./maps` and `docker compose` then build the app's images locally rather than pulling them. To
-rebuild one service after a change, run e.g. `docker compose up -d --build maps-web`.
+Then `docker compose up -d --build maps-web` (or any service) rebuilds just that one.
 
 - **Frontend** (`maps_web/`): `npm install && npm run dev` starts a live-reloading dev server
   that proxies `/api` to the running containers.

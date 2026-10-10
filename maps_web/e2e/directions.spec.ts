@@ -98,6 +98,57 @@ test('avoid options needing values the graph lacks are hidden', async ({ page, s
   ])
 })
 
+test('walks and rides can avoid steep hills, under additional options', async ({ page, stack }) => {
+  await openApp(page)
+  await planRoute(page)
+
+  // Folded away until wanted
+  const steep = page.getByRole('switch', { name: 'Avoid steep hills' })
+  await expect(steep).toBeHidden()
+  await page.getByText('Additional options').click()
+  await expect(steep).toHaveAttribute('aria-checked', 'false')
+
+  await steep.click()
+  await expect
+    .poll(() => stack.requestsTo('/api/route').at(-1)!.body)
+    .toMatchObject({
+      profile: 'foot',
+      custom_model: {
+        priority: [
+          { if: 'max_slope >= 12 || max_slope <= -12', multiply_by: '0.05' },
+          { else_if: 'max_slope >= 8 || max_slope <= -8', multiply_by: '0.2' },
+          { else_if: 'max_slope >= 5 || max_slope <= -5', multiply_by: '0.6' },
+        ],
+      },
+    })
+
+  // Kept when switching to cycling; switching it off goes back to the usual route
+  await page
+    .getByRole('group', { name: 'Travel mode' })
+    .getByRole('button', { name: 'Cycle' })
+    .click()
+  await expect(steep).toHaveAttribute('aria-checked', 'true')
+  await steep.click()
+  await expect
+    .poll(() => stack.requestsTo('/api/route').at(-1)!.body)
+    .not.toHaveProperty('custom_model')
+
+  // Drives have their own things to avoid
+  await page
+    .getByRole('group', { name: 'Travel mode' })
+    .getByRole('button', { name: 'Drive' })
+    .click()
+  await expect(page.getByText('Additional options')).toHaveCount(0)
+})
+
+test('additional options are hidden when the graph has no slopes', async ({ page, stack }) => {
+  stack.encodedValues = ['road_class']
+  await openApp(page)
+  await planRoute(page)
+  await expect(page.locator('.route-summary')).toBeVisible()
+  await expect(page.getByText('Additional options')).toHaveCount(0)
+})
+
 test('cycling styles are the ones GraphHopper has', async ({ page, stack }) => {
   stack.profiles = ['foot', 'bike', 'gravel', 'car']
   await openApp(page)

@@ -217,6 +217,7 @@ services:
     profiles: ["setup"]
     environment:
       JAVA_OPTS: "-Xmx${GRAPHHOPPER_IMPORT_MEMORY:-8g}"
+      SUBNETWORK_THREADS: ${GRAPHHOPPER_IMPORT_THREADS:-4} # profiles cleaned up at once
     volumes:
       - ${MAPS_DATA_DIR:-./maps_data}/graphhopper:/data
       - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro

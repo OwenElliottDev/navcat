@@ -17,7 +17,7 @@ const body = () => post.mock.calls[0][1] as Record<string, unknown>
 
 describe('getRoute', () => {
   it('asks GraphHopper for the route with what navigation needs', async () => {
-    expect(await getRoute(FROM, TO, 'foot', [])).toEqual({ distance: 1 })
+    expect(await getRoute(FROM, TO, 'foot')).toEqual({ distance: 1 })
     expect(post.mock.calls[0][0]).toBe('/route')
     expect(body()).toMatchObject({
       profile: 'foot',
@@ -35,7 +35,7 @@ describe('getRoute', () => {
   })
 
   it('steers away from what to avoid with a custom model', async () => {
-    await getRoute(FROM, TO, 'car', ['tolls', 'motorways'])
+    await getRoute(FROM, TO, 'car', { avoid: ['tolls', 'motorways'] })
     expect(body()).toMatchObject({
       'ch.disable': true,
       custom_model: {
@@ -45,6 +45,24 @@ describe('getRoute', () => {
         ],
       },
     })
+  })
+
+  it('steers a walk or ride away from steep hills', async () => {
+    await getRoute(FROM, TO, 'bike', { avoidSteepHills: true })
+    expect(body()).toMatchObject({
+      custom_model: {
+        priority: [
+          { if: 'max_slope >= 12 || max_slope <= -12', multiply_by: '0.05' },
+          { else_if: 'max_slope >= 8 || max_slope <= -8', multiply_by: '0.2' },
+          { else_if: 'max_slope >= 5 || max_slope <= -5', multiply_by: '0.6' },
+        ],
+      },
+    })
+  })
+
+  it('leaves the route alone when steep hills are fine', async () => {
+    await getRoute(FROM, TO, 'foot', { avoidSteepHills: false })
+    expect(body()).not.toHaveProperty('custom_model')
   })
 })
 

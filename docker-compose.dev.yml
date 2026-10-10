@@ -1,9 +1,10 @@
-# Builds the app's images from this checkout instead of pulling the published ones. Use it on
-# top of docker-compose.yml by putting this in .env (./maps follows it too):
+# Builds the app's images from this checkout instead of pulling the published ones. `./maps dev`
+# uses it for one command; to use it always, put this in .env (./maps follows it too):
 #
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 #
 # Then `docker compose up -d --build maps-web` (or any service) rebuilds after a change.
+# Services sharing an image each name its build too, so nothing tries to pull a :dev image.
 
 services:
   maps-web:
@@ -16,6 +17,7 @@ services:
     build: ./docker_maps/db
     image: navcat-db:dev
   maps-poi-import:
+    build: ./docker_maps/db
     image: navcat-db:dev
   maps-terrain-build:
     build: ./docker_maps/terrain
@@ -24,6 +26,7 @@ services:
     build: ./docker_maps/graphhopper
     image: navcat-graphhopper:dev
   maps-graphhopper-import:
+    build: ./docker_maps/graphhopper
     image: navcat-graphhopper:dev
   maps-updater:
     build: ./docker_maps/updater
@@ -32,6 +35,8 @@ services:
     build: ./docker_maps/download
     image: navcat-download:dev
   maps-data:
+    build: ./docker_maps/download
     image: navcat-download:dev
   maps-transit-download:
+    build: ./docker_maps/download
     image: navcat-download:dev
