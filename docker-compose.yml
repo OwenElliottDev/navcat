@@ -137,7 +137,7 @@ services:
 
   # Search and reverse geocoding. Downloads its index on first start, then runs offline.
   maps-photon:
-    image: rtuszik/photon-docker:latest
+    image: rtuszik/photon-docker:2.4.0
     container_name: navcat-photon
     restart: unless-stopped
     ports:

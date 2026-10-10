@@ -65,6 +65,15 @@ routing_config_changed() {
     -c 'cmp -s graph-config.sha /data/default-gh/graph-config.sha' >/dev/null 2>&1
 }
 
+transit_graph_outdated() {
+  data_has transit/graph.obj || return 1
+  image_id=$(compose run --rm --no-deps maps-otp --version 2>/dev/null |
+    sed -n 's/.*ser\.ver\.id: 0*\([0-9]*\).*/\1/p')
+  graph_id=$(in_data 'head -c 29 transit/graph.obj | cut -d ";" -f 2' 2>/dev/null |
+    tr -dc 0-9 | sed 's/^0*//')
+  [ -n "$image_id" ] && [ "$image_id" != "$graph_id" ]
+}
+
 # ---------- the steps ----------
 
 download_map() {
@@ -208,6 +217,9 @@ setup() {
   fi
   if ! data_has transit/graph.obj; then
     run_otp_build
+  elif transit_graph_outdated; then
+    echo "The public transport graph was built by another version of OTP"
+    build_transit
   fi
 
   log "Starting everything"
@@ -242,6 +254,13 @@ update() {
     *) if routing_config_changed; then
       echo "The routing config has changed since the graph was built, so routing updates too"
       what="$what routing"
+    fi ;;
+  esac
+  case " $what " in
+    *" transit "*) ;;
+    *) if transit_graph_outdated; then
+      echo "The public transport graph was built by another version of OTP, so transit updates too"
+      what="$what transit"
     fi ;;
   esac
 
