@@ -65,6 +65,22 @@ export const CAR_AVOIDS = {
 
 export type CarAvoid = keyof typeof CAR_AVOIDS
 
+/**
+ * "Avoid steep hills" for walks and rides, e.g. with a wheelchair or pram: custom model rules on
+ * `max_slope`, a road's steepest stretch in % (signed by the direction of travel, so steep
+ * descents count too). 5% (1:20) is about the most an accessible path should have and 8% (1:12)
+ * the steepest ramp allowed. Steeper roads are made much less likely, not forbidden, so a route
+ * is still found when there's no other way. Hidden unless the routing graph has `max_slope`.
+ */
+export const STEEP_HILLS = {
+  needs: 'max_slope',
+  priority: [
+    { if: 'max_slope >= 12 || max_slope <= -12', multiply_by: '0.05' },
+    { else_if: 'max_slope >= 8 || max_slope <= -8', multiply_by: '0.2' },
+    { else_if: 'max_slope >= 5 || max_slope <= -5', multiply_by: '0.6' },
+  ],
+}
+
 /** Travel modes in the order they're offered; the first is the default. */
 export const PROFILE_LABELS: Record<string, string> = {
   foot: 'Walk',

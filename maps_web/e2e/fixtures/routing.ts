@@ -6,6 +6,7 @@ const ENCODED_VALUES: Record<string, string[]> = {
   toll: ['NO', 'ALL'],
   crossing: ['MISSING', 'TRAFFIC_SIGNALS'],
   max_speed: [],
+  max_slope: [],
 }
 
 export const ALL_PROFILES = ['foot', 'bike', 'bike_paths', 'racingbike', 'car']

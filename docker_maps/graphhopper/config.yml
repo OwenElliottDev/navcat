@@ -37,19 +37,21 @@ graphhopper:
 
   # osm_way_id lets the app look up a route's turn lanes (maps_backend/app/routes/lanes.py);
   # crossing (TRAFFIC_SIGNALS also covers junction lights, see traffic-signals.patch) and toll
-  # are for the avoid options
+  # are for the avoid options; max_slope (a road's steepest stretch) for avoiding steep hills
   graph.encoded_values: |
     car_access, car_average_speed, country, road_class, roundabout, max_speed, road_environment,
     foot_access, foot_average_speed, foot_priority, foot_road_access, hike_rating, average_slope,
     bike_access, bike_average_speed, bike_priority, bike_road_access, bike_network, mtb_rating, ferry_speed,
     mtb_access, mtb_average_speed, mtb_priority, mtb_network,
     racingbike_access, racingbike_average_speed, racingbike_priority,
-    surface, track_type, cycleway, crossing, toll,
+    surface, track_type, cycleway, crossing, toll, max_slope,
     osm_way_id
 
   graph.elevation.provider: srtm
   # Downloaded elevation tiles; kept in the mounted data folder so they're only fetched once
   graph.elevation.cache_dir: /data/srtm
+  # Smooths between elevation samples instead of stepping, so short steep stretches are real
+  graph.elevation.interpolate: bilinear
   prepare.min_network_size: 200
   prepare.subnetworks.threads: 1
   routing.snap_preventions_default: tunnel, bridge, ferry

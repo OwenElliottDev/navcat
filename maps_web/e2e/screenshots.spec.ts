@@ -50,6 +50,18 @@ test('drive options @screenshot', async ({ page }) => {
   await shoot(page.locator('.panel__top'), 'directions-drive-form.png')
 })
 
+test('walk options @screenshot', async ({ page }) => {
+  await openApp(page)
+  await planRoute(page)
+  await page.getByText('Additional options').click()
+  await page.getByRole('switch', { name: 'Avoid steep hills' }).click()
+  await expect(page.getByRole('switch', { name: 'Avoid steep hills' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await shoot(page.locator('.panel__top'), 'directions-walk-options.png')
+})
+
 test('transit card @screenshot', async ({ page, isMobile }) => {
   await openApp(page)
   await planRoute(page)
