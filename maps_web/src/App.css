@@ -123,6 +123,30 @@
   overflow: hidden;
 }
 
+.maplibregl-map .maplibregl-ctrl-group {
+  background: var(--surface);
+}
+
+.maplibregl-map .maplibregl-ctrl-group button + button {
+  border-top-color: var(--line);
+}
+
+.maplibregl-map .maplibregl-ctrl-group button:not(:disabled):hover {
+  background-color: var(--paper);
+}
+
+.maplibregl-map .maplibregl-ctrl-scale {
+  color: var(--ink);
+  background-color: var(--glass);
+  border-color: var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .maplibregl-map .maplibregl-ctrl button .maplibregl-ctrl-icon {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
 /* ---------- cards inside the panel ---------- */
 
 .card {
