@@ -1,0 +1,20 @@
+.pitch-toggle {
+  width: var(--map-control);
+  height: var(--map-control);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.pitch-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+}

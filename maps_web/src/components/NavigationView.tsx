@@ -21,6 +21,9 @@ interface NavigationViewProps {
   onToggleMute: () => void
   isFollowing: boolean
   onRecentre: () => void
+  /** Tilted, or a flat top-down map */
+  is3d: boolean
+  onToggle3d: () => void
   onEnd: () => void
 }
 
@@ -75,6 +78,14 @@ export function NavigationView(props: NavigationViewProps) {
           onClick={onToggleMute}
         >
           <Icon name={isMuted ? 'muted' : 'volume'} />
+        </button>
+        <button
+          type="button"
+          className="nav-round nav-round--text glass"
+          aria-label={props.is3d ? 'Show the map flat (2D)' : 'Tilt the map (3D)'}
+          onClick={props.onToggle3d}
+        >
+          {props.is3d ? '2D' : '3D'}
         </button>
         {!props.isFollowing && (
           <button type="button" className="nav-recentre glass" onClick={props.onRecentre}>
