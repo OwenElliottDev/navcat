@@ -128,6 +128,14 @@ describe('buildStyle', () => {
     expect(buildStyle(BASE, look('topo'))).toEqual(BASE)
   })
 
+  it('raises the land when topo is tilted', () => {
+    expect(buildStyle(BASE, look('topo'), TERRAIN).terrain).toBeUndefined()
+    const style = buildStyle(BASE, look('topo'), TERRAIN, true)
+    expect(style.terrain?.source).toBe('terrain-3d')
+    expect(style.sources['terrain-3d']).toMatchObject({ type: 'raster-dem', tiles: [TERRAIN.dem] })
+    expect(buildStyle(BASE, look('standard'), TERRAIN, true).terrain).toBeUndefined()
+  })
+
   it('labels roads with route numbers when asked', () => {
     const style = buildStyle(BASE, look('standard', [], 'numbers'))
     const layout = (id: string) =>

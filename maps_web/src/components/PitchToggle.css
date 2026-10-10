@@ -18,3 +18,7 @@
 .pitch-toggle:focus-visible {
   outline: 2px solid var(--accent);
 }
+
+.maplibregl-ctrl button.pitch-toggle:not(:disabled):hover {
+  background: var(--paper);
+}

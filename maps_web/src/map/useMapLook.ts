@@ -26,7 +26,7 @@ function keepAppLayers(
 }
 
 /** Applies a map type and overlays, keeping whatever the app has drawn. `look` should be state. */
-export function useMapLook(look: MapLook, terrain: TerrainInfo | null) {
+export function useMapLook(look: MapLook, terrain: TerrainInfo | null, isTilted: boolean) {
   const map = useMap()
   const [baseStyle, setBaseStyle] = useState<StyleSpecification | null>(null)
 
@@ -44,9 +44,9 @@ export function useMapLook(look: MapLook, terrain: TerrainInfo | null) {
     // Elevation is only set up once someone picks the topo map (and it's been built)
     const terrainSource = look.base === 'topo' && terrain ? terrainUrls(terrain) : undefined
     // diff: only the layers that changed are touched, so switching is quick
-    map.setStyle(buildStyle(baseStyle, look, terrainSource), {
+    map.setStyle(buildStyle(baseStyle, look, terrainSource, isTilted), {
       diff: true,
       transformStyle: keepAppLayers,
     })
-  }, [map, baseStyle, look, terrain])
+  }, [map, baseStyle, look, terrain, isTilted])
 }

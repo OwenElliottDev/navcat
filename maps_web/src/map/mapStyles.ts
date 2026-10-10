@@ -1,4 +1,9 @@
-import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl'
+import type {
+  ExpressionSpecification,
+  LayerSpecification,
+  SourceSpecification,
+  StyleSpecification,
+} from 'maplibre-gl'
 
 /**
  * Map types and overlays, all built from TileServer's one style so they need no extra
@@ -151,19 +156,26 @@ const TERRAIN_ATTRIBUTION = 'Elevation: SRTM (NASA, USGS)'
 
 const CONTOUR_COLOUR = '#a17c52'
 
+function demSource(terrain: TerrainUrls): SourceSpecification {
+  return {
+    type: 'raster-dem',
+    encoding: 'terrarium',
+    tiles: [terrain.dem],
+    tileSize: 256,
+    maxzoom: terrain.maxzoom,
+    attribution: TERRAIN_ATTRIBUTION,
+  }
+}
+
 function topoSources(terrain: TerrainUrls): StyleSpecification['sources'] {
   return {
-    'terrain-dem': {
-      type: 'raster-dem',
-      encoding: 'terrarium',
-      tiles: [terrain.dem],
-      tileSize: 256,
-      maxzoom: terrain.maxzoom,
-      attribution: TERRAIN_ATTRIBUTION,
-    },
+    'terrain-dem': demSource(terrain),
     contours: { type: 'vector', tiles: [terrain.contours], maxzoom: 15 },
   }
 }
+
+const TERRAIN_3D_SOURCE = 'terrain-3d'
+const TERRAIN_EXAGGERATION = 1.5
 
 const HILLSHADE: LayerSpecification = {
   id: 'topo-hillshade',
@@ -453,6 +465,7 @@ export function buildStyle(
   look: MapLook,
   /** Needed for the topo map */
   terrain?: TerrainUrls,
+  tilted = false,
 ): StyleSpecification {
   const palette = look.base === 'standard' || look.base === 'topo' ? null : PALETTES[look.base]
   let layers = palette ? base.layers.map((layer) => recolour(layer, palette)) : [...base.layers]
@@ -479,6 +492,16 @@ export function buildStyle(
 
   if (look.overlays.some((overlay) => ROAD_DATA_OVERLAYS.includes(overlay))) {
     sources = { ...sources, 'road-data': roadDataSource() }
+  }
+
+  if (look.base === 'topo' && terrain && tilted) {
+    sources = { ...sources, [TERRAIN_3D_SOURCE]: demSource(terrain) }
+    return {
+      ...base,
+      sources,
+      layers,
+      terrain: { source: TERRAIN_3D_SOURCE, exaggeration: TERRAIN_EXAGGERATION },
+    }
   }
 
   return { ...base, sources, layers }
