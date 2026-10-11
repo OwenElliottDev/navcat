@@ -77,13 +77,25 @@ transit_graph_outdated() {
 # ---------- the steps ----------
 
 download_map() {
-  log "Downloading OSM map data and Overture places"
+  log "Downloading OSM map data, elevation and Overture places"
   compose run --rm maps-download
 }
 
 download_places() {
   log "Downloading Overture places"
   compose run --rm maps-download places
+}
+
+# GraphHopper only downloads the elevation files its roads cross; the terrain needs them all
+download_elevation() {
+  log "Downloading any missing elevation data"
+  compose run --rm maps-download elevation
+}
+
+# Only builds when the elevation files have changed, as on every `up`
+build_terrain() {
+  log "Building terrain for the topo map"
+  compose run --rm --no-deps -e WAIT_FOR= maps-terrain-build
 }
 
 import_pois() {
@@ -200,8 +212,11 @@ setup() {
 
   if ! data_has 'osm/$OSM_FILE'; then
     download_map
-  elif ! data_has 'osm/${OSM_FILE%.osm.pbf}.places.csv.gz'; then
-    download_places
+  else
+    download_elevation
+    if ! data_has 'osm/${OSM_FILE%.osm.pbf}.places.csv.gz'; then
+      download_places
+    fi
   fi
   if ! data_has 'tiles/$TILES_FILE'; then
     run_planetiler
@@ -248,7 +263,7 @@ update() {
   trap 'rmdir .update.lock' EXIT
 
   # The download and import scripts and routing profiles are in these, so pick up any changes
-  get_images maps-download maps-db maps-graphhopper
+  get_images maps-download maps-db maps-graphhopper maps-terrain-build
   case " $what " in
     *" map "* | *" routing "*) ;;
     *) if routing_config_changed; then
@@ -268,7 +283,7 @@ update() {
   failed=""
   for part in $what; do
     case "$part" in
-      map) download_map && build_tiles && import_pois && build_routing ;;
+      map) download_map && build_tiles && import_pois && build_routing && build_terrain ;;
       places) download_places && import_pois ;;
       routing) build_routing ;;
       transit) download_transit && build_transit ;;
