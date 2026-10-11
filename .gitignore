@@ -3,3 +3,4 @@ maps_data/
 .env
 .update.lock/
 __pycache__/
+**/.claude/scheduled_tasks.lock
