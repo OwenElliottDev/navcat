@@ -11,5 +11,6 @@ RUN apt-get update \
 RUN pip install --no-cache-dir duckdb==1.5.6 pycurl==7.48.0 \
     && python -c "import duckdb; duckdb.connect().install_extension('httpfs')"
 
-COPY download.sh fetch.sh places.py status.py transit.sh transit_prepare.py /
+COPY srtm-names /srtm-names
+COPY download.sh elevation.py fetch.sh places.py status.py transit.sh transit_prepare.py /
 ENTRYPOINT ["sh", "/download.sh"]

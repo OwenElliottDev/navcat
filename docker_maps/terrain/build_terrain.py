@@ -10,7 +10,8 @@ written beside the old ones and swapped in at the end, so a re-run never leaves 
 
 Runs on every `docker compose up` but only builds when the elevation files have changed (set
 FORCE=1 to build anyway). With WAIT_FOR set to a URL, it first waits for that to answer: the
-compose file points it at GraphHopper's health check, as GraphHopper downloads the elevation.
+compose file points it at GraphHopper's health check, as GraphHopper downloads any elevation
+maps-download hasn't (e.g. on data set up before maps-download fetched it).
 
 Usage: python3 build_terrain.py <elevation dir> <output dir>
 """
@@ -194,16 +195,21 @@ def fill_voids(job):
     return path
 
 
+def elevation_files(folder):
+    """Ignores anything else in the folder, e.g. GraphHopper's caches and partial downloads."""
+    return sorted(
+        path
+        for path in glob.glob(f"{folder}/*")
+        if path.endswith((".hgt.zip", ".hgt", ".tif", ".tiff"))
+    )
+
+
 def find_sources(folder):
     """Elevation files, as paths GDAL can open (zipped .hgt is read in place)."""
-    sources = []
-    for path in sorted(glob.glob(f"{folder}/*")):
-        name = os.path.basename(path)
-        if name.endswith(".hgt.zip"):
-            sources.append(f"/vsizip/{path}/{name[:-4]}")
-        elif name.endswith((".hgt", ".tif", ".tiff")):
-            sources.append(path)
-    return sources
+    return [
+        f"/vsizip/{path}/{os.path.basename(path)[:-4]}" if path.endswith(".zip") else path
+        for path in elevation_files(folder)
+    ]
 
 
 def covered_cells(sources):
@@ -244,7 +250,7 @@ def wait_for(url):
 
 def fingerprint(source_dir):
     """Changes whenever an elevation file is added, removed or replaced."""
-    files = sorted(glob.glob(f"{source_dir}/*"))
+    files = elevation_files(source_dir)
     listing = "\n".join(f"{os.path.basename(f)} {os.path.getsize(f)}" for f in files)
     return hashlib.sha256(f"{BUILD_VERSION} {MAX_ZOOM}\n{listing}".encode()).hexdigest()
 

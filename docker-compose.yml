@@ -87,7 +87,7 @@ services:
       - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
     entrypoint: ["sh", "/import/import-pois.sh"]
 
-  # Builds terrain tiles for the topo map from the elevation data GraphHopper downloads, then
+  # Builds terrain tiles for the topo map from the elevation data maps-download fetches, then
   # exits. Runs on every `up`: waits for GraphHopper to be ready, then only builds when the
   # elevation files have changed. Nothing is fetched from the internet.
   maps-terrain-build:
@@ -183,9 +183,10 @@ services:
       - .:${MAPS_PROJECT_DIR:-/maps}
     working_dir: ${MAPS_PROJECT_DIR:-/maps}
 
-  # Downloads the OSM extract that GraphHopper, Planetiler and the POI import read, and
-  # Overture Maps places for the same area (merged into browse and search by maps-poi-import).
-  # `... maps-download osm` or `... maps-download places` fetches just one.
+  # Downloads the OSM extract that GraphHopper, Planetiler and the POI import read, then the
+  # SRTM elevation for its area (GraphHopper and the terrain) and Overture Maps places for it
+  # (merged into browse and search by maps-poi-import).
+  # `... maps-download osm`, `... elevation` or `... places` fetches just one.
   maps-download:
     image: owenelliottdev/navcat-download:${MAPS_TAG:-latest}
     profiles: ["setup"]
@@ -197,6 +198,7 @@ services:
       OVERTURE_RELEASE: ${OVERTURE_RELEASE:-}
     volumes:
       - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm
+      - ${MAPS_DATA_DIR:-./maps_data}/graphhopper/srtm:/srtm
 
   # The whole data folder, for ./maps to check on and swap in freshly built data
   maps-data:
