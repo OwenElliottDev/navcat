@@ -5,7 +5,7 @@ import { CAR_AVOIDS, PROFILE_LABELS, STEEP_HILLS, TRANSIT_PROFILE, type CarAvoid
 // Used until GraphHopper answers (it can take a while to start)
 const KNOWN_PROFILES = Object.keys(PROFILE_LABELS)
 
-/** Puts the modes we have labels for first, in our order; anything else after. */
+/** Puts the modes with labels first, in PROFILE_LABELS order; anything else after. */
 function rank(name: string): number {
   const index = KNOWN_PROFILES.indexOf(name)
   return index === -1 ? KNOWN_PROFILES.length : index

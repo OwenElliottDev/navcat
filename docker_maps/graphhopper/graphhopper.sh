@@ -75,6 +75,9 @@ if [ "$ACTION" = import ]; then
     sed "s/^\( *prepare\.subnetworks\.threads:\).*/\1 $SUBNETWORK_THREADS/" "$CONFIG" > import-config.yml
     CONFIG=import-config.yml
   fi
+  # multithread landmark preparation for the profiles
+  sed "s/^\( *prepare\.lm\.threads:\).*/\1 $(nproc)/" "$CONFIG" > lm-config.yml
+  CONFIG=lm-config.yml
   "$JAVA" $JAVA_OPTS ${FILE:+-Ddw.graphhopper.datareader.file="$FILE"} -Ddw.graphhopper.graph.location="$GRAPH" \
         $GH_WEB_OPTS -jar "$JAR" $ACTION $CONFIG || exit $?
   # Records the config the graph was built with, so ./maps can tell when it needs rebuilding
@@ -82,5 +85,7 @@ if [ "$ACTION" = import ]; then
   exit 0
 fi
 
+# Serving memory-maps the graph rather to reduce heap usage at run time
 exec "$JAVA" $JAVA_OPTS ${FILE:+-Ddw.graphhopper.datareader.file="$FILE"} -Ddw.graphhopper.graph.location="$GRAPH" \
+        -Ddw.graphhopper.graph.dataaccess.default_type=MMAP \
         $GH_WEB_OPTS -jar "$JAR" $ACTION $CONFIG

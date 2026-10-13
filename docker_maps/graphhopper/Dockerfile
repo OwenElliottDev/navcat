@@ -1,7 +1,7 @@
 # The jar runs anywhere, so build it natively rather than under emulation for each platform
 FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-25 AS build
 
-# A pinned master commit: our profiles use the cycleway encoded value, which isn't in a release
+# Pinned master commit: the bike profiles need the cycleway encoded value, which isn't in a release
 # yet (11.1 is the latest). Move to the 12.0 tag once it's out.
 # MODIFICATIONS.md names this commit too.
 ARG GH_REF=1cc4d7bfdea655166c0dc1dce25dec8524a3acc0
@@ -38,7 +38,7 @@ RUN mkdir -p /data
 WORKDIR /graphhopper
 
 COPY --from=build /graphhopper/web/target/graphhopper*.jar ./
-# GraphHopper is Apache-2.0: ship its licence and notices, and what we changed
+# GraphHopper is Apache-2.0: ship its licence and notices, and a list of the changes made to it
 COPY --from=build /graphhopper/LICENSE.txt /graphhopper/NOTICE.md ./
 COPY MODIFICATIONS.md ./
 # Profiles: changing them or their encoded values needs the graph rebuilt (./maps update routing)

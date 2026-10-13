@@ -46,7 +46,7 @@ export const CAR_AVOIDS = {
     condition: 'road_environment == FERRY',
     factor: 0.1,
   },
-  // Roads touching a highway=traffic_signals node or a signalised crossing (our GraphHopper is
+  // Roads touching a highway=traffic_signals node or a signalised crossing (GraphHopper here is
   // patched for the former: docker_maps/graphhopper/traffic-signals.patch)
   trafficLights: {
     label: 'Traffic lights',

@@ -7,7 +7,7 @@ graphhopper:
   graph.location: graph-cache
 
   # Built-in models (car.json, bike.json, mtb.json, ...) are found by name;
-  # our own are in graphhopper/custom_models
+  # the additional ones are in graphhopper/custom_models
   custom_models.directory: custom_models
 
   profiles:
@@ -15,8 +15,6 @@ graphhopper:
       custom_model_files: [car.json]
     - name: foot
       custom_model_files: [foot.json, foot_elevation.json]
-
-    # Cycling: GraphHopper's models, plus our own bias for each style
     - name: bike
       custom_model_files: [bike.json, bike_elevation.json]
     - name: bike_paths
@@ -34,6 +32,12 @@ graphhopper:
     - profile: car
   profiles_lm:
     - profile: car
+    - profile: foot
+    - profile: bike
+    - profile: bike_paths
+    - profile: racingbike
+    - profile: gravel
+    - profile: mtb
 
   # osm_way_id lets the app look up a route's turn lanes (maps_backend/app/routes/lanes.py);
   # crossing (TRAFFIC_SIGNALS also covers junction lights, see traffic-signals.patch) and toll
@@ -54,9 +58,11 @@ graphhopper:
   graph.elevation.interpolate: bilinear
   prepare.min_network_size: 200
   prepare.subnetworks.threads: 1
+  prepare.lm.threads: 1
   routing.snap_preventions_default: tunnel, bridge, ferry
   routing.non_ch.max_waypoint_distance: 1000000
   import.osm.ignored_highways: ''
+  # The import builds in memory; serving memory-maps the graph instead (see graphhopper.sh)
   graph.dataaccess.default_type: RAM
 
 server:

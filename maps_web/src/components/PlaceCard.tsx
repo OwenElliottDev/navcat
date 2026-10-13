@@ -129,7 +129,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
 
       <HomeWork savedAs={savedAs} onToggle={toggleSaved} />
 
-      {/* Details live in our database only for imported places and places people added */}
+      {/* Details are in the backend only for imported places and places people added */}
       {ref && details && (
         <button
           type="button"

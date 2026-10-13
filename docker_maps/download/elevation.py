@@ -17,6 +17,7 @@ from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
 import pycurl
+from tqdm import tqdm
 
 BASE_URL = "https://srtm.kurviger.de/SRTM3"  # refuses requests without a user agent it knows
 NAMES = Path("/srtm-names")
@@ -104,9 +105,10 @@ def main() -> None:
     if not jobs:
         print("All the elevation files for the area are here")
         return
-    print(f"Downloading {len(jobs)} elevation files")
     with ThreadPool(8) as pool:
-        problems = [p for p in pool.imap_unordered(download, jobs) if p]
+        results = pool.imap_unordered(download, jobs)
+        bar = tqdm(results, total=len(jobs), desc="Elevation files", unit="file")
+        problems = [p for p in bar if p]
     if problems:
         missing = sum(not is_valid(path) for _, path in jobs)
         sys.exit("\n".join(["Couldn't download:", *problems, f"Gave up with {missing} missing"]))

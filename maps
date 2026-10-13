@@ -29,7 +29,7 @@ compose() { docker compose "$@"; }
 # builds any that docker-compose.dev.yml builds from this checkout
 get_images() {
   compose --profile setup --profile updates pull -q --ignore-buildable "$@"
-  compose --profile setup --profile updates build -q "$@"
+  compose --profile setup --profile updates build "$@"
 }
 
 log() { printf '\n==> %s %s\n' "$(date +%H:%M:%S)" "$*"; }

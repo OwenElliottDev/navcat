@@ -100,7 +100,7 @@
   bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
 }
 
-/* Map controls: one size for MapLibre's and ours (the layers button), bigger on phones */
+/* Map controls: one size for MapLibre's and the app's (the layers button), bigger on phones */
 :root {
   --map-control: 36px;
 }
