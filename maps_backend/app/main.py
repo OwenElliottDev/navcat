@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 
 from .db import Db, pool
 from .migrations import migrate
-from .routes import auth, browse, lanes, me, places, road_data
+from .routes import auth, browse, lanes, links, me, places, road_data
 
 
 @asynccontextmanager
@@ -56,4 +56,5 @@ api.include_router(browse.router)
 api.include_router(places.router)
 api.include_router(road_data.router)
 api.include_router(lanes.router)
+api.include_router(links.router)
 app.include_router(api)

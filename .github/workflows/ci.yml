@@ -5,8 +5,40 @@ on:
     branches: [main]
   pull_request:
 
+# Pull requests only run the jobs whose files changed; a skipped job still passes as a required
+# check. Pushes to main run everything, as does a pull request if the change check fails.
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      frontend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.frontend == 'true' }}
+      backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' }}
+      compose: ${{ github.event_name != 'pull_request' || steps.filter.outputs.compose == 'true' }}
+
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          # proxyConfig.test.ts reads docker-compose.yml; the API tests build docker_maps/db
+          filters: |
+            frontend:
+              - .github/workflows/ci.yml
+              - maps_web/**
+              - docker-compose.yml
+            backend:
+              - .github/workflows/ci.yml
+              - maps_backend/**
+              - docker_maps/db/**
+            compose:
+              - .github/workflows/ci.yml
+              - docker-compose*.yml
+
   frontend:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,6 +69,8 @@ jobs:
 
   # The app in a browser against mocked services (see maps_web/playwright.config.ts)
   ui:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     # Keep the version in step with @playwright/test in maps_web/package.json; screenshots
     # are recorded in this image (npm run test:e2e:update)
@@ -66,6 +100,8 @@ jobs:
           retention-days: 7
 
   backend:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -92,6 +128,8 @@ jobs:
         run: sh tests/api/run.sh
 
   compose:
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.compose == 'true') }}
     runs-on: ubuntu-latest
 
     steps:

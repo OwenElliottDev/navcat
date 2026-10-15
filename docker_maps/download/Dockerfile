@@ -2,7 +2,7 @@
 # for the same area. Only used for setup and updates; the running stack never goes online.
 FROM python:3.13-slim
 
-# osmium reads the extract's bounding box; curl downloads it
+# osmium merges extracts and works out their area; curl downloads them
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl osmium-tool \
     && rm -rf /var/lib/apt/lists/*

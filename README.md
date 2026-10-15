@@ -52,7 +52,7 @@ All settings live in `.env`; `.env.example` documents each one. The main ones:
 
 | Setting | What it does |
 | --- | --- |
-| `OSM_URL`, `OSM_FILE` | The OpenStreetMap extract for your region (e.g. from [Geofabrik](https://download.geofabrik.de/)) |
+| `OSM_URL`, `OSM_FILE` | The OpenStreetMap extract for your region (e.g. from [Geofabrik](https://download.geofabrik.de/)); list several URLs, separated by spaces, to merge them |
 | `TILES_AREA`, `TILES_FILE` | Planetiler's area name and the map tiles file |
 | `PHOTON_REGION` | The search index region |
 | `OVERTURE_COUNTRIES` | Countries whose Overture places are merged in (`OVERTURE_PLACES=false` turns this off) |
