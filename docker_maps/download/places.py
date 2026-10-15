@@ -1,6 +1,6 @@
-"""Downloads Overture Maps places in a bounding box to a gzipped CSV for the POI import.
+"""Downloads Overture Maps places in some bounding boxes to a gzipped CSV for the POI import.
 
-Usage: places.py WEST,SOUTH,EAST,NORTH OUTPUT.csv.gz
+Usage: places.py OUTPUT.csv.gz WEST,SOUTH,EAST,NORTH [WEST,SOUTH,EAST,NORTH ...]
 
 Keeps places with a confidence above 0.7 (below that there's a lot of junk: home businesses,
 spam listings) and, when OVERTURE_COUNTRIES is set, only those whose address is in one of those
@@ -19,7 +19,8 @@ PLACES = "s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/
 
 # One row per place, flattened to what the app shows. Only a place's first phone, website and
 # address are kept. bbox is a point's own position, and filtering on it lets DuckDB skip the
-# parts of the (global) dataset outside the area.
+# parts of the (global) dataset outside the area; there's one of these per box, joined with
+# UNION, so each keeps a plain range filter.
 QUERY = """
 SELECT
   id,
@@ -42,8 +43,8 @@ SELECT
   bbox.xmin AS lng,
   bbox.ymin AS lat
 FROM read_parquet($path)
-WHERE bbox.xmin BETWEEN $west AND $east
-  AND bbox.ymin BETWEEN $south AND $north
+WHERE bbox.xmin BETWEEN {west} AND {east}
+  AND bbox.ymin BETWEEN {south} AND {north}
   AND confidence > $min_confidence
   AND names.primary IS NOT NULL
   AND taxonomy.primary IS NOT NULL
@@ -52,8 +53,7 @@ WHERE bbox.xmin BETWEEN $west AND $east
 
 
 def main() -> None:
-    bbox, output = sys.argv[1:]
-    west, south, east, north = (float(n) for n in bbox.split(","))
+    output, *bboxes = sys.argv[1:]
     countries = os.environ.get("OVERTURE_COUNTRIES", "").upper().replace(",", " ").split()
 
     db = duckdb.connect()
@@ -63,18 +63,20 @@ def main() -> None:
         os.environ.get("OVERTURE_RELEASE")
         or (db.sql(f"SELECT latest FROM read_json('{CATALOG}')").fetchone()[0])
     )
-    where = f"{west},{south},{east},{north}" + (f" in {', '.join(countries)}" if countries else "")
+    where = " ".join(bboxes) + (f" in {', '.join(countries)}" if countries else "")
     print(f"Downloading Overture places from release {release} ({where})", flush=True)
+
+    # float() checks each corner is a number before it goes into the query
+    query = " UNION ".join(
+        QUERY.format(**dict(zip(("west", "south", "east", "north"), map(float, bbox.split(",")))))
+        for bbox in bboxes
+    )
 
     # COPY returns the number of rows written
     (count,) = db.execute(
-        f"COPY ({QUERY}) TO '{output}.tmp' (FORMAT csv, HEADER, COMPRESSION gzip)",
+        f"COPY ({query}) TO '{output}.tmp' (FORMAT csv, HEADER, COMPRESSION gzip)",
         {
             "path": PLACES.format(release=release),
-            "west": west,
-            "south": south,
-            "east": east,
-            "north": north,
             "min_confidence": MIN_CONFIDENCE,
             "countries": countries,
         },

@@ -185,7 +185,8 @@ services:
 
   # Downloads the OSM extract that GraphHopper, Planetiler and the POI import read, then the
   # SRTM elevation for its area (GraphHopper and the terrain) and Overture Maps places for it
-  # (merged into browse and search by maps-poi-import).
+  # (merged into browse and search by maps-poi-import). Several OSM_URLs (separated by spaces)
+  # are merged into one.
   # `... maps-download osm`, `... elevation` or `... places` fetches just one.
   maps-download:
     image: owenelliottdev/navcat-download:${MAPS_TAG:-latest}
@@ -244,6 +245,8 @@ services:
       - --download
       - --area=${TILES_AREA:-australia}
       - --osm_path=/osm/${OSM_FILE:-australia.osm.pbf}
+      # Only the area the extract covers (written by maps-download)
+      - --polygon=/osm/${OSM_FILE:-australia.osm.pbf}.poly
       # ./maps update builds into another file, then swaps it in
       - --output=/data/${TILES_BUILD_FILE:-${TILES_FILE:-australia.mbtiles}}
       - --force

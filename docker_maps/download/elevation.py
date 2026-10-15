@@ -1,6 +1,6 @@
-"""Downloads every SRTM elevation file in a bounding box that's missing or damaged.
+"""Downloads every SRTM elevation file in some bounding boxes that's missing or damaged.
 
-Usage: elevation.py WEST,SOUTH,EAST,NORTH FOLDER
+Usage: elevation.py FOLDER WEST,SOUTH,EAST,NORTH [WEST,SOUTH,EAST,NORTH ...]
 
 GraphHopper only downloads the files its roads pass through, and the terrain is built from the
 same folder, so an unmapped area (e.g. the outback) became a square pit at sea level. Files get
@@ -85,21 +85,24 @@ def download(job: tuple[str, Path]) -> str | None:
 
 
 def main() -> None:
-    bbox, folder = sys.argv[1:]
-    west, south, east, north = (float(n) for n in bbox.split(","))
+    folder, *bboxes = sys.argv[1:]
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     areas = available()
 
-    if east < west:  # the box crosses the 180th meridian
-        east += 360
+    names = set()
+    for bbox in bboxes:
+        west, south, east, north = (float(n) for n in bbox.split(","))
+        if east < west:  # the box crosses the 180th meridian
+            east += 360
+        for lat in range(math.floor(south), math.ceil(north)):
+            for lng in range(math.floor(west), math.ceil(east)):
+                names.add(cell_name((lng + 180) % 360 - 180, lat))
     jobs = []
-    for lat in range(math.floor(south), math.ceil(north)):
-        for lng in range(math.floor(west), math.ceil(east)):
-            name = cell_name((lng + 180) % 360 - 180, lat)
-            path = folder / f"{name}.hgt.zip"
-            if name in areas and not is_valid(path):
-                jobs.append((f"{BASE_URL}/{areas[name]}/{name}.hgt.zip", path))
+    for name in sorted(names & areas.keys()):
+        path = folder / f"{name}.hgt.zip"
+        if not is_valid(path):
+            jobs.append((f"{BASE_URL}/{areas[name]}/{name}.hgt.zip", path))
 
     if not jobs:
         print("All the elevation files for the area are here")

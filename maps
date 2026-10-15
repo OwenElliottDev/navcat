@@ -76,9 +76,12 @@ transit_graph_outdated() {
 
 # ---------- the steps ----------
 
+# With "reuse", extracts already downloaded from one of OSM_URL's URLs aren't downloaded again
 download_map() {
   log "Downloading OSM map data, elevation and Overture places"
-  compose run --rm maps-download
+  reuse=""
+  if [ "${1:-}" = reuse ]; then reuse=true; fi
+  compose run --rm -e "OSM_REUSE=$reuse" maps-download
 }
 
 download_places() {
@@ -210,8 +213,15 @@ setup() {
   log "Getting images"
   get_images
 
+  # When the extract is new, tiles and routing built from an earlier one are rebuilt too
+  new_map=""
   if ! data_has 'osm/$OSM_FILE'; then
-    download_map
+    download_map reuse
+    new_map=1
+  elif ! compose run --rm maps-download check; then
+    echo "OSM_URL has changed since the map data was downloaded"
+    download_map reuse
+    new_map=1
   else
     download_elevation
     if ! data_has 'osm/${OSM_FILE%.osm.pbf}.places.csv.gz'; then
@@ -220,9 +230,13 @@ setup() {
   fi
   if ! data_has 'tiles/$TILES_FILE'; then
     run_planetiler
+  elif [ -n "$new_map" ]; then
+    build_tiles
   fi
   if ! data_has graphhopper/default-gh; then
     run_graphhopper_import
+  elif [ -n "$new_map" ]; then
+    build_routing
   elif routing_config_changed; then
     echo "The routing config has changed since the graph was built"
     build_routing
