@@ -8,7 +8,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # DuckDB reads Overture's GeoParquet straight from S3, fetching only the area's rows
-RUN pip install --no-cache-dir duckdb==1.5.6 pycurl==7.48.0 \
+RUN pip install --no-cache-dir duckdb==1.5.6 pycurl==7.48.0 tqdm==4.67.1 \
     && python -c "import duckdb; duckdb.connect().install_extension('httpfs')"
 
 COPY srtm-names /srtm-names

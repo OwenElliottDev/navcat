@@ -17,7 +17,7 @@ export default defineConfig({
   build: {
     rolldownOptions: {
       output: {
-        // Libraries get their own chunks so a deploy that only changes our code
+        // Libraries get their own chunks so a deploy that only changes app code
         // doesn't make returning visitors re-download them
         codeSplitting: {
           groups: [

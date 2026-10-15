@@ -180,7 +180,7 @@ async def edit_place(
     else:
         if changes.category is not None:
             raise HTTPException(422, "Only places people added can change category.")
-        await _load(db, place_type, place_id)  # 404 if it isn't a place we know
+        await _load(db, place_type, place_id)  # 404 if it isn't a known place
         if changes.name is not None:
             tags["name"] = changes.name
         await db.execute(

@@ -108,7 +108,7 @@ interface PlanResponse {
   errors?: { message: string }[]
 }
 
-// ---------- mapping to our types ----------
+// ---------- mapping to the app's types ----------
 
 /** Live time when there is one, otherwise the timetable. */
 const timeOf = (t: OtpTime) => t.estimated?.time ?? t.scheduledTime
