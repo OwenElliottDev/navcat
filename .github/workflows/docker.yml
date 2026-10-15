@@ -15,9 +15,6 @@ jobs:
     name: ${{ matrix.image }}
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
-
     strategy:
       fail-fast: false
       matrix:
@@ -37,15 +34,33 @@ jobs:
           - image: navcat-updater
             context: docker_maps/updater
 
+    permissions:
+      contents: read
+      pull-requests: read
+
     steps:
+      # Pull requests only build the images whose build context changed
+      - name: Check for changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            image:
+              - .github/workflows/docker.yml
+              - ${{ matrix.context }}/**
+
       - name: Checkout source
+        if: steps.changes.outputs.image != 'false'
         uses: actions/checkout@v7
 
       # arm64 is emulated; the slow Maven and npm stages run natively (FROM --platform=$BUILDPLATFORM)
       - name: Set up QEMU
+        if: steps.changes.outputs.image != 'false'
         uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
+        if: steps.changes.outputs.image != 'false'
         uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
@@ -56,6 +71,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract Docker metadata
+        if: steps.changes.outputs.image != 'false'
         id: meta
         uses: docker/metadata-action@v6
         with:
@@ -66,6 +82,7 @@ jobs:
             type=sha,format=short
 
       - name: Build and push
+        if: steps.changes.outputs.image != 'false'
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
