@@ -689,7 +689,6 @@ export default function App() {
           key={`${menu.x},${menu.y}`}
           x={menu.x}
           y={menu.y}
-          position={menu.position}
           onSelect={handleMenuAction}
           onClose={() => setMenu(null)}
         />

@@ -33,10 +33,5 @@ export function humanize(value?: string): string {
 }
 
 export function coordLabel(at: LngLat): string {
-  return `${degrees(at.lat)}, ${degrees(at.lng)}`
-}
-
-/** 5 decimal places (about a metre), without the "-" toFixed leaves on "-0.00000" */
-function degrees(value: number): string {
-  return value.toFixed(5).replace(/^-(?=[0.]+$)/, '')
+  return `${at.lat.toFixed(5)}, ${at.lng.toFixed(5)}`
 }

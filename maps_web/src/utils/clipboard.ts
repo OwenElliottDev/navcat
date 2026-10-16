@@ -5,7 +5,6 @@ export async function copyText(text: string): Promise<void> {
     return
   }
   // Plain http on the local network: the older copy command still works there
-  const focused = document.activeElement
   const field = document.createElement('textarea')
   field.value = text
   field.setAttribute('readonly', '')
@@ -15,7 +14,5 @@ export async function copyText(text: string): Promise<void> {
   field.select()
   const copied = document.execCommand('copy')
   field.remove()
-  // Selecting the field took focus; give it back (e.g. to a menu that stays open)
-  if (focused instanceof HTMLElement) focused.focus()
   if (!copied) throw new Error('Copy failed')
 }
