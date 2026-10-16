@@ -1,13 +1,15 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { Icon, type IconName } from './icons'
 import './ContextMenu.css'
 
 export type MenuAction = 'from' | 'to' | 'what' | 'add'
 
-const ITEMS: { action: MenuAction; label: string }[] = [
-  { action: 'from', label: 'Directions from here' },
-  { action: 'to', label: 'Directions to here' },
-  { action: 'what', label: "What's here?" },
-  { action: 'add', label: 'Add a place here' },
+// Labels end in an ellipsis when the item asks for more input before it's done
+const ITEMS: { action: MenuAction; label: string; icon: IconName }[] = [
+  { action: 'from', label: 'Directions from here', icon: 'start' },
+  { action: 'to', label: 'Directions to here', icon: 'directions' },
+  { action: 'what', label: "What's here?", icon: 'search' },
+  { action: 'add', label: 'Add a place here…', icon: 'pin' },
 ]
 
 const EDGE_GAP = 8
@@ -40,14 +42,15 @@ export function ContextMenu({ x, y, onSelect, onClose }: ContextMenuProps) {
 
   return (
     <ul ref={ref} className="context-menu" role="menu">
-      {ITEMS.map(({ action, label }) => (
+      {ITEMS.map(({ action, label, icon }) => (
         <li key={action}>
           <button
             type="button"
             role="menuitem"
-            className="context-menu__item"
+            className="row context-menu__item"
             onClick={() => onSelect(action)}
           >
+            <Icon name={icon} />
             {label}
           </button>
         </li>

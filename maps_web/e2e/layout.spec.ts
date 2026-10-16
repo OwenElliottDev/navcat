@@ -33,3 +33,18 @@ test('the map type is remembered, and topo needs terrain', async ({ page }) => {
   await page.getByRole('button', { name: 'Map type and overlays' }).click()
   await expect(page.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true')
 })
+
+test('the map menu gives each item an icon, with an ellipsis where it opens more', async ({
+  page,
+}) => {
+  await openApp(page)
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  const items = page.getByRole('menu').getByRole('menuitem')
+  await expect(items).toHaveText([
+    'Directions from here',
+    'Directions to here',
+    "What's here?",
+    'Add a place here…',
+  ])
+  await expect(items.filter({ hasNot: page.locator('svg.icon') })).toHaveCount(0)
+})
