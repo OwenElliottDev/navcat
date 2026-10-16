@@ -16,7 +16,6 @@
   padding: 0 12px;
   font: inherit;
   color: var(--ink);
-  text-align: left;
   background: transparent;
   border: 0;
   border-radius: 6px;
@@ -27,4 +26,8 @@
 .context-menu__item:focus-visible {
   background: var(--surface);
   outline: none;
+}
+
+.context-menu__item > .icon {
+  color: var(--muted);
 }

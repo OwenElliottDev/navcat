@@ -1,4 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ComponentProps } from 'react'
+import { useCopy } from '../hooks/useCopy'
+import type { LngLat } from '../types'
+import { coordLabel } from '../utils/format'
+import { Icon, type IconName } from './icons'
 import './ContextMenu.css'
 
 export type MenuAction = 'from' | 'to' | 'what' | 'add'
@@ -15,12 +19,16 @@ const EDGE_GAP = 8
 interface ContextMenuProps {
   x: number
   y: number
+  /** Where on the map the menu was opened; shown last, and copied when picked */
+  position: LngLat
   onSelect: (action: MenuAction) => void
   onClose: () => void
 }
 
-export function ContextMenu({ x, y, onSelect, onClose }: ContextMenuProps) {
+export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLUListElement>(null)
+  const { copy, icon, title, message } = useCopy('coordinates')
+  const coords = coordLabel(position)
 
   // Keep the menu on screen and move focus into it
   useLayoutEffect(() => {
@@ -39,19 +47,36 @@ export function ContextMenu({ x, y, onSelect, onClose }: ContextMenuProps) {
   }, [onClose])
 
   return (
-    <ul ref={ref} className="context-menu" role="menu">
-      {ITEMS.map(({ action, label }) => (
-        <li key={action}>
-          <button
-            type="button"
-            role="menuitem"
-            className="context-menu__item"
-            onClick={() => onSelect(action)}
-          >
+    <>
+      <ul ref={ref} className="context-menu" role="menu">
+        {ITEMS.map(({ action, label }) => (
+          <MenuItem key={action} onClick={() => onSelect(action)}>
             {label}
-          </button>
-        </li>
-      ))}
-    </ul>
+          </MenuItem>
+        ))}
+        <MenuItem
+          icon={icon}
+          aria-label={`Copy coordinates ${coords}`}
+          title={title}
+          onClick={() => copy(coords)}
+        >
+          {coords}
+        </MenuItem>
+      </ul>
+      <span className="sr-only" aria-live="polite">
+        {message}
+      </span>
+    </>
+  )
+}
+
+function MenuItem({ icon, children, ...props }: { icon?: IconName } & ComponentProps<'button'>) {
+  return (
+    <li role="none">
+      <button type="button" role="menuitem" className="row context-menu__item" {...props}>
+        {icon && <Icon name={icon} />}
+        {children}
+      </button>
+    </li>
   )
 }
