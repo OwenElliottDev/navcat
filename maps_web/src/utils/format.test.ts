@@ -33,4 +33,8 @@ describe('coordLabel', () => {
   it('reads latitude first', () => {
     expect(coordLabel({ lng: 144.9631, lat: -37.8136 })).toBe('-37.81360, 144.96310')
   })
+
+  it('drops the sign from a value that rounds to zero', () => {
+    expect(coordLabel({ lng: -0.000001, lat: 51.477 })).toBe('51.47700, 0.00000')
+  })
 })
