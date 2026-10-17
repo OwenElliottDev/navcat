@@ -25,6 +25,7 @@ import { useProfiles } from './hooks/useProfiles'
 import { useNavigation, type Travel } from './hooks/useNavigation'
 import { useRoute } from './hooks/useRoute'
 import { useLanes } from './hooks/useLanes'
+import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery'
 import { useStoredLook } from './hooks/useStoredLook'
 import { useTransitModes } from './hooks/useTransitModes'
 import { useTransitPlan } from './hooks/useTransitPlan'
@@ -114,6 +115,7 @@ export default function App() {
   const panelRef = useRef<HTMLElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
   const sheetRef = useRef<HTMLDivElement>(null)
+  const isPhone = useMediaQuery(PHONE_QUERY)
   const overlays = useMemo(() => ({ panel: panelRef, top: topRef, sheet: sheetRef }), [])
   const camera = useCamera(overlays)
   const account = useAccount()
@@ -502,59 +504,65 @@ export default function App() {
     ? `${place.properties.osm_type}${place.properties.osm_id}`
     : null
 
+  /** What the panel shows, the key that marks it as new, and what its close button does */
   function panelBody() {
     if (place) {
-      return (
-        <PlaceCard
-          place={place}
-          onDirections={(end) => setWaypoint(end, toWaypoint(place))}
-          onBack={isBrowsing ? () => setPlace(null) : undefined}
-        />
-      )
-    }
-    if (mode === 'directions' && isTransit) {
-      return (
-        <TransitCard
-          plan={transitPlan}
-          selected={itinerary}
-          onSelect={setChosenItinerary}
-          onLegClick={(at) => camera.flyTo(at, 16)}
-          onStart={startNavigation}
-        />
-      )
+      return {
+        content: (
+          <PlaceCard
+            place={place}
+            onDirections={(end) => setWaypoint(end, toWaypoint(place))}
+            onBack={isBrowsing ? () => setPlace(null) : undefined}
+          />
+        ),
+        key: `place:${place.geometry.coordinates.join()}`,
+        // Like the search bar's clear button, which shows the place
+        onClose: mode === 'search' ? closeBrowse : () => setPlace(null),
+      }
     }
     if (mode === 'directions') {
-      return (
-        <RouteCard
-          route={route}
-          onStepClick={(at) => camera.flyTo(at, 16)}
-          onExportGpx={canExportGpx ? exportGpx : undefined}
-          onStart={startNavigation}
-          showElevation={travel === 'walk' || travel === 'ride'}
-          onElevationHover={setElevationAt}
-        />
-      )
+      return {
+        content: isTransit ? (
+          <TransitCard
+            plan={transitPlan}
+            selected={itinerary}
+            onSelect={setChosenItinerary}
+            onLegClick={(at) => camera.flyTo(at, 16)}
+            onStart={startNavigation}
+          />
+        ) : (
+          <RouteCard
+            route={route}
+            onStepClick={(at) => camera.flyTo(at, 16)}
+            onExportGpx={canExportGpx ? exportGpx : undefined}
+            onStart={startNavigation}
+            showElevation={travel === 'walk' || travel === 'ride'}
+            onElevationHover={setElevationAt}
+          />
+        ),
+        key: `directions:${profile}`,
+        onClose: closeDirections,
+      }
     }
     if (isBrowsing) {
-      return (
-        <BrowseResults
-          category={browse.category}
-          state={browseState}
-          onSelect={selectResult}
-          onClose={closeBrowse}
-        />
-      )
+      return {
+        content: (
+          <BrowseResults
+            category={browse.category}
+            state={browseState}
+            onSelect={selectResult}
+            // On phones the sheet's own close button does this
+            onClose={isPhone ? undefined : closeBrowse}
+          />
+        ),
+        key: `browse:${browse.category.id}`,
+        onClose: closeBrowse,
+      }
     }
     return null
   }
 
   const body = panelBody()
-  // The sheet re-opens to half height whenever it starts showing something new
-  const bodyKey = place
-    ? `place:${place.geometry.coordinates.join()}`
-    : mode === 'directions'
-      ? `directions:${profile}`
-      : `browse:${browse?.category.id}`
 
   return (
     <>
@@ -665,8 +673,9 @@ export default function App() {
           )}
         </div>
         {body && (
-          <Sheet ref={sheetRef} contentKey={bodyKey}>
-            {body}
+          // The sheet re-opens to its low height whenever it starts showing something new
+          <Sheet ref={sheetRef} contentKey={body.key} topRef={topRef} onClose={body.onClose}>
+            {body.content}
           </Sheet>
         )}
       </aside>

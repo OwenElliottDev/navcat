@@ -67,8 +67,10 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
         </button>
       )}
 
-      <h2 className="card__title">{name}</h2>
-      {kind && <p className="card__kind">{kind}</p>}
+      <header data-sheet-peek>
+        <h2 className="card__title">{name}</h2>
+        {kind && <p className="card__kind">{kind}</p>}
+      </header>
       {community.status === 'ready' && community.data.rating !== null && (
         <p className="place-rating">
           <strong>{community.data.rating.toFixed(1)}</strong>{' '}
@@ -79,7 +81,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
         </p>
       )}
 
-      <div className="place-actions">
+      <div className="place-actions" data-sheet-low>
         <ActionButton
           icon="directions"
           label="Directions"
