@@ -19,7 +19,12 @@
   color: #3c4446;
 }
 
-.map-dot--query svg {
+.map-dot--query .icon {
   width: 12px;
   height: 12px;
+}
+
+/* Bolder than elsewhere, to read at this size */
+.map-dot--query .icon path {
+  stroke-width: 2.2;
 }

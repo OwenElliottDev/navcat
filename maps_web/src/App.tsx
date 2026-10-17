@@ -340,8 +340,16 @@ export default function App() {
     showPlace(found ?? pointPlace(poi.position, poi.name, poi.kind))
   }
 
+  // Bumped whenever something else opens, so a slow "What's here?" lookup doesn't replace it
+  const whatsHereLookup = useRef(0)
+  useEffect(() => {
+    whatsHereLookup.current++
+  }, [place, mode, browse])
+
   async function showWhatsHere(position: LngLat) {
+    const lookup = ++whatsHereLookup.current
     const found = await reverseGeocode(position)
+    if (whatsHereLookup.current !== lookup) return
     const feature: PhotonFeature = found
       ? { ...found, geometry: { coordinates: [position.lng, position.lat] } }
       : pointPlace(position, coordLabel(position))

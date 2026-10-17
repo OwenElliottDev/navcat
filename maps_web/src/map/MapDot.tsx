@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Marker } from 'maplibre-gl'
-import { ICON_PATHS } from '../components/iconPaths'
+import { Icon } from '../components/icons'
 import type { LngLat } from '../types'
 import { useMap } from './MapContext'
 import './MapDot.css'
@@ -15,20 +16,22 @@ interface MapDotProps {
 export function MapDot({ position, isQuery = false }: MapDotProps) {
   const map = useMap()
   const markerRef = useRef<Marker | null>(null)
+  const element = useMemo(() => {
+    const div = document.createElement('div')
+    div.className = isQuery ? 'map-dot map-dot--query' : 'map-dot'
+    return div
+  }, [isQuery])
 
   // One marker for as long as the dot is shown; moving it just repositions it
   useEffect(() => {
     if (!map) return
-    const element = document.createElement('div')
-    element.className = isQuery ? 'map-dot map-dot--query' : 'map-dot'
-    if (isQuery) element.append(searchIcon())
     const marker = new Marker({ element })
     markerRef.current = marker
     return () => {
       marker.remove()
       markerRef.current = null
     }
-  }, [map, isQuery])
+  }, [map, element])
 
   const { lng, lat } = position
   useEffect(() => {
@@ -37,24 +40,7 @@ export function MapDot({ position, isQuery = false }: MapDotProps) {
     marker.setLngLat([lng, lat])
     // Added once: addTo re-adds the element and its listeners every time
     if (!marker.getElement().isConnected) marker.addTo(map)
-  }, [map, isQuery, lng, lat])
+  }, [map, element, lng, lat])
 
-  return null
-}
-
-const SVG = 'http://www.w3.org/2000/svg'
-
-/** The search icon, as the Icon component draws it. */
-function searchIcon() {
-  const svg = document.createElementNS(SVG, 'svg')
-  svg.setAttribute('viewBox', '0 0 20 20')
-  svg.setAttribute('aria-hidden', 'true')
-  const path = document.createElementNS(SVG, 'path')
-  path.setAttribute('d', ICON_PATHS.search)
-  path.setAttribute('fill', 'none')
-  path.setAttribute('stroke', 'currentColor')
-  path.setAttribute('stroke-width', '2.2')
-  path.setAttribute('stroke-linecap', 'round')
-  svg.append(path)
-  return svg
+  return isQuery ? createPortal(<Icon name="search" />, element) : null
 }

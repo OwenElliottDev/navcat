@@ -95,4 +95,28 @@ test('"What\'s here?" marks the spot with a dot, not a pin', async ({ page }) =>
   await page.getByRole('menuitem', { name: "What's here?" }).click()
   await expect(page.locator('.place-card')).toBeVisible()
   await expect(page.locator('.map-dot--query')).toHaveCount(1)
+  await expect(page.locator('.maplibregl-marker:not(.map-dot)')).toHaveCount(2)
+
+  await page.getByRole('button', { name: 'Close directions' }).click()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
+})
+
+test('a slow "What\'s here?" doesn\'t replace a place opened meanwhile', async ({ page }) => {
+  await openApp(page)
+  let answer!: () => void
+  const answered = new Promise<void>((resolve) => (answer = resolve))
+  await page.route('**/api/reverse*', async (route) => {
+    await answered
+    await route.fallback()
+  })
+
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  const reply = page.waitForResponse('**/api/reverse*')
+  answer()
+  await reply
+  await expect(page.getByRole('heading', { level: 2, name: 'Laneway Espresso' })).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
 })
