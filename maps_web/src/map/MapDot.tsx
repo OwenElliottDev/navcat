@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { Marker } from 'maplibre-gl'
+import { ICON_PATHS } from '../components/iconPaths'
 import type { LngLat } from '../types'
 import { useMap } from './MapContext'
 import './MapDot.css'
 
 interface MapDotProps {
   position: LngLat
-  /** A grey dot with a question mark, for the spot "What's here?" looked up. */
+  /** A grey dot with a search icon, for the spot "What's here?" looked up. */
   isQuery?: boolean
 }
 
@@ -20,6 +21,7 @@ export function MapDot({ position, isQuery = false }: MapDotProps) {
     if (!map) return
     const element = document.createElement('div')
     element.className = isQuery ? 'map-dot map-dot--query' : 'map-dot'
+    if (isQuery) element.append(searchIcon())
     const marker = new Marker({ element })
     markerRef.current = marker
     return () => {
@@ -38,4 +40,21 @@ export function MapDot({ position, isQuery = false }: MapDotProps) {
   }, [map, isQuery, lng, lat])
 
   return null
+}
+
+const SVG = 'http://www.w3.org/2000/svg'
+
+/** The search icon, as the Icon component draws it. */
+function searchIcon() {
+  const svg = document.createElementNS(SVG, 'svg')
+  svg.setAttribute('viewBox', '0 0 20 20')
+  svg.setAttribute('aria-hidden', 'true')
+  const path = document.createElementNS(SVG, 'path')
+  path.setAttribute('d', ICON_PATHS.search)
+  path.setAttribute('fill', 'none')
+  path.setAttribute('stroke', 'currentColor')
+  path.setAttribute('stroke-width', '2.2')
+  path.setAttribute('stroke-linecap', 'round')
+  svg.append(path)
+  return svg
 }
