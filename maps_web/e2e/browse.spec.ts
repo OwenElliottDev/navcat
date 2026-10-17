@@ -48,10 +48,13 @@ test('typing a category word suggests the category', async ({ page, stack }) => 
   expect(stack.requestsTo('/api/browse').at(-1)!.params.get('category')).toBe('cafe')
 })
 
-test('closing the results clears the search', async ({ page }) => {
+test('closing the results clears the search', async ({ page, isMobile }) => {
   await openApp(page)
   await browseCategory(page, 'Cafes')
-  await page.getByRole('button', { name: 'Close results' }).click()
+  // On phones the sheet's own close button stands in for the results'
+  await page
+    .getByRole('button', { name: isMobile ? 'Close' : 'Close results', exact: true })
+    .click()
   await expect(page.getByRole('heading', { name: 'Cafes' })).toHaveCount(0)
   await expect(page.getByRole('combobox', { name: 'Search places' })).toHaveValue('')
 })

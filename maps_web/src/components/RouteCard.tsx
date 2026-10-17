@@ -33,7 +33,7 @@ export function RouteCard({
   const path = route.data
   return (
     <section className="card">
-      <div className="route-summary">
+      <div className="route-summary" data-sheet-peek>
         <span className="route-summary__time">{formatDuration(path.time)}</span>
         <span className="route-summary__distance">{formatDistance(path.distance)}</span>
         {path.ascend !== undefined && path.descend !== undefined && (
@@ -47,7 +47,7 @@ export function RouteCard({
         <ElevationProfile coordinates={path.points.coordinates} onHover={onElevationHover} />
       )}
 
-      <div className="route-actions">
+      <div className="route-actions" data-sheet-low>
         {onStart && (
           <button type="button" className="button button--primary route-start" onClick={onStart}>
             <Icon name="navigate" />

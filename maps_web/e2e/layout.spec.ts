@@ -3,16 +3,52 @@ import { expect, test } from './mockStack'
 
 const COORDS = /^-?\d+\.\d{5}, -?\d+\.\d{5}$/
 
-test('on phones the place card is a bottom sheet that expands', async ({ page, isMobile }) => {
+test('on phones the place card is a bottom sheet with four heights', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'The sheet is phone-only; wider screens show a side panel')
   await openApp(page)
   await openPlace(page, 'laneway', 'Laneway Espresso')
 
   const sheet = page.locator('.sheet')
-  const half = (await sheet.boundingBox())!.height
-  await page.getByRole('button', { name: 'Expand panel' }).click()
+  const handle = page.getByRole('button', { name: 'Expand panel' })
+  const sheetTop = async () => (await sheet.boundingBox())!.y
+  const bottomOf = async (selector: string) => {
+    const box = (await page.locator(`.sheet ${selector}`).boundingBox())!
+    return box.y + box.height
+  }
+
+  // Opens just tall enough for the buttons
+  const viewport = page.viewportSize()!.height
+  await expect(page.locator('.sheet .place-actions')).toBeInViewport({ ratio: 1 })
+  expect(viewport - (await bottomOf('.place-actions'))).toBeLessThan(40)
+
+  // Then steps up through half height to just under the search bar
+  const low = await sheetTop()
+  await handle.click()
+  await expect.poll(sheetTop).toBeLessThan(low)
+  const controls = page.locator('.maplibregl-ctrl-top-right')
+  await expect.poll(async () => (await controls.boundingBox())!.y).toBeLessThan(await sheetTop())
+  const controlsAtHalf = (await controls.boundingBox())!.y
+  await handle.click()
   await expect(page.getByRole('button', { name: 'Shrink panel' })).toBeVisible()
-  expect((await sheet.boundingBox())!.height).toBeGreaterThan(half)
+  const top = (await page.locator('.panel__top').boundingBox())!
+  // Within a pixel: the sheet's height is rounded
+  const underBar = top.y + top.height + top.y
+  await expect.poll(async () => Math.abs((await sheetTop()) - underBar)).toBeLessThanOrEqual(1)
+  // The map controls stop rising at half height, so the sheet covers them, not the top bar
+  expect((await controls.boundingBox())!.y).toBeCloseTo(controlsAtHalf, 0)
+
+  // Dragged right down, only the name and type show
+  const grip = (await page.locator('.sheet__handle').boundingBox())!
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(grip.x + grip.width / 2, viewport, { steps: 10 })
+  await page.mouse.up()
+  await expect.poll(async () => viewport - (await bottomOf('.card__kind'))).toBeLessThan(40)
+  await expect(page.locator('.sheet .place-actions')).not.toBeInViewport({ ratio: 1 })
+
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+  await expect(sheet).toHaveCount(0)
+  await expect(page.getByRole('combobox', { name: 'Search places' })).toHaveValue('')
 })
 
 test('on wide screens the place card sits in the side panel', async ({ page, isMobile }) => {

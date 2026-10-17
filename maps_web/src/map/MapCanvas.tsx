@@ -32,6 +32,15 @@ export function MapCanvas() {
       )
     }
 
+    // MapLibre opens the compact attribution until the first drag; start it collapsed
+    const collapseAttribution = () => {
+      const attribution = map.getContainer().querySelector('.maplibregl-compact-show')
+      if (!attribution) return
+      attribution.classList.remove('maplibregl-compact-show')
+      map.off('data', collapseAttribution)
+    }
+    map.on('data', collapseAttribution)
+
     map.on('load', () => {
       addRouteLayers(map)
       addPoiLayers(map)
