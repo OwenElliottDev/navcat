@@ -81,7 +81,8 @@ test('"What\'s here?" marks the spot with a dot, not a pin', async ({ page }) =>
   await page.getByRole('menuitem', { name: "What's here?" }).click()
   await expect(page.locator('.place-card')).toBeVisible()
   await expect(page.locator('.map-dot--query')).toHaveCount(1)
-  await expect(page.locator('.maplibregl-marker svg')).toHaveCount(0)
+  // MapLibre's own pin; the dot is a marker too, with the search icon in it
+  await expect(page.locator('.maplibregl-marker:not(.map-dot)')).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Clear' }).click()
   await expect(page.locator('.map-dot--query')).toHaveCount(0)
