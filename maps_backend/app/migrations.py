@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import LiteralString, cast
 
 from psycopg import AsyncConnection
 from psycopg.rows import DictRow
@@ -22,5 +23,5 @@ async def migrate(pool: AsyncConnectionPool[AsyncConnection[DictRow]]) -> None:
         for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
             if path.name in applied:
                 continue
-            await conn.execute(path.read_bytes())
+            await conn.execute(cast(LiteralString, path.read_text()))
             await conn.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (path.name,))
