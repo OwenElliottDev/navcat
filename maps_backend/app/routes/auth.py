@@ -60,6 +60,7 @@ async def log_in(body: LogIn, request: Request, response: Response, db: Db) -> U
         throttle.record_failure(*keys)
         raise HTTPException(401, "Wrong username or password.")
 
+    assert row is not None
     throttle.reset(*keys)
     await db.execute("DELETE FROM sessions WHERE expires_at < now()")
     await start_session(db, response, row["id"])

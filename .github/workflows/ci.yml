@@ -120,6 +120,9 @@ jobs:
       - name: Check formatting
         run: uv run ruff format --check .
 
+      - name: Type check
+        run: uv run pyrefly check
+
       - name: Unit tests
         run: uv run pytest
 

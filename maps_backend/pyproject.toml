@@ -17,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "pyrefly>=1.4.0",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
 ]
@@ -26,3 +27,9 @@ pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
+]
