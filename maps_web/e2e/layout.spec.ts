@@ -56,4 +56,17 @@ test('the map menu shows where it was opened, and copies it', async ({ page, con
   const [lat, lon] = coords.split(', ').map(Number)
   expect(Number(params.get('lat'))).toBeCloseTo(lat, 4)
   expect(Number(params.get('lon'))).toBeCloseTo(lon, 4)
+test('the map menu gives each item an icon, with an ellipsis where it opens more', async ({
+  page,
+}) => {
+  await openApp(page)
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  const items = page.getByRole('menu').getByRole('menuitem')
+  await expect(items).toHaveText([
+    'Directions from here',
+    'Directions to here',
+    "What's here?",
+    'Add a place here…',
+  ])
+  await expect(items.filter({ hasNot: page.locator('svg.icon') })).toHaveCount(0)
 })
