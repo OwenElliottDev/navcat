@@ -9,6 +9,7 @@ import { LayerPicker } from './components/LayerPicker'
 import { CarOptions } from './components/CarOptions'
 import { AdditionalOptions } from './components/AdditionalOptions'
 import { DirectionsForm } from './components/DirectionsForm'
+import { Icon } from './components/icons'
 import { PitchToggle } from './components/PitchToggle'
 import { PlaceCard } from './components/PlaceCard'
 import { PlaceEditor, type PlaceDraft } from './components/PlaceEditor'
@@ -598,8 +599,10 @@ export default function App() {
       )}
 
       {mode === 'directions' && !isNavigating && elevationAt && <MapDot position={elevationAt} />}
-      {whatsHere && isWhatsHere && !isNavigating && (
-        <MapDot position={placePosition(whatsHere)} isQuery />
+      {isWhatsHere && !isNavigating && (
+        <MapDot position={placePosition(place)} className="map-dot--query">
+          <Icon name="search" />
+        </MapDot>
       )}
 
       {isBrowsing && hasMovedSinceBrowse && <SearchThisArea onClick={searchThisArea} />}

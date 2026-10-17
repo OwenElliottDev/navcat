@@ -1,26 +1,28 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Marker } from 'maplibre-gl'
-import { Icon } from '../components/icons'
 import type { LngLat } from '../types'
 import { useMap } from './MapContext'
 import './MapDot.css'
 
 interface MapDotProps {
   position: LngLat
-  /** A grey dot with a search icon, for the spot "What's here?" looked up. */
-  isQuery?: boolean
+  /** Another look, alongside the plain dot's `map-dot` class */
+  className?: string
+  /** Drawn inside the dot, e.g. an icon */
+  children?: ReactNode
 }
 
 /** A small dot on the map, e.g. the point on a route under the elevation chart's cursor. */
-export function MapDot({ position, isQuery = false }: MapDotProps) {
+export function MapDot({ position, className, children }: MapDotProps) {
   const map = useMap()
   const markerRef = useRef<Marker | null>(null)
-  const element = useMemo(() => {
+  // Its look is set once: each dot on the map keeps the same one
+  const [element] = useState(() => {
     const div = document.createElement('div')
-    div.className = isQuery ? 'map-dot map-dot--query' : 'map-dot'
+    div.className = className ? `map-dot ${className}` : 'map-dot'
     return div
-  }, [isQuery])
+  })
 
   // One marker for as long as the dot is shown; moving it just repositions it
   useEffect(() => {
@@ -42,5 +44,5 @@ export function MapDot({ position, isQuery = false }: MapDotProps) {
     if (!marker.getElement().isConnected) marker.addTo(map)
   }, [map, element, lng, lat])
 
-  return isQuery ? createPortal(<Icon name="search" />, element) : null
+  return children ? createPortal(children, element) : null
 }
