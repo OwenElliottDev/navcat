@@ -1,4 +1,4 @@
-import { openApp, openPlace } from './helpers'
+import { openApp, openPlace, planRoute } from './helpers'
 import { expect, test } from './mockStack'
 
 const COORDS = /^-?\d+\.\d{5}, -?\d+\.\d{5}$/
@@ -72,4 +72,26 @@ test('the map menu shows where it was opened, and copies it', async ({ page, con
   const [lat, lon] = coords.split(', ').map(Number)
   expect(Number(params.get('lat'))).toBeCloseTo(lat, 4)
   expect(Number(params.get('lon'))).toBeCloseTo(lon, 4)
+})
+
+test('"What\'s here?" marks the spot with a dot, not a pin', async ({ page }) => {
+  await openApp(page)
+  const map = page.locator('.maplibregl-canvas')
+  await map.click({ button: 'right', position: { x: 200, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await expect(page.locator('.place-card')).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(1)
+  await expect(page.locator('.maplibregl-marker svg')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
+
+  // The same while directions are open, alongside the route's pins
+  await planRoute(page)
+  // Off to the side, clear of the directions panel
+  const { width } = (await map.boundingBox())!
+  await map.click({ button: 'right', position: { x: width - 60, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await expect(page.locator('.place-card')).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(1)
 })

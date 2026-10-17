@@ -7,3 +7,19 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
+
+.map-dot--query {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  background: #c4c9cc;
+  color: #3c4446;
+  font:
+    700 12px/18px system-ui,
+    sans-serif;
+  text-align: center;
+}
+
+.map-dot--query::after {
+  content: '?';
+}

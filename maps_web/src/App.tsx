@@ -126,6 +126,8 @@ export default function App() {
 
   const [mode, setMode] = useState<Mode>('search')
   const [place, setPlace] = useState<PhotonFeature | null>(null)
+  /** The place "What's here?" last found: while it's the one shown, it's marked with a dot */
+  const [whatsHere, setWhatsHere] = useState<PhotonFeature | null>(null)
   const [waypoints, setWaypoints] = useState<Record<End, Waypoint | null>>(NO_WAYPOINTS)
   const [menu, setMenu] = useState<Menu | null>(null)
   const [adding, setAdding] = useState<Adding | null>(null)
@@ -340,11 +342,11 @@ export default function App() {
 
   async function showWhatsHere(position: LngLat) {
     const found = await reverseGeocode(position)
-    showPlace(
-      found
-        ? { ...found, geometry: { coordinates: [position.lng, position.lat] } }
-        : pointPlace(position, coordLabel(position)),
-    )
+    const feature: PhotonFeature = found
+      ? { ...found, geometry: { coordinates: [position.lng, position.lat] } }
+      : pointPlace(position, coordLabel(position))
+    setWhatsHere(feature)
+    showPlace(feature)
   }
 
   /* ---------- directions ---------- */
@@ -498,6 +500,7 @@ export default function App() {
   /* ---------- render ---------- */
 
   const isBrowsing = mode === 'search' && browse !== null
+  const isWhatsHere = place !== null && place === whatsHere
   const selectedKey = place?.properties.osm_type
     ? `${place.properties.osm_type}${place.properties.osm_id}`
     : null
@@ -568,7 +571,7 @@ export default function App() {
       <RouteLine segments={routeSegments} />
       <PoiLayer pois={isBrowsing ? pois : NO_POIS} selectedKey={selectedKey} />
 
-      {mode === 'search' && place && (
+      {mode === 'search' && place && !isWhatsHere && (
         <MapMarker position={placePosition(place)} color={COLORS.route} />
       )}
       {mode === 'directions' && waypoints.from && !isNavigating && (
@@ -587,6 +590,9 @@ export default function App() {
       )}
 
       {mode === 'directions' && !isNavigating && elevationAt && <MapDot position={elevationAt} />}
+      {whatsHere && isWhatsHere && !isNavigating && (
+        <MapDot position={placePosition(whatsHere)} isQuery />
+      )}
 
       {isBrowsing && hasMovedSinceBrowse && <SearchThisArea onClick={searchThisArea} />}
 
