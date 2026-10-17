@@ -1,4 +1,4 @@
-import { openApp, openPlace } from './helpers'
+import { openApp, openPlace, planRoute } from './helpers'
 import { expect, test } from './mockStack'
 
 const COORDS = /^-?\d+\.\d{5}, -?\d+\.\d{5}$/
@@ -72,4 +72,51 @@ test('the map menu shows where it was opened, and copies it', async ({ page, con
   const [lat, lon] = coords.split(', ').map(Number)
   expect(Number(params.get('lat'))).toBeCloseTo(lat, 4)
   expect(Number(params.get('lon'))).toBeCloseTo(lon, 4)
+})
+
+test('"What\'s here?" marks the spot with a dot, not a pin', async ({ page }) => {
+  await openApp(page)
+  const map = page.locator('.maplibregl-canvas')
+  await map.click({ button: 'right', position: { x: 200, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await expect(page.locator('.place-card')).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(1)
+  // MapLibre's own pin; the dot is a marker too, with the search icon in it
+  await expect(page.locator('.maplibregl-marker:not(.map-dot)')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
+
+  // The same while directions are open, alongside the route's pins
+  await planRoute(page)
+  // Off to the side, clear of the directions panel
+  const { width } = (await map.boundingBox())!
+  await map.click({ button: 'right', position: { x: width - 60, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await expect(page.locator('.place-card')).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(1)
+  await expect(page.locator('.maplibregl-marker:not(.map-dot)')).toHaveCount(2)
+
+  await page.getByRole('button', { name: 'Close directions' }).click()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
+})
+
+test('a slow "What\'s here?" doesn\'t replace a place opened meanwhile', async ({ page }) => {
+  await openApp(page)
+  let answer!: () => void
+  const answered = new Promise<void>((resolve) => (answer = resolve))
+  await page.route('**/api/reverse*', async (route) => {
+    await answered
+    await route.fallback()
+  })
+
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  await page.getByRole('menuitem', { name: "What's here?" }).click()
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  const reply = page.waitForResponse('**/api/reverse*')
+  answer()
+  await reply
+  await expect(page.getByRole('heading', { level: 2, name: 'Laneway Espresso' })).toBeVisible()
+  await expect(page.locator('.map-dot--query')).toHaveCount(0)
 })
