@@ -1,11 +1,13 @@
 from pathlib import Path
 
+from psycopg import AsyncConnection
+from psycopg.rows import DictRow
 from psycopg_pool import AsyncConnectionPool
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
-async def migrate(pool: AsyncConnectionPool) -> None:
+async def migrate(pool: AsyncConnectionPool[AsyncConnection[DictRow]]) -> None:
     """Applies migrations/*.sql files that haven't run yet, in name order, in one transaction."""
     async with pool.connection() as conn:
         # Stops two backends starting at once from both migrating
@@ -20,5 +22,5 @@ async def migrate(pool: AsyncConnectionPool) -> None:
         for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
             if path.name in applied:
                 continue
-            await conn.execute(path.read_text())
+            await conn.execute(path.read_bytes())
             await conn.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (path.name,))

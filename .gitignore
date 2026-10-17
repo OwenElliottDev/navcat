@@ -4,3 +4,4 @@ maps_data/
 .update.lock/
 __pycache__/
 **/.claude/scheduled_tasks.lock
+.vscode/

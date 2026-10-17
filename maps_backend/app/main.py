@@ -43,6 +43,7 @@ async def health(db: Db) -> dict:
         " (SELECT to_regclass('poi_import') IS NOT NULL) AS has_pois"
     )
     row = await cursor.fetchone()
+    assert row is not None
     pois = None
     if row["has_pois"]:
         cursor = await db.execute("SELECT source, poi_count, imported_at FROM poi_import")

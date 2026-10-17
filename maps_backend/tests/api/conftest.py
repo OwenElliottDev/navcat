@@ -17,11 +17,13 @@ import psycopg
 import pycurl
 import pytest
 from psycopg import sql
-from psycopg.conninfo import conninfo_to_dict, make_conninfo
+from psycopg.conninfo import make_conninfo
+from psycopg.rows import DictRow, dict_row
+from psycopg.types.json import Jsonb
 
 from tests.client import Client
 
-ADMIN_URL = os.environ.get("TEST_DATABASE_URL")
+ADMIN_URL = os.environ.get("TEST_DATABASE_URL", "")
 TEST_DB = "maps_api_test"
 BACKEND_DIR = Path(__file__).resolve().parents[2]
 
@@ -45,9 +47,7 @@ def database_url() -> str:
             sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(sql.Identifier(TEST_DB))
         )
         conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(TEST_DB)))
-    params = conninfo_to_dict(ADMIN_URL)
-    params["dbname"] = TEST_DB
-    return make_conninfo(**params)
+    return make_conninfo(ADMIN_URL, dbname=TEST_DB)
 
 
 @pytest.fixture(scope="session")
@@ -99,7 +99,9 @@ def _wait_until_up(server: subprocess.Popen, url: str, log_path: Path) -> None:
 @pytest.fixture(scope="session")
 def db(base_url, database_url):
     """A direct connection, for setting up data and checking what the API stored."""
-    with psycopg.connect(database_url, autocommit=True, row_factory=psycopg.rows.dict_row) as conn:
+    with psycopg.Connection[DictRow].connect(
+        database_url, autocommit=True, row_factory=dict_row
+    ) as conn:
         yield conn
 
 
@@ -147,7 +149,7 @@ def places(db):
                 osm_id,
                 name,
                 category,
-                psycopg.types.json.Jsonb({"name": name, **tags}),
+                Jsonb({"name": name, **tags}),
                 lng,
                 lat,
             ),

@@ -51,6 +51,7 @@ uv run pytest tests/test_logic.py::test_name    # one test
 sh tests/api/run.sh                             # HTTP API tests: real app + throwaway PostGIS
 MAPS_URL=http://localhost:7000 uv run pytest tests/smoke   # against a running stack
 uv run ruff check . && uv run ruff format .     # line length 100
+uv run pyrefly check                            # type check (run in CI)
 ```
 
 Use `pycurl` for HTTP in Python (not httpx/requests, and not FastAPI's TestClient); tests share

@@ -149,6 +149,7 @@ async def add_place(place: NewPlace, user: CurrentUser, db: Db) -> PoiDetails:
         ),
     )
     row = await cursor.fetchone()
+    assert row is not None
     return await _load(db, "U", row["id"])
 
 
@@ -294,6 +295,7 @@ async def write_review(
         (place_type, place_id, user.id, review.rating, review.body.strip()),
     )
     row = await cursor.fetchone()
+    assert row is not None
     return Review(**row, username=user.username, mine=True)
 
 
@@ -327,6 +329,7 @@ async def add_photo(
         (place_type, place_id, user.id, processed.width, processed.height),
     )
     row = await cursor.fetchone()
+    assert row is not None
     # Written inside the request's transaction: if saving fails, the row is rolled back too
     await run_in_threadpool(save_photo_files, row["id"], processed)
     return _photo({**row, "username": user.username}, user.id)

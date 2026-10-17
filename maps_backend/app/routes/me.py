@@ -82,7 +82,9 @@ async def save_place(place: SavedPlaceIn, user: CurrentUser, db: Db) -> SavedPla
         f" RETURNING {PLACE_COLUMNS}",
         {**place.model_dump(), "user_id": user.id},
     )
-    return SavedPlace(**await cursor.fetchone())
+    row = await cursor.fetchone()
+    assert row is not None
+    return SavedPlace(**row)
 
 
 @router.patch("/places/{place_id}")

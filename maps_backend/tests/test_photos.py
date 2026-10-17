@@ -9,6 +9,12 @@ from app.photos import FULL_SIZE, THUMB_SIZE, process_photo
 from tests.images import GPS_INFO, phone_photo
 
 
+def _rgb(image: Image.Image, xy: tuple[int, int]) -> tuple[int, ...]:
+    pixel = image.getpixel(xy)
+    assert isinstance(pixel, tuple)
+    return pixel
+
+
 def test_photos_are_turned_upright_and_lose_their_metadata():
     photo = process_photo(phone_photo(2400, 1200))
 
@@ -19,8 +25,8 @@ def test_photos_are_turned_upright_and_lose_their_metadata():
     assert not full.getexif()
     assert GPS_INFO not in full.getexif()
     # The marked corner (top-left as stored) is now top-right
-    assert full.getpixel((full.width - 10, 10))[2] > 200
-    assert full.getpixel((10, 10))[0] > 200
+    assert _rgb(full, (full.width - 10, 10))[2] > 200
+    assert _rgb(full, (10, 10))[0] > 200
 
     thumb = Image.open(io.BytesIO(photo.thumb))
     assert max(thumb.size) == THUMB_SIZE

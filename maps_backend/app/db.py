@@ -11,10 +11,11 @@ from .config import settings
 pool = AsyncConnectionPool(
     settings.database_url,
     open=False,
+    connection_class=AsyncConnection[DictRow],
     kwargs={"row_factory": dict_row},
     # Test each connection before handing it out, so a database restart doesn't
     # surface as errors from connections that died while sitting in the pool
-    check=AsyncConnectionPool.check_connection,
+    check=AsyncConnectionPool[AsyncConnection[DictRow]].check_connection,
 )
 
 
