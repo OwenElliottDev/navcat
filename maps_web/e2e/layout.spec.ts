@@ -73,3 +73,49 @@ test('the map menu shows where it was opened, and copies it', async ({ page, con
   expect(Number(params.get('lat'))).toBeCloseTo(lat, 4)
   expect(Number(params.get('lon'))).toBeCloseTo(lon, 4)
 })
+
+test('a pinch that zooms first does not rotate the map, but a twist does', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'Only touch screens pinch')
+  await openApp(page)
+  const cdp = await page.context().newCDPSession(page)
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+
+  /** Two fingers either side of the centre, moving from `fromRadius` to `toRadius` apart while
+   * twisting `twist` degrees, in 20 steps */
+  async function pinch(fromRadius: number, toRadius: number, twist: number) {
+    for (let i = 0; i <= 20; i++) {
+      const radius = fromRadius + ((toRadius - fromRadius) * i) / 20
+      const angle = (twist * i * Math.PI) / 20 / 180
+      const dx = radius * Math.cos(angle)
+      const dy = radius * Math.sin(angle)
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: i === 0 ? 'touchStart' : 'touchMove',
+        touchPoints: [
+          { x: cx + dx, y: cy + dy, id: 0 },
+          { x: cx - dx, y: cy - dy, id: 1 },
+        ],
+      })
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  }
+  const compass = page.locator('.maplibregl-ctrl-compass .maplibregl-ctrl-icon')
+  const rotated = /rotate\((?!0deg)/
+
+  const scale = page.locator('.maplibregl-ctrl-scale')
+  const scaleBefore = (await scale.textContent())!
+
+  // Spreading the fingers while twisting 40°: a zoom with a sloppy twist. Zoom and bearing change
+  // in the same frame, so once the zoom shows, any rotation would have too
+  await pinch(60, 140, 40)
+  await expect(scale).not.toHaveText(scaleBefore)
+  await expect(compass).not.toHaveAttribute('style', rotated)
+
+  // Twisting 40° without spreading: a rotation
+  await pinch(80, 80, 40)
+  await expect(compass).toHaveAttribute('style', rotated)
+})

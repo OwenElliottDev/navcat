@@ -4,6 +4,7 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { INITIAL_BOUNDS, MAP_STYLE_URL } from '../config'
 import { MapContext } from './MapContext'
+import { steadyPinchRotation } from './pinchRotation'
 import { addPoiLayers } from './poiLayers'
 import { addRouteLayers } from './routeLayers'
 
@@ -22,6 +23,7 @@ export function MapCanvas() {
       fitBoundsOptions: { padding: 20 },
       attributionControl: { compact: true },
     })
+    steadyPinchRotation(map)
     map.addControl(new NavigationControl(), 'top-right')
     map.addControl(new ScaleControl(), 'bottom-right')
     if (window.isSecureContext) {
