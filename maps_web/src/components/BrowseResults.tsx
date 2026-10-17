@@ -9,23 +9,26 @@ interface BrowseResultsProps {
   category: Category
   state: BrowseState
   onSelect: (poi: Poi) => void
-  onClose: () => void
+  /** Shows a close button; left out where something else closes the results */
+  onClose?: () => void
 }
 
 /** The list of places found by browsing a category, nearest first. */
 export function BrowseResults({ category, state, onSelect, onClose }: BrowseResultsProps) {
   return (
     <>
-      <section className="card browse-header">
+      <section className="card browse-header" data-sheet-peek>
         <h2 className="card__title">{category.label}</h2>
-        <button
-          type="button"
-          className="button button--icon"
-          aria-label="Close results"
-          onClick={onClose}
-        >
-          <Icon name="close" />
-        </button>
+        {onClose && (
+          <button
+            type="button"
+            className="button button--icon"
+            aria-label="Close results"
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </button>
+        )}
       </section>
 
       {state.status !== 'ready' ? (
