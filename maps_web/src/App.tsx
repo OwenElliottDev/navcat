@@ -85,6 +85,8 @@ interface Menu {
   x: number
   y: number
   position: LngLat
+  /** The "What's here?" place showing when it opened, and whether it opened on its dot */
+  whatsHere: { place: PhotonFeature; onDot: boolean } | null
 }
 
 /** A browse search, and how far the map had moved when it ran (for "Search this area"). */
@@ -103,6 +105,8 @@ const NO_WAYPOINTS = { from: null, to: null }
 /** Add ?simulate to the address to try navigation without going anywhere */
 const SIMULATE = new URLSearchParams(location.search).has('simulate')
 const NO_POIS: Poi[] = []
+/** How close to the "What's here?" dot (px) a menu counts as opened on it: room for a finger */
+const ON_DOT_PX = 24
 
 /** Rides in the route's own colour, walks dotted. */
 function legSegment(leg: TransitLeg): RouteSegment {
@@ -359,12 +363,15 @@ export default function App() {
     setWhatsHere(feature)
     showPlace(feature)
   }
+  const isWhatsHere = place !== null && place === whatsHere
 
   /* ---------- directions ---------- */
 
-  function setWaypoint(end: End, waypoint: Waypoint) {
-    const otherEnd = end === 'from' ? waypoints.to : waypoints.from
-    setWaypoints((prev) => ({ ...prev, [end]: waypoint }))
+  /** Sets a route end, and the other one to `fill` if that's still empty. */
+  function setWaypoint(end: End, waypoint: Waypoint, fill?: Waypoint) {
+    const otherName = end === 'from' ? 'to' : 'from'
+    const otherEnd = waypoints[otherName] ?? fill
+    setWaypoints((prev) => ({ ...prev, [otherName]: prev[otherName] ?? fill, [end]: waypoint }))
     setPlace(null)
     setMode('directions')
     // With both ends set, the route zooms the map once it loads
@@ -372,8 +379,8 @@ export default function App() {
   }
 
   /** Sets a route end from a bare point, then names it once search finds what's there. */
-  async function setWaypointAt(end: End, position: LngLat) {
-    setWaypoint(end, { position, label: coordLabel(position) })
+  async function setWaypointAt(end: End, position: LngLat, fill?: Waypoint) {
+    setWaypoint(end, { position, label: coordLabel(position) }, fill)
 
     const found = await reverseGeocode(position)
     if (!found) return
@@ -476,7 +483,7 @@ export default function App() {
       if (poi) selectResult(poi)
     },
     onPoiClick: showPoi,
-    onContextMenu: ({ x, y }, position) => setMenu({ x, y, position }),
+    onContextMenu: (at, position) => setMenu({ ...at, position, whatsHere: whatsHereAt(at) }),
     onDismiss: () => setMenu(null),
   })
 
@@ -485,7 +492,28 @@ export default function App() {
     setMenu(null)
     if (action === 'what') showWhatsHere(menu.position)
     else if (action === 'add') startAdding(menu.position)
-    else setWaypointAt(action, menu.position)
+    else menuDirections(action, menu)
+  }
+
+  /**
+   * The "What's here?" place, and whether a point on the map (px) is on its dot, as the user sees
+   * it now. None if the dot can't be found, as the route's ends might then meet.
+   */
+  function whatsHereAt({ x, y }: { x: number; y: number }) {
+    const dot = isWhatsHere && camera.project(placePosition(place))
+    if (!dot) return null
+    return { place, onDot: Math.hypot(dot.x - x, dot.y - y) < ON_DOT_PX }
+  }
+
+  /**
+   * Directions from or to somewhere else go to or from the "What's here?" spot, if that end of
+   * the route is still empty. Opened on its dot, they start or end at the place itself.
+   */
+  function menuDirections(end: End, { position, whatsHere: opened }: Menu) {
+    if (!opened) return setWaypointAt(end, position)
+    const here = toWaypoint(opened.place)
+    if (opened.onDot) setWaypoint(end, here)
+    else setWaypointAt(end, position, here)
   }
 
   /** Opens the "Add a place" form, with the address filled in from what's at that spot. */
@@ -511,7 +539,6 @@ export default function App() {
   /* ---------- render ---------- */
 
   const isBrowsing = mode === 'search' && browse !== null
-  const isWhatsHere = place !== null && place === whatsHere
   const selectedKey = place?.properties.osm_type
     ? `${place.properties.osm_type}${place.properties.osm_id}`
     : null

@@ -89,6 +89,10 @@ export function useCamera(overlays: Overlays) {
           near: { lng: middle.lng, lat: middle.lat },
         }
       },
+      /** Where a point is drawn, in pixels from the map's top left. */
+      project(at: LngLat): { x: number; y: number } | null {
+        return map?.project([at.lng, at.lat]) ?? null
+      },
     }),
     [map, overlays],
   )
