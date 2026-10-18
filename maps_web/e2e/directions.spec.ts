@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { openApp, pickSuggestion, planRoute } from './helpers'
+import { directionsToMarket, openApp, pickSuggestion, planRoute } from './helpers'
 import { expect, test, type MockStack } from './mockStack'
 
 test('a walk shows time, distance, climb, elevation and steps', async ({ page, stack }) => {
@@ -205,6 +205,15 @@ test('closing directions goes back to search', async ({ page }) => {
   await page.getByRole('button', { name: 'Close directions' }).click()
   await expect(page.getByRole('combobox', { name: 'Search places' })).toBeVisible()
   await expect(page.locator('.route-summary')).toHaveCount(0)
+})
+
+test('directions show no empty panel until both ends are set', async ({ page }) => {
+  await openApp(page)
+  await directionsToMarket(page)
+  await expect(page.locator('.sheet, .panel__body')).toHaveCount(0)
+
+  await pickSuggestion(page, 'Start', 'Flinders', 'Flinders Street Station')
+  await expect(page.locator('.route-summary')).toBeVisible()
 })
 
 test('simulated navigation follows the route with lane guidance', async ({ page, stack }) => {

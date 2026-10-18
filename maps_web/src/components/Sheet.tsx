@@ -45,6 +45,8 @@ interface Drag {
 interface Marks {
   peek: number | null
   low: number | null
+  /** Where the whole content ends (the most it has reached, while the content stays the same) */
+  end: number
   top: number
 }
 
@@ -60,7 +62,7 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
   const viewportHeight = useViewportHeight()
   const [snap, setSnap] = useState<Snap>('low')
   const [dragHeight, setDragHeight] = useState<number | null>(null)
-  const [marks, setMarks] = useState<Marks>({ peek: null, low: null, top: 0 })
+  const [marks, setMarks] = useState<Marks>({ peek: null, low: null, end: 0, top: 0 })
   const drag = useRef<Drag | null>(null)
   const contentEl = useRef<HTMLDivElement | null>(null)
   const innerEl = useRef<HTMLDivElement | null>(null)
@@ -97,13 +99,20 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
       }
       const peek = end('[data-sheet-peek]')
       const low = end('[data-sheet-low]')
+      const all = Math.round(inner!.getBoundingClientRect().bottom - sheetTop + padding)
       setMarks((m) => {
         const next = {
           peek: peek ?? (keep ? m.peek : null),
           low: low ?? (keep ? m.low : null),
+          end: keep ? Math.max(all, m.end) : all,
           top: top ? Math.round(top.bottom + top.top) : 0,
         }
-        return m.peek === next.peek && m.low === next.low && m.top === next.top ? m : next
+        return m.peek === next.peek &&
+          m.low === next.low &&
+          m.end === next.end &&
+          m.top === next.top
+          ? m
+          : next
       })
     }
 
@@ -116,7 +125,8 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
 
   const full = viewportHeight - marks.top
   const half = Math.min(Math.round(viewportHeight * 0.45), full)
-  const low = Math.min(marks.low ?? half, half)
+  // Content without a low mark (a list, or a one-line message) shows as much as fits up to half
+  const low = Math.min(marks.low ?? marks.end, half)
   const heights: Record<Snap, number> = {
     peek: Math.min(marks.peek ?? PEEK_HEIGHT, low),
     low,

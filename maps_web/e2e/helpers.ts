@@ -20,16 +20,21 @@ export async function openPlace(page: Page, text: string, name: string) {
   await expect(page.getByRole('heading', { level: 2, name })).toBeVisible()
 }
 
-/**
- * Plans a route from Flinders Street Station to Queen Victoria Market, from the place card.
- * Routes start on foot, the first travel mode.
- */
-export async function planRoute(page: Page) {
+/** Opens directions to Queen Victoria Market from its place card, with no start yet. */
+export async function directionsToMarket(page: Page) {
   await openPlace(page, 'Queen Vic', 'Queen Victoria Market')
   await page.getByRole('button', { name: 'Directions', exact: true }).last().click()
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue(
     'Queen Victoria Market',
   )
+}
+
+/**
+ * Plans a route from Flinders Street Station to Queen Victoria Market, from the place card.
+ * Routes start on foot, the first travel mode.
+ */
+export async function planRoute(page: Page) {
+  await directionsToMarket(page)
   await pickSuggestion(page, 'Start', 'Flinders', 'Flinders Street Station')
 }
 

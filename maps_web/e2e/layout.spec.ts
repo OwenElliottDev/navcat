@@ -1,4 +1,4 @@
-import { openApp, openPlace, planRoute } from './helpers'
+import { directionsToMarket, openApp, openPlace, planRoute } from './helpers'
 import { expect, test } from './mockStack'
 
 const COORDS = /^-?\d+\.\d{5}, -?\d+\.\d{5}$/
@@ -57,6 +57,43 @@ test('on wide screens the place card sits in the side panel', async ({ page, isM
   await openPlace(page, 'laneway', 'Laneway Espresso')
   await expect(page.locator('.panel__body .place-card')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Expand panel' })).toHaveCount(0)
+})
+
+test('on phones a one-line message opens a sheet just tall enough for it', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'The sheet is phone-only; wider screens show a side panel')
+  await page.route('**/api/route', (route) => route.fulfill({ status: 503 }))
+  await openApp(page)
+  await planRoute(page)
+  const message = page.locator('.sheet .error')
+  await expect(message).toBeVisible()
+  const box = (await message.boundingBox())!
+  expect(page.viewportSize()!.height - (box.y + box.height)).toBeLessThan(60)
+})
+
+test('on phones directions from a place card centre it in the open map', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'The sheet is phone-only; wider screens show a side panel')
+  await openApp(page)
+  await directionsToMarket(page)
+  await expect(page.locator('.sheet')).toHaveCount(0)
+
+  // The pin's tip, once the map has stopped moving
+  const marker = page.locator('.maplibregl-marker:not(.map-dot)')
+  const tip = async () => {
+    const box = (await marker.boundingBox())!
+    return Math.round(box.y + box.height)
+  }
+  let last = -1
+  await expect.poll(async () => last === (last = await tip())).toBe(true)
+
+  const bar = (await page.locator('.panel__top').boundingBox())!
+  const middle = (bar.y + bar.height + page.viewportSize()!.height) / 2
+  expect(Math.abs(last - middle)).toBeLessThan(30)
 })
 
 test('the map type is remembered, and topo needs terrain', async ({ page }) => {
