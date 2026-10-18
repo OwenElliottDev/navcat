@@ -560,6 +560,8 @@ export default function App() {
       }
     }
     if (mode === 'directions') {
+      // Nothing to show until both ends are set; an empty sheet would stand at half height
+      if (!from || !to) return null
       return {
         content: isTransit ? (
           <TransitCard

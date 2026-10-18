@@ -53,11 +53,15 @@ export function useCamera(overlays: Overlays) {
   return useMemo(
     () => ({
       flyTo(at: LngLat, minZoom: number) {
-        map?.flyTo({
-          center: [at.lng, at.lat],
-          zoom: Math.max(map.getZoom(), minZoom),
-          padding: paddingAround(overlays),
-        })
+        // Measures the overlays a frame later, once a sheet opened or closed by the same change
+        // is on screen
+        requestAnimationFrame(() =>
+          map?.flyTo({
+            center: [at.lng, at.lat],
+            zoom: Math.max(map.getZoom(), minZoom),
+            padding: paddingAround(overlays),
+          }),
+        )
       },
       /** `flat` also turns the map back to top-down and north-up */
       fitBounds([west, south, east, north]: Bounds, flat = false) {
