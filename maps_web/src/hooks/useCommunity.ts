@@ -11,7 +11,7 @@ export function useCommunity(place: PlaceRef | null, version = 0): CommunityStat
   return useFetch(
     key,
     (signal) => getCommunity(place!, signal),
-    () => 'Couldn\'t load reviews.',
+    () => "Couldn't load reviews.",
     version,
   )
 }
