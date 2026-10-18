@@ -1,11 +1,12 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useAccount } from '../account/AccountContext'
-import { apiErrorMessage } from '../api/http'
+import { apiErrorCode, apiErrorMessage } from '../api/http'
 import { deletePhoto, deleteReview, uploadPhoto, writeReview } from '../api/places'
 import { useFeatures } from '../features/FeaturesContext'
 import type { Photo, PlaceRef, Review } from '../types'
 import { formatDate } from '../utils/format'
 import { shrinkPhoto } from '../utils/images'
+import { Dialog } from './Dialog'
 import { PhotoViewer } from './PhotoViewer'
 import { StarInput, Stars } from './Stars'
 import './PlaceCommunity.css'
@@ -46,6 +47,7 @@ function Photos({
   const [viewing, setViewing] = useState<number | null>(null)
   const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isUnsafe, setIsUnsafe] = useState(false)
 
   async function upload(files: FileList | null) {
     if (!files?.length) return
@@ -54,7 +56,8 @@ function Photos({
     try {
       for (const file of files) await uploadPhoto(place, await shrinkPhoto(file))
     } catch (err) {
-      setError(apiErrorMessage(err, 'Couldn’t add that photo.'))
+      if (apiErrorCode(err) === 'unsafe_photo') setIsUnsafe(true)
+      else setError(apiErrorMessage(err, 'Couldn’t add that photo.'))
     } finally {
       setIsUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -106,6 +109,26 @@ function Photos({
         ))}
       </div>
       {error && <p className="error">{error}</p>}
+
+      {isUnsafe && (
+        <Dialog title="Photo not accepted" onClose={() => setIsUnsafe(false)}>
+          <div className="form">
+            <p>
+              This image has been classified as containing NSFW or NSFL content which cannot be
+              accepted for submission. Please try a different photo.
+            </p>
+            <div className="form__actions">
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => setIsUnsafe(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       {viewing !== null && (
         <PhotoViewer

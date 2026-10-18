@@ -16,3 +16,10 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   const first = Array.isArray(detail) ? detail[0]?.msg : undefined
   return typeof first === 'string' ? first.replace(/^Value error, /, '') : fallback
 }
+
+/** The backend's code for an error it wants the app to explain itself, e.g. `unsafe_photo`. */
+export function apiErrorCode(err: unknown): string | undefined {
+  if (!axios.isAxiosError(err)) return undefined
+  const code = err.response?.data?.code
+  return typeof code === 'string' ? code : undefined
+}

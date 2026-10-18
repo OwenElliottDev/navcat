@@ -17,6 +17,8 @@ class Settings:
     database_url: str
     allow_signup: bool
     features: Features
+    check_photos: bool
+    photo_safety_model: Path
     session_days: int
     cookie_secure: bool
     photos_dir: Path
@@ -30,6 +32,10 @@ settings = Settings(
         allow_place_edits=_flag("ALLOW_PLACE_EDITS", True),
         allow_reviews=_flag("ALLOW_REVIEWS", True),
         allow_photos=_flag("ALLOW_PHOTOS", True),
+    ),
+    check_photos=_flag("SAFETY_CHECK_PHOTOS", True),
+    photo_safety_model=Path(
+        os.environ.get("PHOTO_SAFETY_MODEL", "/app/models/image-safety-classifier-xs.onnx")
     ),
     session_days=int(os.environ.get("SESSION_DAYS", "30")),
     cookie_secure=_flag("COOKIE_SECURE", False),

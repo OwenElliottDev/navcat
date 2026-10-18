@@ -328,7 +328,7 @@ async def add_photo(
         raise HTTPException(413, "Photos can be up to 20 MB.")
 
     try:
-        processed = await run_in_threadpool(process_photo, data)
+        processed = await run_in_threadpool(process_photo, data, settings.check_photos)
     except ValueError:
         raise HTTPException(422, "That doesn't look like a photo.")
 

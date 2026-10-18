@@ -56,10 +56,12 @@ def photos_dir(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="session")
-def base_url(database_url, photos_dir):
+def base_url(database_url, photos_dir, safety_model):
     """Starts the backend. Migrations run on startup, so this also checks they apply to an
-    empty database."""
-    with _serve(database_url, photos_dir) as url:
+    empty database. Uploads go through the real photo safety check."""
+    with _serve(
+        database_url, photos_dir, SAFETY_CHECK_PHOTOS="true", PHOTO_SAFETY_MODEL=str(safety_model)
+    ) as url:
         yield url
 
 
@@ -90,6 +92,7 @@ def _serve(database_url: str, photos_dir: Path, **settings: str):
         "ALLOW_PLACE_EDITS": "true",
         "ALLOW_REVIEWS": "true",
         "ALLOW_PHOTOS": "true",
+        "SAFETY_CHECK_PHOTOS": "false",
         **settings,
     }
     log_path = photos_dir.parent / f"uvicorn-{port}.log"
