@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from tests.client import Client
 from tests.images import GPS_INFO, phone_photo
 
 from .conftest import CENTRE
@@ -339,3 +340,61 @@ def test_only_the_uploader_removes_a_photo(user, client, photos_dir: Path):
 
 def test_missing_photo(client):
     assert client().get("/api/photos/987654").status == 404
+
+
+# ---------- turning contributions off ----------
+
+
+def test_features_say_contributions_are_on(client):
+    assert client().get("/api/features").json() == {
+        "allowPlaceEdits": True,
+        "allowReviews": True,
+        "allowPhotos": True,
+    }
+
+
+def test_each_kind_of_contribution_can_be_turned_off(
+    user, reviews_off_url, photos_and_place_edits_off_url
+):
+    # Made while everything was on, on a place of its own so other tests can't change the
+    # counts. The session works on every server (same database).
+    c = user()
+    place = f"U/{c.post('/api/places', NEW_PLACE).json()['osmId']}"
+    c.put(f"/api/places/{place}/review", {"rating": 4})
+    photo_id = upload(c, phone_photo(300, 200), place=place).json()["id"]
+    no_reviews = Client(reviews_off_url, headers=c.headers, cookies=c.cookies)
+    no_photos_or_edits = Client(
+        photos_and_place_edits_off_url, headers=c.headers, cookies=c.cookies
+    )
+
+    assert no_reviews.get("/api/features").json() == {
+        "allowPlaceEdits": True,
+        "allowReviews": False,
+        "allowPhotos": True,
+    }
+    assert no_photos_or_edits.get("/api/features").json() == {
+        "allowPlaceEdits": False,
+        "allowReviews": True,
+        "allowPhotos": False,
+    }
+
+    # Each setting blocks only its own routes
+    assert no_reviews.put(f"/api/places/{place}/review", {"rating": 1}).status == 403
+    assert no_photos_or_edits.put(f"/api/places/{place}/review", {"rating": 5}).status == 200
+
+    assert upload(no_photos_or_edits, phone_photo(300, 200), place=place).status == 403
+    second = upload(no_reviews, phone_photo(300, 200), place=place)
+    assert second.status == 201
+
+    phone = {"tags": {"phone": "03 9000 0000"}}
+    assert no_photos_or_edits.post("/api/places", NEW_PLACE).status == 403
+    assert no_photos_or_edits.patch(f"/api/places/{place}", phone).status == 403
+    assert no_reviews.patch(f"/api/places/{place}", phone).status == 200
+
+    # What's there still shows, and people can still take down their own
+    community = no_photos_or_edits.get(f"/api/places/{place}/community").json()
+    assert [r["rating"] for r in community["reviews"]] == [5]
+    assert {p["id"] for p in community["photos"]} == {photo_id, second.json()["id"]}
+    assert no_reviews.delete(f"/api/places/{place}/review").status == 204
+    assert no_photos_or_edits.delete(f"/api/photos/{photo_id}").status == 204
+    assert no_photos_or_edits.delete(f"/api/places/{place}").status == 204

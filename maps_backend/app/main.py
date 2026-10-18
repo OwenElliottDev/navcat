@@ -3,8 +3,10 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from .config import settings
 from .db import Db, pool
 from .migrations import migrate
+from .models import Features
 from .routes import auth, browse, lanes, links, me, places, road_data
 
 
@@ -49,6 +51,11 @@ async def health(db: Db) -> dict:
         cursor = await db.execute("SELECT source, poi_count, imported_at FROM poi_import")
         pois = await cursor.fetchone()
     return {"postgres": row["postgres"], "postgis": row["postgis"], "pois": pois}
+
+
+@api.get("/features")
+async def features() -> Features:
+    return settings.features
 
 
 api.include_router(auth.router)

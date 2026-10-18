@@ -4,14 +4,17 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import { AccountProvider } from './account/AccountProvider.tsx'
 import App from './App.tsx'
+import { FeaturesProvider } from './features/FeaturesProvider.tsx'
 import { MapProvider } from './map/MapProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MapProvider>
-      <AccountProvider>
-        <App />
-      </AccountProvider>
-    </MapProvider>
+    <FeaturesProvider>
+      <MapProvider>
+        <AccountProvider>
+          <App />
+        </AccountProvider>
+      </MapProvider>
+    </FeaturesProvider>
   </StrictMode>,
 )

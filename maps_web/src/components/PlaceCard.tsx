@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useAccount } from '../account/AccountContext'
+import { useFeatures } from '../features/FeaturesContext'
 import { useCommunity } from '../hooks/useCommunity'
 import { usePlaceDetails } from '../hooks/usePlaceDetails'
 import type { End, PhotonFeature, SavedPlace, SavedPlaceKind } from '../types'
@@ -23,6 +24,7 @@ interface PlaceCardProps {
 
 export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
   const { user, savedPlaces, savePlace, removePlace, requestSignIn } = useAccount()
+  const { allowPlaceEdits } = useFeatures()
   const ref = placeRef(place)
 
   // Bumped after an edit, review or photo so the card fetches the latest
@@ -132,7 +134,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
       <HomeWork savedAs={savedAs} onToggle={toggleSaved} />
 
       {/* Details are in the backend only for imported places and places people added */}
-      {ref && details && (
+      {ref && details && allowPlaceEdits && (
         <button
           type="button"
           className="link-button edit-link"

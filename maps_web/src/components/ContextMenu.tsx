@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type ComponentProps } from 'react'
+import { useFeatures } from '../features/FeaturesContext'
 import { useCopy } from '../hooks/useCopy'
-import type { LngLat } from '../types'
+import type { Features, LngLat } from '../types'
 import { coordLabel } from '../utils/format'
 import { Icon, type IconName } from './icons'
 import './ContextMenu.css'
@@ -8,11 +9,12 @@ import './ContextMenu.css'
 export type MenuAction = 'from' | 'to' | 'what' | 'add'
 
 // Labels end in an ellipsis when the item asks for more input before it's done
-const ITEMS: { action: MenuAction; label: string; icon: IconName }[] = [
+// `needs` is the server setting an item depends on
+const ITEMS: { action: MenuAction; label: string; icon: IconName; needs?: keyof Features }[] = [
   { action: 'from', label: 'Directions from here', icon: 'start' },
   { action: 'to', label: 'Directions to here', icon: 'directions' },
   { action: 'what', label: "What's here?", icon: 'search' },
-  { action: 'add', label: 'Add a place here…', icon: 'pin' },
+  { action: 'add', label: 'Add a place here…', icon: 'pin', needs: 'allowPlaceEdits' },
 ]
 
 const EDGE_GAP = 8
@@ -30,13 +32,18 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
   const ref = useRef<HTMLUListElement>(null)
   const { copy, icon, title, message } = useCopy('coordinates')
   const coords = coordLabel(position)
+  const features = useFeatures()
+  const items = ITEMS.filter((item) => !item.needs || features[item.needs])
 
-  // Keep the menu on screen and move focus into it
+  // Keep the menu on screen (again if the server's settings arrive after it opened)
   useLayoutEffect(() => {
     const menu = ref.current!
     menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - EDGE_GAP)}px`
     menu.style.top = `${Math.min(y, window.innerHeight - menu.offsetHeight - EDGE_GAP)}px`
-    menu.querySelector('button')?.focus()
+  }, [x, y, items.length])
+
+  useLayoutEffect(() => {
+    ref.current!.querySelector('button')?.focus()
   }, [x, y])
 
   useEffect(() => {
@@ -50,7 +57,7 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
   return (
     <>
       <ul ref={ref} className="context-menu" role="menu">
-        {ITEMS.map(({ action, label, icon }) => (
+        {items.map(({ action, label, icon }) => (
           <MenuItem key={action} icon={icon} onClick={() => onSelect(action)}>
             {label}
           </MenuItem>

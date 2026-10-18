@@ -41,6 +41,9 @@ services:
     environment:
       DATABASE_URL: postgresql://maps:${MAPS_POSTGRES_PASSWORD}@maps-db/maps
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      ALLOW_PLACE_EDITS: ${ALLOW_PLACE_EDITS:-true}
+      ALLOW_REVIEWS: ${ALLOW_REVIEWS:-true}
+      ALLOW_PHOTOS: ${ALLOW_PHOTOS:-true}
       SESSION_DAYS: ${SESSION_DAYS:-30}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       PHOTOS_DIR: /data/photos

@@ -29,6 +29,8 @@ test('place card @screenshot', async ({ page, isMobile }) => {
   await openApp(page)
   await openPlace(page, 'laneway', 'Laneway Espresso')
   await expect(page.getByText('Best flat white in the lane.')).toBeVisible()
+  // Shows once the server's settings have loaded
+  await expect(page.getByRole('button', { name: '+ Add photo' })).toBeVisible()
   await shoot(panel(page, isMobile), 'place-card.png')
 })
 
