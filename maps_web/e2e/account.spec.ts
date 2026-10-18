@@ -89,6 +89,59 @@ test('writing a review adds it to the place', async ({ page, stack }) => {
   })
 })
 
+// Settings count as off until the server answers, so each test first waits for something
+// that only shows once they've loaded
+
+test('with reviews turned off, your review can be deleted but not changed', async ({
+  page,
+  stack,
+}) => {
+  stack.features = { ...stack.features, allowReviews: false }
+  stack.signIn()
+  stack.reviews[`N${CAFE_ID}`].unshift({
+    id: 3,
+    username: ACCOUNT.username,
+    rating: 2,
+    body: 'Too loud.',
+    createdAt: '2026-10-01T09:00:00+10:00',
+    updatedAt: '2026-10-01T09:00:00+10:00',
+    mine: true,
+  })
+  await openApp(page)
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  await expect(page.getByRole('button', { name: '+ Add photo' })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Edit$/ })).toBeVisible()
+  const reviews = page.getByRole('region', { name: 'Reviews' })
+  await expect(reviews.getByText('Best flat white in the lane.')).toBeVisible()
+  await expect(reviews.getByRole('button', { name: /review$/ })).toHaveText('Delete your review')
+
+  page.once('dialog', (dialog) => dialog.accept())
+  await reviews.getByRole('button', { name: 'Delete your review' }).click()
+  await expect(reviews.getByText('Too loud.')).toHaveCount(0)
+  await expect(reviews.getByRole('button')).toHaveCount(0)
+  expect(stack.requestsTo(`/api/places/N/${CAFE_ID}/review`, 'DELETE')).toHaveLength(1)
+})
+
+test('with photos and place edits turned off, places can only be reviewed', async ({
+  page,
+  stack,
+}) => {
+  stack.features = { allowPlaceEdits: false, allowReviews: true, allowPhotos: false }
+  stack.signIn()
+  await openApp(page)
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  await expect(page.getByRole('button', { name: 'Write a review' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Photos' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Edit$/ })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Clear' }).click()
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  await expect(page.getByRole('menuitem', { name: "What's here?" })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Add a place here…' })).toHaveCount(0)
+})
+
 test('signing out forgets the account’s places', async ({ page, stack }) => {
   stack.signIn()
   stack.savedPlaces = [

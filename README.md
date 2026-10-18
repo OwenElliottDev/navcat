@@ -63,6 +63,7 @@ All settings live in `.env`; `.env.example` documents each one. The main ones:
 | `TRANSIT_GTFS_URLS` | GTFS timetables for public transport |
 | `*_MEMORY` | Memory for each service and build |
 | `ALLOW_SIGNUP` | Set to `false` once you've created your account |
+| `ALLOW_PLACE_EDITS`, `ALLOW_REVIEWS`, `ALLOW_PHOTOS` | Set to `false` to stop people adding and editing places, writing reviews, or adding photos |
 | `COOKIE_SECURE` | Set to `true` when the site is served over HTTPS |
 | `MAPS_TAG` | Which release of the images to run (default `latest`) |
 

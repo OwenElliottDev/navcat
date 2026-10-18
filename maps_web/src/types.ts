@@ -141,6 +141,14 @@ export interface Itinerary {
 
 // ---------- accounts ----------
 
+/** What this server lets people do */
+export interface Features {
+  /** Adding places and correcting their details */
+  allowPlaceEdits: boolean
+  allowReviews: boolean
+  allowPhotos: boolean
+}
+
 export interface User {
   id: number
   username: string

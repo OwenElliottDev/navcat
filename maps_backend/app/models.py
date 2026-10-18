@@ -10,6 +10,14 @@ class ApiModel(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
 
+class Features(ApiModel):
+    """What this server lets people do, so the app can hide what's turned off."""
+
+    allow_place_edits: bool
+    allow_reviews: bool
+    allow_photos: bool
+
+
 class User(ApiModel):
     id: int
     username: str
