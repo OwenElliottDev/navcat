@@ -1,9 +1,16 @@
 # Nav Cat
 
-Nav Cat is a self-hosted, Google Maps–style web app that runs entirely on your own hardware. Once
-the data is downloaded, it works fully offline: no API keys and no calls to outside services.
+[![CI](https://github.com/OwenElliottDev/navcat/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OwenElliottDev/navcat/actions/workflows/ci.yml)
+[![Images](https://github.com/OwenElliottDev/navcat/actions/workflows/docker.yml/badge.svg)](https://github.com/OwenElliottDev/navcat/actions/workflows/docker.yml)
+[![Version](https://img.shields.io/github/v/tag/OwenElliottDev/navcat?sort=semver&label=version)](https://github.com/OwenElliottDev/navcat/tags)
+[![Docker pulls](https://img.shields.io/docker/pulls/owenelliottdev/navcat-web)](https://hub.docker.com/r/owenelliottdev/navcat-web)
+[![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue)](LICENSE)
 
-- **Map** with vector tiles, plus a topographic style with hill shading
+Nav Cat is a self-hosted map browsing and routing web app for desktop and mobile. It features advanced routing for walking, cycling, public transport, and driving. Walking and cycling have advanced features such as optional hill avoidance, bike type specific routing, GPX exporting, and elevation graphs. Public transport uses publicly released timetables and allows you to set target arrival and departure times.
+
+Nav Cat downloads all its required data at setup time and then runs without any external APIs, it can we run offline after setup is completed. Any searches, reviews, photos, or saved places all remain on your server.
+
+- **Map** with vector tiles, plus a topographic style with hill shading and 3D view
 - **Search** for addresses and places, and browse places nearby by category
 - **Directions** for driving, walking and several cycling styles, with elevation-aware routing
 - **Public transport** journey planning from GTFS timetables
@@ -25,9 +32,9 @@ and GTFS timetables works.
 
 - Docker with Docker Compose v2
 - Memory for Docker: by default, building the routing graph and the public transport graph uses
-  up to 8 GB each, and the running stack about 8 GB. 20 GB or more is comfortable; with less,
+  up to 8 GB each, and the running stack about 8 GB. 16 GB or more is comfortable; with less,
   updates pause public transport while the large builds run.
-- Disk space for the data. For Australia, the routing graph alone is about 8.5 GB.
+- Disk space for the data. For Australia, the data is > 10GB.
 
 ## Getting started
 
@@ -38,13 +45,10 @@ cp .env.example .env    # then set MAPS_POSTGRES_PASSWORD
 ./maps setup
 ```
 
-`./maps setup` pulls the images, downloads the map, places and timetables, then builds the map
-tiles, the routing graph and the public transport graph before starting everything. For
-Australia this takes about an hour, mostly for the routing graph. It only does what's missing,
-so it's safe to re-run.
+`./maps setup` pulls the released images, downloads the map, places and timetables, then builds the map
+tiles, the routing graph and the public transport graph before starting everything. The setup time can vary significantly with map area selection and hardware specs, it can range from minutes to hours. It only does whats missing so you can re-run it anytime.
 
-When it finishes, open http://localhost:7000. The search index downloads on first start, so
-search takes a few minutes to start working.
+When it finishes, open http://localhost:7000. The search index downloads on first start, so it address search may not be instantly operational.
 
 ## Configuration
 
@@ -92,75 +96,70 @@ services, so it's off by default. `./maps schedule off` turns it off again.
 
 ## Development
 
-`docker-compose.yml` runs the published images, which only change with a release. To run your
-checkout instead, one command builds its images, rebuilds whatever data its changes need (e.g.
-the routing graph, when the GraphHopper config has changed) and starts everything:
+`docker-compose.yml` runs the published images, which only change with a release. To run a dev build from your checkout instead, use the `dev` arg:
 
 ```
 ./maps dev
 ```
 
 Run it again after any change. `./maps dev <command>` runs any other command the same way, e.g.
-`./maps dev update routing`. On a Mac with Apple Silicon this is also much faster for the big
-builds, as the published images are built for Intel and run emulated.
+`./maps dev update routing`.
 
-A plain `./maps setup` or `./maps update` goes back to the published images, and rebuilds the
-routing graph if your checkout's routing config differs from theirs. To always use your checkout
-(including for `docker compose` itself), put the dev override in `.env` instead:
+The places import (`maps-poi-import`) only re-runs when its inputs change. To force a
+re-import, run `docker compose run --rm -e FORCE=1 maps-poi-import`. The topo terrain build
+(`maps-terrain-build`) works the same way.
 
-```
-COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
-```
+## Testing
 
-Then `docker compose up -d --build maps-web` (or any service) rebuilds just that one.
+Run the tests relevant to your change before opening a pull request. CI runs the full suite on every pull request. Frontend commands are run from `maps_web/` and backend commands from `maps_backend/`.
 
-- **Frontend** (`maps_web/`): `npm install && npm run dev` starts a live-reloading dev server
-  that proxies `/api` to the running containers.
-- **Backend** (`maps_backend/`): `uv run pytest` runs the unit tests.
-- **Routing profiles** (`docker_maps/graphhopper/`): changing profiles or encoded values requires
-  rebuilding the graph with `./maps update routing`. `./maps setup` and every `./maps update` do
-  this themselves when the image's config differs from the one the graph was built with.
-- **Places import**: `maps-poi-import` re-imports places only when its inputs change. Force a
-  re-import with `docker compose run --rm -e FORCE=1 maps-poi-import`. The topo terrain
-  (`maps-terrain-build`) works the same way.
+### Frontend unit tests
 
-### Tests
+Located in `maps_web/src/**/*.test.ts`. These cover navigation, opening hours, lane guidance, transit, and map styles. They also verify that the nginx and Vite proxy configurations stay in sync.
 
-Run the ones covering what you changed before opening a pull request; CI runs them all.
+    npm test
 
-| What | Where | Command | Needs |
-| --- | --- | --- | --- |
-| Frontend logic (navigation, opening hours, lanes, transit, map styles, nginx/Vite proxy in sync) | `maps_web/src/**/*.test.ts` | `npm test` | — |
-| The app in a browser, every service mocked | `maps_web/e2e/` | `npm run test:e2e` | — |
-| …plus screenshots, in CI's Linux browser | `maps_web/e2e/__screenshots__/` | `npm run test:e2e:docker` | Docker |
-| Backend logic | `maps_backend/tests/test_*.py` | `uv run pytest` | — |
-| Backend HTTP API on a real PostGIS | `maps_backend/tests/api/` | `sh tests/api/run.sh` | Docker |
-| A running stack, through nginx | `maps_backend/tests/smoke/` | `MAPS_URL=http://localhost:7000 uv run pytest tests/smoke` | the stack |
+### End-to-end tests
 
-- **UI tests** answer every request from `e2e/fixtures` (see `e2e/mockStack.ts`) and fail on
-  any request without a fixture or to another host. A test can check what the app sent with
-  `stack.requestsTo(...)`. When you add an API call, add its fixture.
-- **Screenshots** of the panels (the map itself is hidden) are only compared in the pinned
-  Playwright container, as fonts render differently on other systems. After an intended UI
-  change, run `npm run test:e2e:update` and review the changed images in the diff.
-  `npx playwright test --ui` is handy for debugging.
-- **API tests** start the real backend against a fresh database, so migrations are tested from
-  empty. `pois` and `turn_lanes` are fixture tables in the import's shape
-  (`tests/api/conftest.py`), so keep them in step with `pois.lua`. To use your own Postgres,
-  set `TEST_DATABASE_URL`.
-- **Smoke tests** check every service answers with real data after an update or a change to
-  the pipeline or `nginx.conf`. They default to Melbourne; for other regions set `SMOKE_FROM`,
-  `SMOKE_TO` and `SMOKE_QUERY` (see the file).
+Located in `maps_web/e2e/`. These run the app in a browser with all backend services mocked.
 
-### CI and releases
+    npm run test:e2e
 
-Every push and pull request runs lint, formatting checks, type checks, and the unit, UI
-(with screenshots) and API tests, and builds every image. Pushing a `v*` tag builds every image and publishes it to Docker Hub as `owenelliottdev/navcat-*`,
-tagged `latest`, with the version and with the commit:
+Responses are served from fixtures in `e2e/fixtures` (see `e2e/mockStack.ts`). A test fails if the app makes a request that has no matching fixture or that targets an external host. Tests can assert on outgoing requests using `stack.requestsTo(...)`. When adding a new API call, add a corresponding fixture.
 
-```
-git tag v1.0.0 && git push origin v1.0.0
-```
+For interactive debugging, use `npx playwright test --ui`.
+
+### Screenshot tests
+
+Baselines are stored in `maps_web/e2e/__screenshots__/`. Running these requires Docker.
+
+    npm run test:e2e:docker
+
+Screenshot comparisons cover the UI panels only; the map canvas is hidden. Because font rendering differs between systems, screenshots are compared only inside the pinned Playwright Docker container used by CI. After an intentional UI change, regenerate the baselines and review the updated images in the diff:
+
+    npm run test:e2e:update
+
+### Backend unit tests
+
+Located in `maps_backend/tests/test_*.py`.
+
+    uv run pytest
+
+### Backend API tests
+
+Located in `maps_backend/tests/api/`. Running these requires Docker.
+
+    sh tests/api/run.sh
+
+The API tests start the real backend against a fresh PostGIS database, so migrations are exercised from an empty schema. The `pois` and `turn_lanes` tables are fixtures that mirror the structure produced by the import (defined in `tests/api/conftest.py`). Keep them consistent with `pois.lua` when changing the import. To run against an existing Postgres instance instead, set `TEST_DATABASE_URL`.
+
+### Smoke tests
+
+Located in `maps_backend/tests/smoke/`. Running these requires a running stack.
+
+    MAPS_URL=http://localhost:7000 uv run pytest tests/smoke
+
+The smoke tests send requests through nginx and verify that every service returns real data. Run them after a data update, or after changes to the import pipeline or `nginx.conf`. They target Melbourne by default; to test another region, set `SMOKE_FROM`, `SMOKE_TO`, and `SMOKE_QUERY` (see `tests/smoke/` for details).
 
 ## Data sources and attribution
 
@@ -175,9 +174,7 @@ git tag v1.0.0 && git push origin v1.0.0
 
 ## Licence
 
-Nav Cat is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only).
-You can run, change and share it freely; if you run a modified version that other people use
-over a network, you must offer them its source code. The map data and the services it runs
+Nav Cat is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). The map data and the services it runs
 (GraphHopper, OpenTripPlanner, Photon, TileServer GL, Planetiler) keep their own licences.
 
 The `navcat-graphhopper` image contains GraphHopper (Apache-2.0), modified by
