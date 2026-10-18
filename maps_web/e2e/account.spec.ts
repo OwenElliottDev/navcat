@@ -123,6 +123,33 @@ test('with reviews turned off, your review can be deleted but not changed', asyn
   expect(stack.requestsTo(`/api/places/N/${CAFE_ID}/review`, 'DELETE')).toHaveLength(1)
 })
 
+test('a photo the safety check turns away explains why in a popup', async ({ page, stack }) => {
+  stack.signIn()
+  await page.route(`**/api/places/N/${CAFE_ID}/photos`, (route) =>
+    route.fulfill({
+      status: 422,
+      json: { detail: 'The photo was rejected by the safety check.', code: 'unsafe_photo' },
+    }),
+  )
+  await openApp(page)
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  const photos = page.getByRole('region', { name: 'Photos' })
+  await photos.locator('input[type=file]').setInputFiles({
+    name: 'photo.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+      'base64',
+    ),
+  })
+  const dialog = page.getByRole('dialog', { name: 'Photo not accepted' })
+  await expect(dialog).toContainText('classified as containing NSFW or NSFL content')
+  await dialog.getByRole('button', { name: 'OK' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(photos.getByRole('button', { name: '+ Add photo' })).toBeEnabled()
+})
+
 test('with photos and place edits turned off, places can only be reviewed', async ({
   page,
   stack,

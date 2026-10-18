@@ -5,3 +5,4 @@ maps_data/
 __pycache__/
 **/.claude/scheduled_tasks.lock
 .vscode/
+maps_backend/tests/models/

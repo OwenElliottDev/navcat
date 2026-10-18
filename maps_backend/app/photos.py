@@ -6,6 +6,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
+from . import photo_safety
 from .config import settings
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
@@ -21,6 +22,10 @@ class ProcessedPhoto:
     height: int
 
 
+class UnsafePhoto(Exception):
+    """The safety check thinks a photo isn't fit to share."""
+
+
 def _jpeg(image: Image.Image, size: int, quality: int) -> bytes:
     copy = image.copy()
     copy.thumbnail((size, size))
@@ -29,11 +34,12 @@ def _jpeg(image: Image.Image, size: int, quality: int) -> bytes:
     return out.getvalue()
 
 
-def process_photo(data: bytes) -> ProcessedPhoto:
+def process_photo(data: bytes, check_safety: bool) -> ProcessedPhoto:
     """Decodes an upload and re-encodes it as a full-size and a thumbnail JPEG.
 
     Re-encoding means only real images get stored, and drops all metadata, including the
-    GPS position phones embed in photos. Raises ValueError if it isn't an image.
+    GPS position phones embed in photos. Raises ValueError if it isn't an image, and with
+    check_safety, UnsafePhoto if it shows nudity or gore.
     """
     try:
         with Image.open(io.BytesIO(data)) as original:
@@ -41,6 +47,8 @@ def process_photo(data: bytes) -> ProcessedPhoto:
             image = ImageOps.exif_transpose(original).convert("RGB")
     except Exception as err:  # Pillow raises several kinds for bad or huge files
         raise ValueError("Not a readable image") from err
+    if check_safety and photo_safety.is_unsafe(photo_safety.classify(image)):
+        raise UnsafePhoto
 
     full = _jpeg(image, FULL_SIZE, quality=85)
     width, height = Image.open(io.BytesIO(full)).size

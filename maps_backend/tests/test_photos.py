@@ -16,7 +16,7 @@ def _rgb(image: Image.Image, xy: tuple[int, int]) -> tuple[int, ...]:
 
 
 def test_photos_are_turned_upright_and_lose_their_metadata():
-    photo = process_photo(phone_photo(2400, 1200))
+    photo = process_photo(phone_photo(2400, 1200), check_safety=False)
 
     full = Image.open(io.BytesIO(photo.full))
     assert full.format == "JPEG"
@@ -34,11 +34,11 @@ def test_photos_are_turned_upright_and_lose_their_metadata():
 
 
 def test_small_photos_are_not_enlarged():
-    photo = process_photo(phone_photo(300, 200, "PNG"))
+    photo = process_photo(phone_photo(300, 200, "PNG"), check_safety=False)
     assert (photo.width, photo.height) == (200, 300)
 
 
 @pytest.mark.parametrize("data", [b"", b"not an image", phone_photo()[:200]])
 def test_only_real_images_are_accepted(data):
     with pytest.raises(ValueError):
-        process_photo(data)
+        process_photo(data, check_safety=False)
