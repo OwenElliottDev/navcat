@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, type ComponentProps } from 'react'
 import { useFeatures } from '../features/FeaturesContext'
 import { useCopy } from '../hooks/useCopy'
+import { useShare } from '../hooks/useShare'
+import { useMap } from '../map/MapContext'
 import type { Features, LngLat } from '../types'
 import { coordLabel } from '../utils/format'
 import { Icon, type IconName } from './icons'
@@ -30,7 +32,10 @@ interface ContextMenuProps {
 
 export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuProps) {
   const ref = useRef<HTMLUListElement>(null)
-  const { copy, icon, title, message } = useCopy('coordinates')
+  const { copied, copy, icon, title, message } = useCopy('coordinates')
+  const map = useMap()
+  // Shared here rather than by the app, so the menu stays open to say when it's copied
+  const sharing = useShare()
   const coords = coordLabel(position)
   const features = useFeatures()
   const items = ITEMS.filter((item) => !item.needs || features[item.needs])
@@ -63,14 +68,25 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
           </MenuItem>
         ))}
         <MenuItem
+          icon={sharing.icon}
+          title={sharing.title}
+          onClick={() => sharing.share(position, map?.getZoom())}
+        >
+          {sharing.copied ? 'Link copied' : 'Share'}
+        </MenuItem>
+        <MenuItem
           icon={icon}
-          aria-label={`Copy coordinates ${coords}`}
+          aria-label={copied ? undefined : `Copy coordinates ${coords}`}
           title={title}
           onClick={() => copy(coords)}
         >
-          {coords}
+          {copied ? 'Coordinates copied' : coords}
         </MenuItem>
       </ul>
+      {/* One each, so each says what it last did without hiding the other */}
+      <span className="sr-only" aria-live="polite">
+        {sharing.message}
+      </span>
       <span className="sr-only" aria-live="polite">
         {message}
       </span>

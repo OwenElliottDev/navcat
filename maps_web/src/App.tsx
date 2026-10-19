@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { useAccount } from './account/AccountContext'
 import { getPlace } from './api/places'
 import { findNearbyPlace, reverseGeocode } from './api/search'
@@ -31,7 +31,9 @@ import { useStoredLook } from './hooks/useStoredLook'
 import { useTransitModes } from './hooks/useTransitModes'
 import { useTransitPlan } from './hooks/useTransitPlan'
 import { NavigationView } from './components/NavigationView'
+import { linkedView } from './linkedView'
 import { MapCanvas } from './map/MapCanvas'
+import { useMap } from './map/MapContext'
 import { MapControl } from './map/MapControl'
 import { MapDot } from './map/MapDot'
 import { MapMarker } from './map/MapMarker'
@@ -312,9 +314,10 @@ export default function App() {
 
   /* ---------- places ---------- */
 
-  function showPlace(feature: PhotonFeature) {
+  /** Opens a place's card, and moves the map to it unless `move` is false. */
+  function showPlace(feature: PhotonFeature, move = true) {
     setPlace(feature)
-    if (mode !== 'search') return
+    if (mode !== 'search' || !move) return
 
     const extent = feature.properties.extent // [minLon, maxLat, maxLon, minLat]
     if (extent) camera.fitBounds([extent[0], extent[3], extent[2], extent[1]])
@@ -353,7 +356,7 @@ export default function App() {
     whatsHereLookup.current++
   }, [place, mode, browse])
 
-  async function showWhatsHere(position: LngLat) {
+  async function showWhatsHere(position: LngLat, move = true) {
     const lookup = ++whatsHereLookup.current
     const found = await reverseGeocode(position)
     if (whatsHereLookup.current !== lookup) return
@@ -361,9 +364,16 @@ export default function App() {
       ? { ...found, geometry: { coordinates: [position.lng, position.lat] } }
       : pointPlace(position, coordLabel(position))
     setWhatsHere(feature)
-    showPlace(feature)
+    showPlace(feature, move)
   }
   const isWhatsHere = place !== null && place === whatsHere
+
+  // Opened from a link to a spot: say what's there, leaving the map where the link put it
+  const map = useMap()
+  const showLinkedSpot = useEffectEvent((at: LngLat) => showWhatsHere(at, false))
+  useEffect(() => {
+    if (map && linkedView?.marker) showLinkedSpot(linkedView.marker)
+  }, [map])
 
   /* ---------- directions ---------- */
 
