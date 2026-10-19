@@ -466,10 +466,17 @@ export function buildStyle(
   /** Needed for the topo map */
   terrain?: TerrainUrls,
   tilted = false,
+  /** Turn-by-turn shows less detail: no house numbers */
+  navigating = false,
 ): StyleSpecification {
   const palette = look.base === 'standard' || look.base === 'topo' ? null : PALETTES[look.base]
   let layers = palette ? base.layers.map((layer) => recolour(layer, palette)) : [...base.layers]
   if (look.roadLabels === 'numbers') layers = layers.map(labelRoadsWithNumbers)
+  if (navigating) {
+    layers = layers.filter(
+      (layer) => !('source-layer' in layer) || layer['source-layer'] !== 'housenumber',
+    )
+  }
   let sources = base.sources
 
   if (look.base === 'topo' && terrain) {

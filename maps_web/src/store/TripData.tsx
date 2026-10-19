@@ -8,7 +8,7 @@ import { useProfiles } from '../hooks/useProfiles'
 import { useRoute } from '../hooks/useRoute'
 import { useTransitModes } from '../hooks/useTransitModes'
 import { useTransitPlan } from '../hooks/useTransitPlan'
-import { useMoveCount } from '../map/useMoveCount'
+import { useMap } from '../map/MapContext'
 import type { RouteSegment, TransitLeg } from '../types'
 import { prepareRoute } from '../utils/navigation'
 import { itineraryToPath } from '../utils/transitNavigation'
@@ -36,12 +36,25 @@ function useKeep<K extends keyof DataSlice>(key: K, value: DataSlice[K]) {
   }, [key, value])
 }
 
-/** Fetches what the store's choices call for (routes, journeys, browse results) into the store. */
-export function useTripData() {
+/**
+ * Fetches what the store's choices call for (routes, journeys, browse results) into the store.
+ * A component of its own, so its re-renders don't re-render the rest of the app.
+ */
+export function TripData() {
   const routing = useProfiles()
   useKeep('routing', routing)
   useKeep('categories', useCategories())
-  useKeep('moveCount', useMoveCount())
+
+  // Counts finished map moves (for "Search this area") without re-rendering anything here
+  const map = useMap()
+  useEffect(() => {
+    if (!map) return
+    const onMoveEnd = () => useAppStore.setState((s) => ({ moveCount: s.moveCount + 1 }))
+    map.on('moveend', onMoveEnd)
+    return () => {
+      map.off('moveend', onMoveEnd)
+    }
+  }, [map])
 
   const { waypoints, avoid, avoidSteepHills, tripTime, excludedModes, browse } = useAppStore(
     useShallow((s) => ({
@@ -105,4 +118,5 @@ export function useTripData() {
       return routePath ? prepareRoute(routePath) : null
     }, [isTransit, itinerary, routePath]),
   )
+  return null
 }

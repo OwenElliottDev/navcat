@@ -112,7 +112,7 @@ OSM via Photon and `U`/`O` places via `/api/places/search`. Photos are re-encode
 metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
 **Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
-(what's open: place, browse, menu), `directions`, `navigation`, and `data`. `useTripData` runs
+(what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
 the fetch hooks for the store's choices and copies their results in, so components read fetched
 data from the store too; derived values are in `store/selectors.ts`. Actions move the map through
 the `camera` App puts in the store. `App.tsx` only composes `MapLayers`, `Navigation`, `Panel`

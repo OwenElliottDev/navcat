@@ -54,8 +54,8 @@ export interface ViewSlice {
   showPoi: (poi: MapPoi) => Promise<void>
   showWhatsHere: (position: LngLat) => Promise<void>
   selectResult: (poi: Poi) => void
-  browseCategory: (category: Category, moveCount: number) => void
-  searchThisArea: (moveCount: number) => void
+  browseCategory: (category: Category) => void
+  searchThisArea: () => void
   closeBrowse: () => void
   openMenu: (screen: { x: number; y: number }, position: LngLat) => void
   closeMenu: () => void
@@ -131,14 +131,15 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
     get().camera?.flyTo({ lng: poi.lng, lat: poi.lat }, 15)
   },
 
-  browseCategory(category, moveCount) {
-    const area = get().camera?.visibleArea()
+  browseCategory(category) {
+    const { camera, moveCount } = get()
+    const area = camera?.visibleArea()
     if (!area) return
     set({ place: null, browse: { category, ...area, moveCount } })
   },
 
-  searchThisArea(moveCount) {
-    const { browse, camera } = get()
+  searchThisArea() {
+    const { browse, camera, moveCount } = get()
     const area = camera?.visibleArea()
     if (browse && area) set({ browse: { ...browse, ...area, moveCount } })
   },

@@ -108,6 +108,13 @@ describe('buildStyle', () => {
     expect(order.indexOf('housenumber')).toBe(2)
   })
 
+  it('hides house numbers while navigating', () => {
+    expect(ids(buildStyle(BASE, look('standard')))).toContain('housenumber')
+    const navigating = buildStyle(BASE, look('dark', ALL_OVERLAYS), undefined, false, true)
+    expect(ids(navigating)).not.toContain('housenumber')
+    expect(ids(navigating)).toContain('road_label')
+  })
+
   it('only adds the road data source for overlays that use it', () => {
     expect(buildStyle(BASE, look('standard', ['rail'])).sources).not.toHaveProperty('road-data')
     const style = buildStyle(BASE, look('standard', ['speedLimits']))

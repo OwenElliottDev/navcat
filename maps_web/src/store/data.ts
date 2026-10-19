@@ -7,7 +7,7 @@ import type { Category, RouteSegment } from '../types'
 import type { NavRoute } from '../utils/navigation'
 import type { Store } from '.'
 
-/** What's been fetched for the other slices' choices; kept up to date by useTripData. */
+/** What's been fetched for the other slices' choices; kept up to date by TripData. */
 export interface DataSlice {
   routing: Profiles
   categories: Category[]

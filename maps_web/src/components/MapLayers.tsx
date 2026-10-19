@@ -34,12 +34,13 @@ export function MapLayers() {
     )
   const { selectResult, showPoi, openMenu, closeMenu, setWaypointAt, searchThisArea } =
     useAppStore.getState()
-  const moveCount = useAppStore((s) => s.moveCount)
   const isNavigating = useAppStore(selectIsNavigating)
   const isBrowsing = mode === 'search' && browse !== null
   const pois = useAppStore(selectPois)
   const isWhatsHere = place !== null && place === whatsHere
-  const hasMovedSinceBrowse = browse !== null && moveCount > browse.moveCount
+  const hasMovedSinceBrowse = useAppStore(
+    (s) => s.browse !== null && s.moveCount > s.browse.moveCount,
+  )
   const selectedKey = place?.properties.osm_type
     ? `${place.properties.osm_type}${place.properties.osm_id}`
     : null
@@ -96,9 +97,7 @@ export function MapLayers() {
         </MapDot>
       )}
 
-      {isBrowsing && hasMovedSinceBrowse && (
-        <SearchThisArea onClick={() => searchThisArea(moveCount)} />
-      )}
+      {isBrowsing && hasMovedSinceBrowse && <SearchThisArea onClick={searchThisArea} />}
     </>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Marker } from 'maplibre-gl'
 import type { LngLat } from '../types'
+import { along, glide, turn } from './glide'
 import { useMap } from './MapContext'
 import './UserLocation.css'
 
@@ -27,8 +28,15 @@ export function UserLocation({ at, heading }: { at: LngLat; heading: number }) {
     }
   }, [map, marker])
 
+  // Glides to each new fix in step with the follow camera, rather than jumping
   useEffect(() => {
-    marker.setLngLat([at.lng, at.lat]).setRotation(heading)
+    const from = marker.getLngLat()
+    const fromHeading = marker.getRotation()
+    return glide((t) =>
+      marker
+        .setLngLat([along(from.lng, at.lng, t), along(from.lat, at.lat, t)])
+        .setRotation(turn(fromHeading, heading, t)),
+    )
   }, [marker, at.lng, at.lat, heading])
 
   return null

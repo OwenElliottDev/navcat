@@ -13,7 +13,8 @@ import { useIsTilted } from './map/useIsTilted'
 import { useMapLook } from './map/useMapLook'
 import { useTerrainInfo } from './map/useTerrainInfo'
 import { useAppStore } from './store'
-import { useTripData } from './store/useTripData'
+import { selectIsNavigating } from './store/selectors'
+import { TripData } from './store/TripData'
 import './App.css'
 
 export default function App() {
@@ -31,12 +32,12 @@ export default function App() {
   const [look, setLook] = useStoredLook()
   const terrain = useTerrainInfo()
   const isTilted = useIsTilted()
-  useMapLook(look, terrain, isTilted)
-
-  useTripData()
+  const isNavigating = useAppStore(selectIsNavigating)
+  useMapLook(look, terrain, isTilted, isNavigating)
 
   return (
     <>
+      <TripData />
       <MapCanvas />
       <MapControl position="top-right">
         <LayerPicker look={look} onChange={setLook} hasTerrain={terrain !== null} />

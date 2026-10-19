@@ -146,7 +146,8 @@ describe('browse', () => {
   it('searches the visible area, closing any place', () => {
     useAppStore.setState({ place: pointPlace(melbourne, 'Somewhere') })
     const category = { id: 'cafe', label: 'Cafes', words: [], osmValues: [] }
-    store().browseCategory(category, 3)
+    useAppStore.setState({ moveCount: 3 })
+    store().browseCategory(category)
     expect(store().place).toBeNull()
     expect(store().browse).toMatchObject({ category, near: melbourne, moveCount: 3 })
   })

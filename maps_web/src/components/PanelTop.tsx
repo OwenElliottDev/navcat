@@ -21,7 +21,6 @@ export function PanelTop() {
     place,
     browse,
     categories,
-    moveCount,
     waypoints,
     routing,
     locationProblem,
@@ -36,7 +35,6 @@ export function PanelTop() {
       place: s.place,
       browse: s.browse,
       categories: s.categories,
-      moveCount: s.moveCount,
       waypoints: s.waypoints,
       routing: s.routing,
       locationProblem: s.locationProblem,
@@ -55,7 +53,7 @@ export function PanelTop() {
 
   function browseCategory(category: Category) {
     account.addRecent({ query: category.label, category: category.id })
-    actions.browseCategory(category, moveCount)
+    actions.browseCategory(category)
   }
 
   /** A place picked from the search box. */
