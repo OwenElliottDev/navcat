@@ -1,10 +1,21 @@
-from fastapi import APIRouter, HTTPException
+from dataclasses import asdict
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
+from fastapi.concurrency import run_in_threadpool
 from pydantic import Field
 
+from .. import link_preview
+from ..link_preview import LinkedView
 from ..models import ApiModel
-from ..short_link import decode_osm_shortlink, encode_osm_shortlink
+from ..short_link import encode_osm_shortlink
+from ..upstream import Unavailable
 
 router = APIRouter(prefix="/links", tags=["links"])
+
+# "@" is the legacy spelling of "~"
+SHORTLINK = r"^[A-Za-z0-9_~@]{1,10}-{0,2}$"
+TOO_SHORT = "That shortlink is too short."
 
 
 class OSMShortlinkEncode(ApiModel):
@@ -17,8 +28,7 @@ class OSMShortlinkEncode(ApiModel):
 
 
 class OSMShortlinkDecode(ApiModel):
-    # "@" is the legacy spelling of "~"
-    shortlink: str = Field(max_length=12, pattern=r"^[A-Za-z0-9_~@]{1,10}-{0,2}$")
+    shortlink: str = Field(max_length=12, pattern=SHORTLINK)
 
 
 @router.post("/encode_osm_shortlink")
@@ -30,7 +40,72 @@ async def encode_shortlink(body: OSMShortlinkEncode) -> OSMShortlinkDecode:
 @router.post("/decode_osm_shortlink")
 async def decode_shortlink(body: OSMShortlinkDecode) -> OSMShortlinkEncode:
     """The map view an OSM shortlink code points at."""
-    long, lat, zoom = decode_osm_shortlink(body.shortlink)
-    if zoom < 0:
-        raise HTTPException(400, "That shortlink is too short.")
-    return OSMShortlinkEncode(long=long, lat=lat, zoom=zoom)
+    view = link_preview.decode(body.shortlink, marked=False)
+    if view is None:
+        raise HTTPException(400, TOO_SHORT)
+    return OSMShortlinkEncode(long=view.long, lat=view.lat, zoom=view.zoom)
+
+
+# Where a /go/<code> link points and what's there, for link previews and other apps. ?m marks
+# the spot, as in OSM's links.
+
+
+def _view(request: Request, code: Annotated[str, Path(pattern=SHORTLINK)]) -> LinkedView:
+    view = link_preview.decode(code, marked="m" in request.query_params)
+    if view is None:
+        raise HTTPException(404, TOO_SHORT)
+    return view
+
+
+LinkView = Annotated[LinkedView, Depends(_view)]
+
+
+class ResolvedLink(OSMShortlinkEncode):
+    marked: bool
+    title: str
+    """What's at the spot (or, unmarked, the area the view shows)."""
+    detail: str
+
+
+async def _describe(view: LinkedView) -> link_preview.Description:
+    try:
+        place = await run_in_threadpool(link_preview.reverse_geocode, view)
+    except Unavailable:
+        place = None  # Photon down: described by its coordinates
+    return link_preview.describe(view, place)
+
+
+@router.get("/resolve/{code}")
+async def resolve(view: LinkView) -> ResolvedLink:
+    """Where a /go/<code> link points, and what's there."""
+    description = await _describe(view)
+    return ResolvedLink(**asdict(view), **asdict(description))
+
+
+@router.get("/meta/{code}")
+async def meta(request: Request, code: str, view: LinkView) -> Response:
+    """OpenGraph tags for the page at /go/<code>, which nginx includes in it for link previews.
+
+    Links point back at the address the page was asked for (Host and X-Forwarded-Proto)."""
+    description = await _describe(view)
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+    origin = f"{scheme}://{request.headers.get('host', request.url.netloc)}"
+    mark = "?m" if view.marked else ""
+    html = link_preview.meta_tags(
+        description,
+        url=f"{origin}/go/{code}{mark}",
+        image_url=f"{origin}/api/links/preview/{code}.jpg{mark}",
+    )
+    return Response(html, media_type="text/html")
+
+
+@router.get("/preview/{code}.jpg")
+async def preview(view: LinkView) -> Response:
+    """A picture of the map at /go/<code>, pinned for ?m, for link previews."""
+    try:
+        image = await run_in_threadpool(link_preview.render_image, view)
+    except Unavailable:
+        raise HTTPException(503, "TileServer isn't available.")
+    return Response(
+        image, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"}
+    )

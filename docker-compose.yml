@@ -49,6 +49,8 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       PHOTOS_DIR: /data/photos
       GRAPHHOPPER_URL: http://maps-graphhopper:8989 # road data for map overlays
+      PHOTON_URL: http://maps-photon:2322 # naming shared links' spots for link previews
+      TILESERVER_URL: http://maps-tileserver:8080 # shared links' preview images
     volumes:
       - ${MAPS_DATA_DIR:-./maps_data}/photos:/data/photos # people's uploaded place photos
     depends_on:

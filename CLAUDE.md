@@ -82,6 +82,9 @@ bump `.github/workflows/ci.yml`'s image with it).
 - any other `/api/...` → `maps_backend`
 - `/styles|data|fonts/` → TileServer (Host / X-Forwarded-Proto passed so its URLs point back through the proxy)
 - `/terrain/...` → static tiles from `maps_data/terrain`, served by the web container's nginx
+- `/go/<code>` (shared links) → the app, with OpenGraph tags from the backend's
+  `/api/links/meta/<code>` put into `index.html` by an nginx SSI include; preview images
+  (`/api/links/preview/`) are rendered by the backend from TileServer and nginx-cached
 
 nginx resolves upstreams per request (proxying to variables), so the site still runs when a
 service (e.g. OTP, paused during an update) is down. Only port 7000 is public; other services bind to 127.0.0.1 for

@@ -45,3 +45,47 @@ def test_decode_rejects_bad_shortlinks(client, shortlink):
 
 def test_decode_rejects_too_short_shortlinks(client):
     assert client().post("/api/links/decode_osm_shortlink", {"shortlink": "AA"}).status == 400
+
+
+# Link previews. These tests' backend has no Photon or TileServer, so spots are described by
+# their coordinates and there's no image.
+CODE = "uG4HYp~Z"  # Melbourne, zoom 16
+
+
+def test_resolve_marked_link(client):
+    response = client().get(f"/api/links/resolve/{CODE}?m")
+    assert response.status == 200, response.body
+    resolved = response.json()
+    assert (resolved["zoom"], resolved["marked"]) == (16, True)
+    assert resolved["long"] == pytest.approx(144.96, abs=0.01)
+    assert resolved["lat"] == pytest.approx(-37.81, abs=0.01)
+    assert resolved["detail"] == "Shared location"
+
+
+def test_resolve_rejects_bad_links(client):
+    assert client().get("/api/links/resolve/abc-def").status == 422
+    assert client().get("/api/links/resolve/AA").status == 404
+
+
+def test_meta_tags_point_back_at_the_page(client):
+    response = client().get(
+        f"/api/links/meta/{CODE}?m",
+        headers={"Host": "maps.example", "X-Forwarded-Proto": "https"},
+    )
+    assert response.status == 200, response.body
+    assert response.header("content-type").startswith("text/html")
+    tags = response.body.decode()
+    assert f'<meta property="og:url" content="https://maps.example/go/{CODE}?m" />' in tags
+    image = f"https://maps.example/api/links/preview/{CODE}.jpg?m"
+    assert f'<meta property="og:image" content="{image}" />' in tags
+    assert '<meta property="og:description" content="Shared location" />' in tags
+
+
+def test_unmarked_meta_tags(client):
+    tags = client().get(f"/api/links/meta/{CODE}").body.decode()
+    assert '<meta property="og:description" content="Shared map" />' in tags
+    assert "?m" not in tags
+
+
+def test_preview_image_needs_tileserver(client):
+    assert client().get(f"/api/links/preview/{CODE}.jpg?m").status == 503
