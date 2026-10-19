@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PhotonFeature, PoiDetails } from '../types'
+import placeNames from './placeNames.json'
 import { describePlace, isSamePlace, placeRef, poiToPlace, toSnapshot, withDetails } from './places'
 
 const feature = (properties: PhotonFeature['properties']): PhotonFeature => ({
@@ -55,6 +56,11 @@ describe('describePlace', () => {
       kind: 'City',
     })
     expect(describePlace(feature({})).name).toBe('Unnamed place')
+  })
+
+  // Shared with the backend, which names shared links' spots the same way (link_preview.py)
+  it.each(placeNames)('names $name', ({ properties, name, address }) => {
+    expect(describePlace(feature(properties))).toMatchObject({ name, address })
   })
 })
 

@@ -61,8 +61,11 @@ def reverse_geocode(view: LinkedView) -> dict | None:
     params = {"lat": view.lat, "lon": view.long, "limit": 1}
     # Short: the app's page waits on this when a link opens
     body = upstream.get(f"{settings.photon_url}/reverse?{urlencode(params)}", timeout=2)
-    features = json.loads(body).get("features") or []
-    return features[0]["properties"] if features else None
+    try:
+        features = json.loads(body)["features"]
+        return features[0]["properties"] if features else None
+    except (ValueError, KeyError, IndexError, TypeError) as err:
+        raise upstream.Unavailable(f"Photon's answer didn't make sense: {err}") from err
 
 
 def _join(*parts: str | None) -> str:
@@ -76,10 +79,9 @@ def _join(*parts: str | None) -> str:
 def describe(view: LinkedView, place: dict | None) -> Description:
     """A title and a line of detail for a view, from what Photon found there."""
     coordinates = f"{view.lat:.5f}, {view.long:.5f}"
-    if not place:
+    if place is None:
         return Description(coordinates, "Shared location" if view.marked else "Shared map")
 
-    area = place.get("district") or place.get("city") or place.get("county")
     if not view.marked:
         # Named by the area the view shows (smaller the closer in), from the nearest address
         first = 0 if view.zoom >= 14 else 1 if view.zoom >= 11 else 2 if view.zoom >= 8 else 4
@@ -88,14 +90,17 @@ def describe(view: LinkedView, place: dict | None) -> Description:
             name, _join(*(place.get(key) for key in AREAS[4:] if place.get(key) != name))
         )
 
-    street = place.get("street")
-    if street and place.get("housenumber"):
-        street = f"{place['housenumber']} {street}"
-    if place.get("name"):
-        return Description(place["name"], _join(street, area, place.get("state")))
-    if street:
-        return Description(street, _join(place.get("locality"), area, place.get("state")))
-    return Description(coordinates, _join(area, place.get("state"), place.get("country")))
+    # As the app names a place (describePlace in maps_web/src/utils/places.ts)
+    street = " ".join(p for p in (place.get("housenumber"), place.get("street")) if p)
+    name = place.get("name") or street or place.get("city") or place.get("state")
+    address = _join(
+        street if place.get("name") else None,
+        place.get("district") or place.get("locality"),
+        place.get("city"),
+        place.get("state"),
+        place.get("postcode"),
+    )
+    return Description(name or "Unnamed place", address)
 
 
 def meta_tags(description: Description, url: str, image_url: str) -> str:

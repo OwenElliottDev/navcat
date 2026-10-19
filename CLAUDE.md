@@ -97,7 +97,10 @@ order at startup (`migrations.py`, tracked in `schema_migrations`) — add a new
 edit an applied one. A middleware rejects POST/PUT/PATCH unless the body is JSON or an image (CSRF
 protection alongside SameSite cookies). Settings come from env vars in `config.py`.
 `road_data.py` fetches GraphHopper's vector tiles and slims them to speed limit / cycleway /
-bike-route attributes for map overlays.
+bike-route attributes for map overlays. Requests to the other services go through `upstream.get`.
+The whole API is public, and some routes are there for other apps and scripts rather than the UI
+(e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not
+a reason to remove them.
 
 **Places & POIs.** The `pois` and `turn_lanes` tables are not created by migrations: the
 `maps-poi-import` job (`docker_maps/db/import-pois.sh`) builds them, swapping them in atomically and

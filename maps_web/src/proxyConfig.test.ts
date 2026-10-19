@@ -87,7 +87,7 @@ const SAMPLE_PATHS = [
   '/api/me',
   '/api/browse/categories',
   '/api/places/N/123/community',
-  '/api/links/preview/uG4HYp~Z.png',
+  '/api/links/preview/uG4HYp~Z.jpg',
   '/styles/basic-preview/style.json',
   '/data/v3.json',
   '/fonts/Noto Sans Regular/0-255.pbf',

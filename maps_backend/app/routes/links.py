@@ -67,18 +67,19 @@ class ResolvedLink(OSMShortlinkEncode):
     detail: str
 
 
-async def _describe(view: LinkedView) -> link_preview.Description:
+async def _describe(view: LinkedView) -> tuple[link_preview.Description, bool]:
+    """The view's description, and whether Photon answered (if not, it's by coordinates)."""
     try:
         place = await run_in_threadpool(link_preview.reverse_geocode, view)
     except Unavailable:
-        place = None  # Photon down: described by its coordinates
-    return link_preview.describe(view, place)
+        return link_preview.describe(view, None), False
+    return link_preview.describe(view, place), True
 
 
 @router.get("/resolve/{code}")
 async def resolve(view: LinkView) -> ResolvedLink:
     """Where a /go/<code> link points, and what's there."""
-    description = await _describe(view)
+    description, _ = await _describe(view)
     return ResolvedLink(**asdict(view), **asdict(description))
 
 
@@ -87,7 +88,7 @@ async def meta(request: Request, code: str, view: LinkView) -> Response:
     """OpenGraph tags for the page at /go/<code>, which nginx includes in it for link previews.
 
     Links point back at the address the page was asked for (Host and X-Forwarded-Proto)."""
-    description = await _describe(view)
+    description, answered = await _describe(view)
     scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
     origin = f"{scheme}://{request.headers.get('host', request.url.netloc)}"
     mark = "?m" if view.marked else ""
@@ -96,7 +97,9 @@ async def meta(request: Request, code: str, view: LinkView) -> Response:
         url=f"{origin}/go/{code}{mark}",
         image_url=f"{origin}/api/links/preview/{code}.jpg{mark}",
     )
-    return Response(html, media_type="text/html")
+    # Not kept if Photon was down (e.g. updating), so the link is named once it's back
+    headers = {} if answered else {"Cache-Control": "no-store"}
+    return Response(html, media_type="text/html", headers=headers)
 
 
 @router.get("/preview/{code}.jpg")

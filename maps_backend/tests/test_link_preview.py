@@ -1,7 +1,11 @@
 """Describing shared links for their previews."""
 
+import json
+from pathlib import Path
+
 import pytest
 
+from app import link_preview, upstream
 from app.link_preview import Description, LinkedView, decode, describe, meta_tags
 from app.short_link import encode_osm_shortlink
 
@@ -28,14 +32,15 @@ def test_decode():
     assert decode("AA", marked=False) is None
 
 
-def test_marked_spot_is_named_by_whats_there():
-    assert describe(view(16), HOUSE) == Description(
-        "260 Elizabeth Street", "Greek Precinct, Melbourne, Victoria"
-    )
-    cafe = {**HOUSE, "name": "Pellegrini's"}
-    assert describe(view(16), cafe) == Description(
-        "Pellegrini's", "260 Elizabeth Street, Melbourne, Victoria"
-    )
+# The app's own place names (describePlace), which a marked spot's preview matches
+PLACE_NAMES = json.loads(
+    (Path(__file__).parents[2] / "maps_web/src/utils/placeNames.json").read_text()
+)
+
+
+@pytest.mark.parametrize("case", PLACE_NAMES, ids=lambda case: case["name"])
+def test_marked_spot_is_named_as_the_app_names_it(case):
+    assert describe(view(16), case["properties"]) == Description(case["name"], case["address"])
 
 
 @pytest.mark.parametrize(
@@ -62,3 +67,10 @@ def test_meta_tags_are_escaped():
     assert '<meta property="og:title" content="Bob&#x27;s &quot;&lt;Bar&gt;&quot;" />' in tags
     assert '<meta property="og:description" content="A &amp; B" />' in tags
     assert "<Bar>" not in tags
+
+
+@pytest.mark.parametrize("body", [b"<html>starting</html>", b"{}", b'{"features": [{}]}'])
+def test_photon_answering_nonsense_counts_as_down(monkeypatch, body):
+    monkeypatch.setattr(upstream, "get", lambda url, timeout: body)
+    with pytest.raises(upstream.Unavailable):
+        link_preview.reverse_geocode(view(16))

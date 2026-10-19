@@ -1,0 +1,41 @@
+[
+  {
+    "properties": {
+      "name": "Cafe Kure",
+      "housenumber": "12",
+      "street": "Smith St",
+      "district": "Fitzroy",
+      "city": "Melbourne",
+      "state": "Victoria",
+      "postcode": "3065"
+    },
+    "name": "Cafe Kure",
+    "address": "12 Smith St, Fitzroy, Melbourne, Victoria, 3065"
+  },
+  {
+    "properties": { "housenumber": "5", "street": "High St", "city": "Kew" },
+    "name": "5 High St",
+    "address": "Kew"
+  },
+  {
+    "properties": {
+      "street": "Swanston St",
+      "locality": "Carlton",
+      "city": "Melbourne",
+      "state": "Victoria"
+    },
+    "name": "Swanston St",
+    "address": "Carlton, Melbourne, Victoria"
+  },
+  {
+    "properties": { "district": "Melbourne", "city": "Melbourne", "state": "Victoria" },
+    "name": "Melbourne",
+    "address": "Melbourne, Victoria"
+  },
+  {
+    "properties": { "name": "Ballarat", "state": "Victoria" },
+    "name": "Ballarat",
+    "address": "Victoria"
+  },
+  { "properties": {}, "name": "Unnamed place", "address": "" }
+]

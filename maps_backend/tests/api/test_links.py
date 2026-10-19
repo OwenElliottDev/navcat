@@ -79,6 +79,8 @@ def test_meta_tags_point_back_at_the_page(client):
     image = f"https://maps.example/api/links/preview/{CODE}.jpg?m"
     assert f'<meta property="og:image" content="{image}" />' in tags
     assert '<meta property="og:description" content="Shared location" />' in tags
+    # Photon is down, so this fallback mustn't be cached in place of the spot's name
+    assert response.header("cache-control") == "no-store"
 
 
 def test_unmarked_meta_tags(client):
