@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { apiErrorMessage } from '../api/http'
 import { addPlace, editPlace } from '../api/places'
-import { useCategories } from '../hooks/useCategories'
+import { useAppStore } from '../store'
 import type { LngLat, PlaceRef, PoiDetails } from '../types'
 import { humanize } from '../utils/format'
 import { parseOpeningHours } from '../utils/openingHours'
@@ -46,7 +46,7 @@ interface PlaceEditorProps {
 
 /** Corrects a place's details, or adds a place the map doesn't have. */
 export function PlaceEditor({ place, position, initial, onSaved, onClose }: PlaceEditorProps) {
-  const categories = useCategories()
+  const categories = useAppStore((s) => s.categories)
   const [draft, setDraft] = useState<PlaceDraft>(() => ({
     ...initial,
     tags: Object.fromEntries(ALL_TAGS.map((tag) => [tag, initial.tags[tag] ?? ''])),

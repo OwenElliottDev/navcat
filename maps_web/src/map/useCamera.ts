@@ -47,6 +47,8 @@ function paddingAround({ panel, top, sheet }: Overlays): Padding {
   })
 }
 
+export type Camera = ReturnType<typeof useCamera>
+
 export function useCamera(overlays: Overlays) {
   const map = useMap()
 

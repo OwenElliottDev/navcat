@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { MapLibreEvent } from 'maplibre-gl'
+import { useAppStore } from '../store'
 import type { LngLat } from '../types'
 import { useMap } from './MapContext'
 
@@ -8,7 +9,7 @@ const ZOOM = { walk: 17.5, ride: 17, drive: 16.5, transit: 16.5 }
 /**
  * Keeps the map on you while navigating: tilted, turned to face the way you're going, with
  * you low on the screen so more of the road ahead shows. Dragging the map stops following
- * until `recentre` is called.
+ * until the store's `recentre` is called.
  */
 export function useFollowCamera(
   active: boolean,
@@ -18,13 +19,14 @@ export function useFollowCamera(
   is3d: boolean,
 ) {
   const map = useMap()
-  const [isFollowing, setIsFollowing] = useState(true)
+  const isFollowing = useAppStore((s) => s.isFollowing)
+  const stopFollowing = useAppStore((s) => s.stopFollowing)
 
   // A drag or rotate by the user (not by us) stops following
   useEffect(() => {
     if (!map || !active) return
     const stop = (e: MapLibreEvent & { originalEvent?: Event }) => {
-      if (e.originalEvent) setIsFollowing(false)
+      if (e.originalEvent) stopFollowing()
     }
     map.on('dragstart', stop)
     map.on('rotatestart', stop)
@@ -32,7 +34,7 @@ export function useFollowCamera(
       map.off('dragstart', stop)
       map.off('rotatestart', stop)
     }
-  }, [map, active])
+  }, [map, active, stopFollowing])
 
   useEffect(() => {
     if (!map || !active || !at || !isFollowing) return
@@ -54,6 +56,4 @@ export function useFollowCamera(
     if (map.getPitch() !== 0 || map.getBearing() !== 0)
       map.easeTo({ pitch: 0, bearing: 0, duration: 600 })
   }, [map, active])
-
-  return { isFollowing, recentre: () => setIsFollowing(true) }
 }
