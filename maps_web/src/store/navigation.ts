@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import { requestCompass } from '../hooks/useCompass'
 import { LOCATION_NEEDS_HTTPS } from '../utils/location'
 import { loadMuted, say, storeMuted } from '../utils/voice'
 import { selectProfile } from './selectors'
@@ -41,6 +42,7 @@ export const createNavigationSlice: StateCreator<Store, [], [], NavigationSlice>
     // Speaking during the tap lets mobile browsers allow speech for the rest of the trip
     const first = get().navRoute?.path.instructions[0]
     if (first) get().speak(first.text)
+    requestCompass()
     set({
       locationProblem: null,
       menu: null,

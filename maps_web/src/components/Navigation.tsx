@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { memo, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useLanes } from '../hooks/useLanes'
-import { useNavigation } from '../hooks/useNavigation'
+import { useNavigation, type NavigationState, type Travel } from '../hooks/useNavigation'
+import { useNavigationHeading } from '../hooks/useNavigationHeading'
 import { useWakeLock } from '../hooks/useWakeLock'
 import { UserLocation } from '../map/UserLocation'
 import { useFollowCamera } from '../map/useFollowCamera'
@@ -13,7 +14,7 @@ import {
   selectItinerary,
   selectTravel,
 } from '../store/selectors'
-import { bearingBetween, pointAlong } from '../utils/navigation'
+import type { NavRoute } from '../utils/navigation'
 import { NavigationView } from './NavigationView'
 
 /**
@@ -51,42 +52,64 @@ export function Navigation() {
     onOffRoute: rerouteFrom,
   })
 
-  // Show yourself on the route when close to it (steadier than raw GPS), else where GPS says
-  const { fix, progress } = navigation
-  const isOnRoute = progress !== null && progress.offRoute < 30
-  const youAt = isOnRoute ? progress.snapped : (fix?.at ?? null)
-  // Face down the route: towards a point a little ahead (steadier than the GPS compass, and
-  // it starts turning just before a corner). Off the route, use the compass if there is one
-  const ahead = isOnRoute && navRoute ? pointAlong(navRoute, progress.along + 40) : null
-  const heading = ahead
-    ? bearingBetween(progress!.snapped, ahead)
-    : (fix?.heading ?? progress?.bearing ?? 0)
-  useFollowCamera(isNavigating, youAt, heading, travel, isNavigation3d)
-
   // Lets CSS make room for the navigation screen (see App.css)
   useEffect(() => {
     document.documentElement.classList.toggle('is-navigating', isNavigating)
   }, [isNavigating])
 
-  if (!isNavigating) return null
   return (
     <>
-      {youAt && <UserLocation at={youAt} heading={heading} />}
-      <NavigationView
-        guidance={navigation.guidance}
-        arrivesAt={isTransit ? itinerary?.end : undefined}
-        lanes={navigation.guidance ? (lanes.get(navigation.guidance.nextIndex) ?? null) : null}
-        status={navigation.error}
-        isRerouting={isRerouting}
-        isSimulated={SIMULATE}
-        isMuted={isVoiceMuted}
-        onToggleMute={toggleVoiceMuted}
-        isFollowing={isFollowing}
-        onRecentre={recentre}
+      <YouOnMap
+        navigation={navigation}
+        route={navRoute}
+        travel={travel}
+        isNavigating={isNavigating}
         is3d={isNavigation3d}
-        onToggle3d={toggleNavigation3d}
-        onEnd={endNavigation}
       />
+      {isNavigating && (
+        <NavigationView
+          guidance={navigation.guidance}
+          arrivesAt={isTransit ? itinerary?.end : undefined}
+          lanes={navigation.guidance ? (lanes.get(navigation.guidance.nextIndex) ?? null) : null}
+          status={navigation.error}
+          isRerouting={isRerouting}
+          isSimulated={SIMULATE}
+          isMuted={isVoiceMuted}
+          onToggleMute={toggleVoiceMuted}
+          isFollowing={isFollowing}
+          onRecentre={recentre}
+          is3d={isNavigation3d}
+          onToggle3d={toggleNavigation3d}
+          onEnd={endNavigation}
+        />
+      )}
     </>
   )
 }
+
+/**
+ * Where you are and which way you face, with the map following. Its own component, so compass
+ * readings only re-render this.
+ */
+const YouOnMap = memo(function YouOnMap({
+  navigation,
+  route,
+  travel,
+  isNavigating,
+  is3d,
+}: {
+  navigation: NavigationState
+  route: NavRoute | null
+  travel: Travel
+  isNavigating: boolean
+  is3d: boolean
+}) {
+  // Show yourself on the route when close to it (steadier than raw GPS), else where GPS says
+  const { fix, progress } = navigation
+  const isOnRoute = progress !== null && progress.offRoute < 30
+  const youAt = isOnRoute ? progress.snapped : (fix?.at ?? null)
+  const heading = useNavigationHeading(navigation, route, isOnRoute, isNavigating && !SIMULATE)
+  useFollowCamera(isNavigating, youAt, heading.camera, travel, is3d)
+
+  return isNavigating && youAt ? <UserLocation at={youAt} heading={heading.marker} /> : null
+})
