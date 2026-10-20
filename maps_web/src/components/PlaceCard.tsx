@@ -2,10 +2,18 @@ import { useState, type ReactNode } from 'react'
 import { useAccount } from '../account/AccountContext'
 import { useFeatures } from '../features/FeaturesContext'
 import { useCommunity } from '../hooks/useCommunity'
+import { useShare } from '../hooks/useShare'
 import { usePlaceDetails } from '../hooks/usePlaceDetails'
 import type { End, PhotonFeature, SavedPlace, SavedPlaceKind } from '../types'
 import { humanize } from '../utils/format'
-import { describePlace, isSamePlace, placeRef, toSnapshot, withDetails } from '../utils/places'
+import {
+  describePlace,
+  isSamePlace,
+  placePosition,
+  placeRef,
+  toSnapshot,
+  withDetails,
+} from '../utils/places'
 import { ActionButton } from './ActionButton'
 import { CopyButton } from './CopyButton'
 import { Icon } from './icons'
@@ -33,6 +41,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
   const details = usePlaceDetails(ref, detailsVersion)
   const community = useCommunity(ref, communityVersion)
   const [isEditing, setIsEditing] = useState(false)
+  const sharing = useShare()
 
   // Search results carry few details; show the full set, with people's corrections
   const shown = withDetails(place, details)
@@ -99,7 +108,15 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
           pressed={Boolean(savedAs('favourite'))}
           onClick={() => toggleSaved('favourite', snapshot.name)}
         />
+        <ActionButton
+          icon={sharing.icon}
+          label={sharing.copied ? 'Copied' : 'Share'}
+          onClick={() => sharing.share(placePosition(place))}
+        />
       </div>
+      <span className="sr-only" aria-live="polite">
+        {sharing.message}
+      </span>
 
       {(address || hours || phone || safeWebsite) && (
         <dl className="place-details">

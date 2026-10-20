@@ -9,11 +9,9 @@ so each tile is cut down to the roads that have something to show, with plain va
     bike_route: "local"   part of a signed cycle route (local, regional, national...)
 """
 
-import io
-
 import mapbox_vector_tile
-import pycurl
 
+from . import upstream
 from .config import settings
 
 LAYER = "roads"
@@ -23,27 +21,9 @@ TILE_OPTIONS = {"y_coord_down": True}  # keep coordinates exactly as GraphHopper
 CYCLEWAYS = ["track", "lane", "shoulder", "shared_lane"]
 
 
-class GraphHopperUnavailable(Exception):
-    """GraphHopper isn't answering, e.g. still importing."""
-
-
 def fetch_tile(z: int, x: int, y: int) -> bytes:
     """GraphHopper's tile for z/x/y (blocking: run it in a thread)."""
-    buffer = io.BytesIO()
-    curl = pycurl.Curl()
-    try:
-        curl.setopt(pycurl.URL, f"{settings.graphhopper_url}/mvt/{z}/{x}/{y}.mvt")
-        curl.setopt(pycurl.WRITEDATA, buffer)
-        curl.setopt(pycurl.TIMEOUT, 60)
-        curl.perform()
-        status = curl.getinfo(pycurl.RESPONSE_CODE)
-    except pycurl.error as err:
-        raise GraphHopperUnavailable(str(err)) from err
-    finally:
-        curl.close()
-    if status != 200:
-        raise GraphHopperUnavailable(f"GraphHopper answered {status}")
-    return buffer.getvalue()
+    return upstream.get(f"{settings.graphhopper_url}/mvt/{z}/{x}/{y}.mvt", timeout=60)
 
 
 def _directions(value) -> list[str]:

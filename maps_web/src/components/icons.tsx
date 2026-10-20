@@ -21,6 +21,7 @@ export type IconName =
   | 'car'
   | 'download'
   | 'copy'
+  | 'share'
   | 'check'
   | 'layers'
   | 'navigate'
@@ -50,6 +51,8 @@ const PATHS: Record<IconName, string> = {
   car: 'M3.5 13v-3l2-4.5h9l2 4.5v3zM3.5 13v2h2.5v-2M14 13v2h2.5v-2M3.5 10h13M6.5 11.5v.1M13.5 11.5v.1',
   download: 'M10 3.5v9M6 8.5l4 4l4-4M4 15.5h12',
   copy: 'M7.5 7.5h8v9h-8zM12.5 7.5v-4h-8v9h3',
+  share:
+    'M14.5 3a2 2 0 1 1 0 4a2 2 0 0 1 0-4M5.5 8a2 2 0 1 1 0 4a2 2 0 0 1 0-4M14.5 13a2 2 0 1 1 0 4a2 2 0 0 1 0-4M7.25 9.05l5.5-3.1M7.25 10.95l5.5 3.1',
   check: 'M4.5 10.5l3.5 3.5l7.5-8',
   layers: 'M10 3l7 3.8l-7 3.8l-7-3.8zM3 10.4l7 3.8l7-3.8M3 13.8l7 3.8l7-3.8',
   navigate: 'M10 2.5l6 14.5l-6-3.5l-6 3.5z',

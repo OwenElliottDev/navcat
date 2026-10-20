@@ -120,6 +120,7 @@ test('the map menu gives each item an icon, with an ellipsis where it opens more
     'Directions to here',
     "What's here?",
     'Add a place here…',
+    'Share',
     COORDS,
   ])
   await expect(items.filter({ hasNot: page.locator('svg.icon') })).toHaveCount(0)
@@ -134,9 +135,13 @@ test('the map menu shows where it was opened, and copies it', async ({ page, con
   await expect(item).toHaveText(COORDS)
   const coords = (await item.textContent())!
 
+  // Says so in place, as "Share" does, then goes back to the coordinates
   await item.click()
-  await expect(page.getByText('Coordinates copied')).toBeAttached()
+  await expect(page.getByRole('menuitem', { name: 'Coordinates copied' })).toBeVisible()
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(coords)
+  await expect(page.getByRole('menuitem', { name: `Copy coordinates ${coords}` })).toHaveText(
+    coords,
+  )
 
   // They're the clicked spot's: "What's here?" from the same menu looks up the same place
   await page.getByRole('menuitem', { name: "What's here?" }).click()

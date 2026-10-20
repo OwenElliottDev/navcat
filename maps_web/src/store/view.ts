@@ -48,11 +48,12 @@ export interface ViewSlice {
 
   setPlace: (place: PhotonFeature | null) => void
   setLocationProblem: (problem: string | null) => void
-  showPlace: (feature: PhotonFeature) => void
+  /** Opens a place's card, and moves the map to it unless `move` is false. */
+  showPlace: (feature: PhotonFeature, move?: boolean) => void
   /** A saved place or recent search, looked up again for its current details. */
   showSnapshot: (snapshot: PlaceSnapshot) => Promise<void>
   showPoi: (poi: MapPoi) => Promise<void>
-  showWhatsHere: (position: LngLat) => Promise<void>
+  showWhatsHere: (position: LngLat, move?: boolean) => Promise<void>
   selectResult: (poi: Poi) => void
   browseCategory: (category: Category) => void
   searchThisArea: () => void
@@ -80,9 +81,9 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
   setPlace: (place) => set({ place }),
   setLocationProblem: (locationProblem) => set({ locationProblem }),
 
-  showPlace(feature) {
+  showPlace(feature, move = true) {
     set({ place: feature })
-    if (get().mode !== 'search') return
+    if (get().mode !== 'search' || !move) return
 
     const extent = feature.properties.extent // [minLon, maxLat, maxLon, minLat]
     if (extent) get().camera?.fitBounds([extent[0], extent[3], extent[2], extent[1]])
@@ -107,7 +108,7 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
     get().showPlace(found ?? pointPlace(poi.position, poi.name, poi.kind))
   },
 
-  async showWhatsHere(position) {
+  async showWhatsHere(position, move = true) {
     const lookup = ++whatsHereLookup
     const { place, mode, browse } = get()
     const found = await reverseGeocode(position)
@@ -123,7 +124,7 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
       ? { ...found, geometry: { coordinates: [position.lng, position.lat] } }
       : pointPlace(position, coordLabel(position))
     set({ whatsHere: feature })
-    get().showPlace(feature)
+    get().showPlace(feature, move)
   },
 
   selectResult(poi) {

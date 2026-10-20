@@ -23,6 +23,8 @@ class Settings:
     cookie_secure: bool
     photos_dir: Path
     graphhopper_url: str
+    photon_url: str
+    tileserver_url: str
 
 
 settings = Settings(
@@ -41,4 +43,6 @@ settings = Settings(
     cookie_secure=_flag("COOKIE_SECURE", False),
     photos_dir=Path(os.environ.get("PHOTOS_DIR", "/data/photos")),
     graphhopper_url=os.environ.get("GRAPHHOPPER_URL", "http://maps-graphhopper:8989"),
+    photon_url=os.environ.get("PHOTON_URL", "http://maps-photon:2322"),
+    tileserver_url=os.environ.get("TILESERVER_URL", "http://maps-tileserver:8080"),
 )

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect } from './mockStack'
+import { expect, type MockStack } from './mockStack'
 
 /** Opens the app and waits for the categories under the search bar (the backend answered). */
 export async function openApp(page: Page, path = '/') {
@@ -50,4 +50,16 @@ export async function browseCategory(page: Page, label: string) {
     await chip.click()
     await expect(chip).toHaveAttribute('aria-pressed', 'true', { timeout: 500 })
   }).toPass()
+}
+
+/** Where search was last asked what's at a point ([lng, lat]) */
+export function lastLookup(stack: MockStack) {
+  const { params } = stack.requestsTo('/api/reverse').at(-1)!
+  return [Number(params.get('lon')), Number(params.get('lat'))]
+}
+
+/** Checks a point ([lng, lat]) is about where it should be */
+export function expectNear([lng, lat]: number[], [wantLng, wantLat]: number[], digits = 4) {
+  expect(lng).toBeCloseTo(wantLng, digits)
+  expect(lat).toBeCloseTo(wantLat, digits)
 }

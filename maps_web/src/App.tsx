@@ -6,7 +6,9 @@ import { Panel } from './components/Panel'
 import { PitchToggle } from './components/PitchToggle'
 import { Popups } from './components/Popups'
 import { useStoredLook } from './hooks/useStoredLook'
+import { linkedView } from './linkedView'
 import { MapCanvas } from './map/MapCanvas'
+import { useMap } from './map/MapContext'
 import { MapControl } from './map/MapControl'
 import { useCamera } from './map/useCamera'
 import { useIsTilted } from './map/useIsTilted'
@@ -34,6 +36,12 @@ export default function App() {
   const isTilted = useIsTilted()
   const isNavigating = useAppStore(selectIsNavigating)
   useMapLook(look, terrain, isTilted, isNavigating)
+
+  // Opened from a link to a spot: say what's there, leaving the map where the link put it
+  const map = useMap()
+  useEffect(() => {
+    if (map && linkedView?.marker) useAppStore.getState().showWhatsHere(linkedView.marker, false)
+  }, [map])
 
   return (
     <>

@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test'
-import { directionsToMarket, openApp, pickSuggestion, planRoute } from './helpers'
+import {
+  directionsToMarket,
+  expectNear,
+  lastLookup,
+  openApp,
+  pickSuggestion,
+  planRoute,
+} from './helpers'
 import { expect, test, type MockStack } from './mockStack'
 
 test('a walk shows time, distance, climb, elevation and steps', async ({ page, stack }) => {
@@ -256,12 +263,6 @@ async function menuAt(page: Page, at: { x: number; y: number }, item: string) {
   await page.getByRole('menuitem', { name: item }).click()
 }
 
-/** Where search was last asked what's at a point */
-function lastLookup(stack: MockStack) {
-  const { params } = stack.requestsTo('/api/reverse').at(-1)!
-  return [Number(params.get('lon')), Number(params.get('lat'))]
-}
-
 /** Runs "What's here?" at a spot, and returns where it looked up. */
 async function whatsHere(page: Page, stack: MockStack, at: { x: number; y: number }) {
   await menuAt(page, at, "What's here?")
@@ -273,11 +274,6 @@ async function whatsHere(page: Page, stack: MockStack, at: { x: number; y: numbe
 async function routePoints(stack: MockStack) {
   await expect.poll(() => stack.requestsTo('/api/route').length).toBeGreaterThan(0)
   return (stack.requestsTo('/api/route').at(-1)!.body as { points: number[][] }).points
-}
-
-function expectNear([lng, lat]: number[], [wantLng, wantLat]: number[]) {
-  expect(lng).toBeCloseTo(wantLng, 4)
-  expect(lat).toBeCloseTo(wantLat, 4)
 }
 
 test('"Directions from here" elsewhere heads to the "What\'s here?" spot', async ({
