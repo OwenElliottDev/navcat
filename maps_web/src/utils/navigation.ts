@@ -1,5 +1,6 @@
 import type { Instruction, LngLat, RoutePath } from '../types'
-import { distanceInMetres } from './geo'
+import { bearingBetween, distanceInMetres } from './geo'
+import { angleDifference } from './heading'
 
 // Turn-by-turn guidance worked out from a GraphHopper route and a position. Pure functions:
 // hooks/useNavigation.ts feeds them GPS fixes.
@@ -53,16 +54,6 @@ export function prepareRoute(path: RoutePath): NavRoute {
 }
 
 const toLngLat = ([lng, lat]: [number, number]): LngLat => ({ lng, lat })
-
-/** Degrees clockwise from north, from a to b */
-export function bearingBetween(a: LngLat, b: LngLat): number {
-  const rad = Math.PI / 180
-  const y = Math.sin((b.lng - a.lng) * rad) * Math.cos(b.lat * rad)
-  const x =
-    Math.cos(a.lat * rad) * Math.sin(b.lat * rad) -
-    Math.sin(a.lat * rad) * Math.cos(b.lat * rad) * Math.cos((b.lng - a.lng) * rad)
-  return (Math.atan2(y, x) / rad + 360) % 360
-}
 
 /**
  * Snaps a position onto the route. `near` is the segment from the last fix: searching from
@@ -148,6 +139,23 @@ export function guide(route: NavRoute, progress: RouteProgress): Guidance {
     remainingTime,
     arrived: remainingDistance < ARRIVED_WITHIN,
   }
+}
+
+/**
+ * Too far from the route to be on it: further than `threshold` metres, allowing for how unsure
+ * the fix is. Very rough fixes don't count either way.
+ */
+export function isOffRoute(progress: RouteProgress, accuracy: number, threshold: number) {
+  return accuracy < 100 && progress.offRoute > threshold + Math.min(accuracy, 30)
+}
+
+/** The start of a route is left out: a new route may begin with turning around */
+const WRONG_WAY_AFTER = 50
+
+/** Travelling back along the route, against its direction. */
+export function isWrongWay(progress: RouteProgress, course: number | null) {
+  if (course === null || progress.along < WRONG_WAY_AFTER) return false
+  return Math.abs(angleDifference(course, progress.bearing)) > 120
 }
 
 /** The point `distance` metres along the route (for simulating a trip). */

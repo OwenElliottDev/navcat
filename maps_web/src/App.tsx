@@ -64,10 +64,12 @@ import type {
 import { coordLabel } from './utils/format'
 import { boundsOf } from './utils/geo'
 import { currentPosition, isLocationAllowed, LOCATION_NEEDS_HTTPS } from './utils/location'
-import { bearingBetween, pointAlong, prepareRoute } from './utils/navigation'
+import { prepareRoute } from './utils/navigation'
 import { itineraryToPath } from './utils/transitNavigation'
 import { useVoice } from './hooks/useVoice'
 import { useWakeLock } from './hooks/useWakeLock'
+import { requestCompass } from './hooks/useCompass'
+import { useNavigationHeading } from './hooks/useNavigationHeading'
 import { downloadFile, fileSlug, toGpx } from './utils/gpx'
 import {
   describePlace,
@@ -232,14 +234,9 @@ export default function App() {
   const { fix, progress } = navigation
   const isOnRoute = progress !== null && progress.offRoute < 30
   const youAt = isOnRoute ? progress.snapped : (fix?.at ?? null)
-  // Face down the route: towards a point a little ahead (steadier than the GPS compass, and
-  // it starts turning just before a corner). Off the route, use the compass if there is one
-  const ahead = isOnRoute && navRoute ? pointAlong(navRoute, progress.along + 40) : null
-  const heading = ahead
-    ? bearingBetween(progress!.snapped, ahead)
-    : (fix?.heading ?? progress?.bearing ?? 0)
+  const heading = useNavigationHeading(navigation, navRoute, isOnRoute, isNavigating && !SIMULATE)
   const [isNavigation3d, setIsNavigation3d] = useState(true)
-  const follow = useFollowCamera(isNavigating, youAt, heading, travel, isNavigation3d)
+  const follow = useFollowCamera(isNavigating, youAt, heading.camera, travel, isNavigation3d)
 
   function startNavigation() {
     // Location (and so navigation) needs a secure connection: HTTPS, or localhost
@@ -251,6 +248,7 @@ export default function App() {
     // Speaking during the tap lets mobile browsers allow speech for the rest of the trip
     const first = navRoute?.path.instructions[0]
     if (first) voice.speak(first.text)
+    requestCompass()
     setMenu(null)
     follow.recentre()
     setNavigationProfile(profile)
@@ -654,7 +652,7 @@ export default function App() {
 
       {isBrowsing && hasMovedSinceBrowse && <SearchThisArea onClick={searchThisArea} />}
 
-      {isNavigating && youAt && <UserLocation at={youAt} heading={heading} />}
+      {isNavigating && youAt && <UserLocation at={youAt} heading={heading.marker} />}
       {isNavigating && (
         <NavigationView
           guidance={navigation.guidance}
