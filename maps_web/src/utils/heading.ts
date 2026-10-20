@@ -59,22 +59,21 @@ export interface Movement {
 
 export const STILL: Movement = { course: null, speed: null, anchor: null }
 
-// Slower than this (m/s) and the direction of travel is too unsure to use
-const MOVING_SPEED = 1
+// Moving from this speed (m/s), the direction of travel is used rather than the compass, until
+// slower than STOPPED_SPEED. The gap stops GPS jitter flicking between them
+const MOVING_SPEED = 0.5
+const STOPPED_SPEED = 0.3
 // Without a direction from the device, it's measured over at least this far (metres) ...
 const COURSE_OVER = 8
 // ... between fixes no more than this far apart (ms), from fixes at least this accurate (metres)
 const COURSE_WITHIN_MS = 8000
 const COURSE_ACCURACY = 25
-// Faster than this (m/s), the direction of travel says more about where you're facing than the
-// compass does
-const COURSE_OVER_COMPASS_SPEED = 2
-
 /** Movement after a new fix: the device's direction of travel, or measured from an earlier fix. */
 export function measureMovement(last: Movement, fix: Fix): Movement {
   const speed = fix.speed ?? last.speed
+  const isMoving = (speed: number) => speed >= (last.course === null ? MOVING_SPEED : STOPPED_SPEED)
   if (fix.heading !== null && !Number.isNaN(fix.heading) && fix.speed !== null) {
-    return { course: fix.speed >= MOVING_SPEED ? fix.heading : null, speed, anchor: fix }
+    return { course: isMoving(fix.speed) ? fix.heading : null, speed, anchor: fix }
   }
   if (fix.accuracy > COURSE_ACCURACY) return { ...last, speed }
   const { anchor } = last
@@ -84,27 +83,17 @@ export function measureMovement(last: Movement, fix: Fix): Movement {
   if (moved < COURSE_OVER && elapsed <= COURSE_WITHIN_MS) return { ...last, speed }
   const measured = elapsed > 0 ? moved / (elapsed / 1000) : 0
   return {
-    course: measured >= MOVING_SPEED ? bearingBetween(anchor.at, fix.at) : null,
+    course: isMoving(measured) ? bearingBetween(anchor.at, fix.at) : null,
     speed: fix.speed ?? measured,
     anchor: fix,
   }
 }
 
-/** Moving fast enough to go by the direction of travel rather than the compass. */
-export const isMovingBriskly = (speed: number | null) => (speed ?? 0) >= COURSE_OVER_COMPASS_SPEED
-
 /**
- * The way you're facing: the direction of travel when moving briskly (in a car the phone may
- * point anywhere), else the compass, else whatever's known.
+ * The way you're facing: the direction of travel while moving (the phone may point anywhere),
+ * else the compass.
  */
-export function facingHeading(
-  course: number | null,
-  speed: number | null,
-  compass: number | null,
-): number | null {
-  if (course !== null && isMovingBriskly(speed)) return course
-  return compass ?? course
-}
+export const facingHeading = (course: number | null, compass: number | null) => course ?? compass
 
 // Within LOCK of the route's direction, the camera faces down the route (steadier, and it turns
 // just before corners); further than UNLOCK, it faces the way you are. The gap stops it flicking.

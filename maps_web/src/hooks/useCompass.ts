@@ -7,21 +7,6 @@ interface WebkitOrientationEvent extends DeviceOrientationEvent {
   webkitCompassAccuracy?: number
 }
 
-/** iOS asks before sharing orientation */
-interface OrientationPermission {
-  requestPermission?: () => Promise<'granted' | 'denied'>
-}
-
-/**
- * Asks for the compass where the browser needs asking (iOS). Only works during a tap; a refusal
- * just means no compass.
- */
-export function requestCompass() {
-  if (typeof DeviceOrientationEvent === 'undefined') return
-  const permission = DeviceOrientationEvent as unknown as OrientationPermission
-  permission.requestPermission?.().catch(() => {})
-}
-
 // Each reading moves the heading this far towards it, and only a turn of more than STEP is
 // passed on (orientation events come many times a second)
 const SMOOTHING = 0.2

@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import { requestCompass } from '../hooks/useCompass'
+import { requestCompass } from '../utils/compass'
 import { LOCATION_NEEDS_HTTPS } from '../utils/location'
 import { loadMuted, say, storeMuted } from '../utils/voice'
 import { selectProfile } from './selectors'

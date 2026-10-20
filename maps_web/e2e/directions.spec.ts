@@ -3,6 +3,7 @@ import {
   directionsToMarket,
   expectNear,
   lastLookup,
+  menuAt,
   openApp,
   pickSuggestion,
   planRoute,
@@ -258,14 +259,14 @@ async function spot(page: Page, fx: number, fy: number) {
   return { x: box.width * fx, y: box.height * fy }
 }
 
-async function menuAt(page: Page, at: { x: number; y: number }, item: string) {
-  await page.locator('.maplibregl-canvas').click({ button: 'right', position: at })
+async function chooseFromMenu(page: Page, at: { x: number; y: number }, item: string) {
+  await menuAt(page, at)
   await page.getByRole('menuitem', { name: item }).click()
 }
 
 /** Runs "What's here?" at a spot, and returns where it looked up. */
 async function whatsHere(page: Page, stack: MockStack, at: { x: number; y: number }) {
-  await menuAt(page, at, "What's here?")
+  await chooseFromMenu(page, at, "What's here?")
   await expect(page.locator('.map-dot--query')).toHaveCount(1)
   return lastLookup(stack)
 }
@@ -282,7 +283,7 @@ test('"Directions from here" elsewhere heads to the "What\'s here?" spot', async
 }) => {
   await openApp(page)
   const here = await whatsHere(page, stack, await spot(page, 0.75, 0.3))
-  await menuAt(page, await spot(page, 0.9, 0.4), 'Directions from here')
+  await chooseFromMenu(page, await spot(page, 0.9, 0.4), 'Directions from here')
 
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue(
     'Flinders Street Station',
@@ -301,7 +302,7 @@ test('"Directions to here" elsewhere starts from the "What\'s here?" spot', asyn
 }) => {
   await openApp(page)
   const here = await whatsHere(page, stack, await spot(page, 0.75, 0.3))
-  await menuAt(page, await spot(page, 0.9, 0.4), 'Directions to here')
+  await chooseFromMenu(page, await spot(page, 0.9, 0.4), 'Directions to here')
 
   await expect(page.getByRole('combobox', { name: 'Start' })).toHaveValue('Flinders Street Station')
   const [from] = await routePoints(stack)
@@ -314,7 +315,7 @@ test('"What\'s here?" leaves a destination that\'s already set', async ({ page, 
   await openApp(page)
   await planRoute(page)
   await whatsHere(page, stack, await spot(page, 0.75, 0.3))
-  await menuAt(page, await spot(page, 0.9, 0.4), 'Directions from here')
+  await chooseFromMenu(page, await spot(page, 0.9, 0.4), 'Directions from here')
 
   await expect(page.getByRole('combobox', { name: 'Destination' })).toHaveValue(
     'Queen Victoria Market',

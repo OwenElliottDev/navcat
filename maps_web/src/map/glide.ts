@@ -1,3 +1,5 @@
+import { angleDifference } from '../utils/heading'
+
 /*
  * Glides to each new GPS fix in steps, for the follow camera and the "you are here" marker.
  * MapLibre's own animations (easeTo) redraw the map on every display frame, 60-120 times a
@@ -14,7 +16,7 @@ export const along = (from: number, to: number, t: number) => from + (to - from)
 
 /** The bearing `t` (0 to 1) of the way from one to another, turning the short way round. */
 export function turn(from: number, to: number, t: number) {
-  return from + (((((to - from) % 360) + 540) % 360) - 180) * t
+  return from + angleDifference(from, to) * t
 }
 
 type Tick = () => boolean

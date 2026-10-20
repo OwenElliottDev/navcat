@@ -1,4 +1,4 @@
-import { memo, useEffect } from 'react'
+import { useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useLanes } from '../hooks/useLanes'
 import { useNavigation, type NavigationState, type Travel } from '../hooks/useNavigation'
@@ -91,7 +91,7 @@ export function Navigation() {
  * Where you are and which way you face, with the map following. Its own component, so compass
  * readings only re-render this.
  */
-const YouOnMap = memo(function YouOnMap({
+function YouOnMap({
   navigation,
   route,
   travel,
@@ -112,4 +112,4 @@ const YouOnMap = memo(function YouOnMap({
   useFollowCamera(isNavigating, youAt, heading.camera, travel, is3d)
 
   return isNavigating && youAt ? <UserLocation at={youAt} heading={heading.marker} /> : null
-})
+}

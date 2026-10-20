@@ -45,18 +45,13 @@ describe('compassFromOrientation', () => {
 })
 
 describe('facingHeading', () => {
-  it('trusts the direction of travel when moving briskly', () => {
-    expect(facingHeading(90, 10, 200)).toBe(90)
+  it('trusts the direction of travel while moving', () => {
+    expect(facingHeading(90, 200)).toBe(90)
   })
 
-  it('trusts the compass when slow or still', () => {
-    expect(facingHeading(90, 1.2, 200)).toBe(200)
-    expect(facingHeading(null, null, 200)).toBe(200)
-  })
-
-  it('falls back to whatever is known', () => {
-    expect(facingHeading(90, 1.2, null)).toBe(90)
-    expect(facingHeading(null, null, null)).toBeNull()
+  it('trusts the compass when still', () => {
+    expect(facingHeading(null, 200)).toBe(200)
+    expect(facingHeading(null, null)).toBeNull()
   })
 })
 
@@ -89,7 +84,14 @@ describe('measureMovement', () => {
 
   it("uses the device's direction of travel when it gives one", () => {
     expect(after(fix(0, 0, { heading: 200, speed: 5 }))).toMatchObject({ course: 200, speed: 5 })
-    expect(after(fix(0, 0, { heading: 200, speed: 0.3 })).course).toBeNull()
+    expect(after(fix(0, 0, { heading: 200, speed: 1.2 })).course).toBe(200)
+    expect(after(fix(0, 0, { heading: 200, speed: 0.4 })).course).toBeNull()
+  })
+
+  it('needs to slow down more to stop than to start moving', () => {
+    const walking = fix(0, 0, { heading: 200, speed: 1.2 })
+    expect(after(walking, fix(0, 1, { heading: 210, speed: 0.4 })).course).toBe(210)
+    expect(after(walking, fix(0, 1, { heading: 210, speed: 0.2 })).course).toBeNull()
   })
 
   it('measures it between fixes once far enough apart', () => {

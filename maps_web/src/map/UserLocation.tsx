@@ -32,17 +32,18 @@ export function UserLocation({ at, heading }: { at: LngLat; heading: number | nu
 
   // Glides to each new fix in step with the follow camera, rather than jumping
   useEffect(() => {
-    marker.getElement().classList.toggle('user-location--heading', heading !== null)
     const from = marker.getLngLat()
-    const fromHeading = marker.getRotation()
-    // With no heading the dot shows, so it keeps the way it last pointed
-    const toHeading = heading ?? fromHeading
-    return glide((t) =>
-      marker
-        .setLngLat([along(from.lng, at.lng, t), along(from.lat, at.lat, t)])
-        .setRotation(turn(fromHeading, toHeading, t)),
-    )
-  }, [marker, at.lng, at.lat, heading])
+    return glide((t) => marker.setLngLat([along(from.lng, at.lng, t), along(from.lat, at.lat, t)]))
+  }, [marker, at.lng, at.lat])
+
+  // Turns separately, so a turn of the phone doesn't restart the glide to the fix. With no
+  // heading the dot shows, so it keeps the way it last pointed
+  useEffect(() => {
+    marker.getElement().classList.toggle('user-location--heading', heading !== null)
+    if (heading === null) return
+    const from = marker.getRotation()
+    return glide((t) => marker.setRotation(turn(from, heading, t)))
+  }, [marker, heading])
 
   return null
 }

@@ -19,8 +19,6 @@ export interface NavigationState {
   fix: Fix | null
   /** The way you're travelling (degrees from north), or null when not really moving */
   course: number | null
-  /** Metres a second, or null until it's known */
-  speed: number | null
   progress: RouteProgress | null
   guidance: Guidance | null
   error: string | null
@@ -73,7 +71,6 @@ export function useNavigation(options: Options): NavigationState {
   const [state, setState] = useState<NavigationState>({
     fix: null,
     course: null,
-    speed: null,
     progress: null,
     guidance: null,
     error: null,
@@ -112,7 +109,7 @@ export function useNavigation(options: Options): NavigationState {
       const followed = route ?? lastRoute.current
       if (!followed) return
       movement = measureMovement(movement, fix)
-      const { course, speed } = movement
+      const { course } = movement
 
       const progress = locate(followed, fix.at, segment.current)
       segment.current = progress.segment
@@ -160,7 +157,7 @@ export function useNavigation(options: Options): NavigationState {
         }
       }
 
-      setState({ fix, course, speed, progress, guidance, error: null })
+      setState({ fix, course, progress, guidance, error: null })
     }
 
     if (options.simulate) {

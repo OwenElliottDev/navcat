@@ -8,7 +8,7 @@ from pydantic import Field
 from .. import link_preview
 from ..link_preview import LinkedView
 from ..models import ApiModel
-from ..short_link import encode_osm_shortlink
+from ..short_link import decode_osm_shortlink, encode_osm_shortlink
 from ..upstream import Unavailable
 
 router = APIRouter(prefix="/links", tags=["links"])
@@ -40,10 +40,10 @@ async def encode_shortlink(body: OSMShortlinkEncode) -> OSMShortlinkDecode:
 @router.post("/decode_osm_shortlink")
 async def decode_shortlink(body: OSMShortlinkDecode) -> OSMShortlinkEncode:
     """The map view an OSM shortlink code points at."""
-    view = link_preview.decode(body.shortlink, marked=False)
-    if view is None:
+    long, lat, zoom = decode_osm_shortlink(body.shortlink)
+    if zoom < 0:
         raise HTTPException(400, TOO_SHORT)
-    return OSMShortlinkEncode(long=view.long, lat=view.lat, zoom=view.zoom)
+    return OSMShortlinkEncode(long=long, lat=lat, zoom=zoom)
 
 
 # Where a /go/<code> link points and what's there, for link previews and other apps. ?m marks

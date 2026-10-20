@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { bearingBetween } from '../utils/geo'
-import { facingHeading, followsRoute, isMovingBriskly } from '../utils/heading'
+import { facingHeading, followsRoute } from '../utils/heading'
 import { pointAlong, type NavRoute } from '../utils/navigation'
 import { useCompass } from './useCompass'
 import type { NavigationState } from './useNavigation'
@@ -16,10 +16,10 @@ export function useNavigationHeading(
   isOnRoute: boolean,
   useSensors: boolean,
 ): { marker: number | null; camera: number } {
-  const { course, speed, progress } = navigation
-  // Moving briskly, the direction of travel is used, so the compass can rest
-  const compass = useCompass(useSensors && !isMovingBriskly(speed))
-  const facing = facingHeading(course, speed, compass)
+  const { course, progress } = navigation
+  // While moving, the direction of travel is used, so the compass can rest
+  const compass = useCompass(useSensors && course === null)
+  const facing = facingHeading(course, compass)
 
   // Down the route: towards a point a little ahead (it starts turning just before a corner)
   const routeHeading = useMemo(
