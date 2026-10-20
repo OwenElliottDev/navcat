@@ -17,6 +17,8 @@ def get(url: str, timeout: float) -> bytes:
         curl.setopt(pycurl.URL, url)
         curl.setopt(pycurl.WRITEDATA, buffer)
         curl.setopt(pycurl.TIMEOUT_MS, int(timeout * 1000))
+        # No SIGALRM for timeouts, which can land on another thread
+        curl.setopt(pycurl.NOSIGNAL, 1)
         curl.perform()
         status = curl.getinfo(pycurl.RESPONSE_CODE)
     except pycurl.error as err:

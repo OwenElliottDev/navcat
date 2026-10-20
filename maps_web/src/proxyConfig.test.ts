@@ -40,7 +40,7 @@ const locations: Location[] = [
   ...nginxConf.matchAll(/^\s*location (?:(=|~) )?(\S+) \{([^}]*)\}/gm),
 ].map(([, kind, pattern, body]) => ({
   kind: (kind as '=' | '~' | undefined) ?? 'prefix',
-  pattern,
+  pattern: pattern.replace(/^"(.*)"$/, '$1'),
   proxyPass: body.match(/proxy_pass (\S+);/)?.[1] ?? null,
   internal: /^\s*internal;/m.test(body),
 }))

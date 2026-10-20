@@ -1,3 +1,4 @@
+import math
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,6 +11,12 @@ def _flag(name: str, default: bool) -> bool:
     if value is None:
         return default
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _limit(name: str, default: int) -> float:
+    """At least 1, or -1 for no limit."""
+    value = int(os.environ.get(name, default))
+    return math.inf if value == -1 else max(1, value)
 
 
 @dataclass(frozen=True)
@@ -25,6 +32,7 @@ class Settings:
     graphhopper_url: str
     photon_url: str
     tileserver_url: str
+    link_preview_concurrency: float
 
 
 settings = Settings(
@@ -45,4 +53,5 @@ settings = Settings(
     graphhopper_url=os.environ.get("GRAPHHOPPER_URL", "http://maps-graphhopper:8989"),
     photon_url=os.environ.get("PHOTON_URL", "http://maps-photon:2322"),
     tileserver_url=os.environ.get("TILESERVER_URL", "http://maps-tileserver:8080"),
+    link_preview_concurrency=_limit("LINK_PREVIEW_CONCURRENCY", 4),
 )
