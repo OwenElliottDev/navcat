@@ -28,6 +28,7 @@ MAX_IMAGE_ZOOM = 17
 PIN_COLOR = "#1A5FC8"  # COLORS.route in maps_web/src/config.ts
 PIN_SIZE = (68, 100)
 SUPERSAMPLE = 4
+EARTH_CIRCUMFERENCE = 40_075_016.686  # metres, at the equator
 
 
 # An address's parts, smallest first, for naming the area a view shows
@@ -58,9 +59,21 @@ def decode(code: str, marked: bool) -> LinkedView | None:
     return LinkedView(long, lat, zoom, marked)
 
 
+def search_radius(view: LinkedView) -> int | None:
+    """How far (km) to look for what to name a view by: for an unmarked one, as far as the
+    preview's edge, so a zoomed-out view finds its area; for a marked one, Photon's default,
+    as the app uses."""
+    if view.marked:
+        return None
+    metres_per_pixel = EARTH_CIRCUMFERENCE * math.cos(math.radians(view.lat)) / (512 * 2**view.zoom)
+    return max(1, round(metres_per_pixel * WIDTH / 2 / 1000))
+
+
 def reverse_geocode(view: LinkedView) -> dict | None:
     """Photon's nearest feature's properties (blocking: run it in a thread)."""
-    params = {"lat": view.lat, "lon": view.long, "limit": 1}
+    params: dict[str, float] = {"lat": view.lat, "lon": view.long, "limit": 1}
+    if (radius := search_radius(view)) is not None:
+        params["radius"] = radius
     # Short: the app's page waits on this when a link opens
     body = upstream.get(f"{settings.photon_url}/reverse?{urlencode(params)}", timeout=2)
     try:
@@ -74,9 +87,15 @@ def _join(*parts: str | None) -> str:
     return ", ".join(dict.fromkeys(part for part in parts if part))
 
 
+def _degrees(value: float) -> str:
+    """5 decimal places, without the "-" on "-0.00000" (as the app's coordLabel)."""
+    text = f"{value:.5f}"
+    return text[1:] if text == "-0.00000" else text
+
+
 def describe(view: LinkedView, place: dict | None) -> Description:
     """A title and a line of detail for a view, from what Photon found there."""
-    coordinates = f"{view.lat:.5f}, {view.long:.5f}"
+    coordinates = f"{_degrees(view.lat)}, {_degrees(view.long)}"
     if place is None:
         return Description(coordinates, "Shared location" if view.marked else "Shared map")
 
@@ -133,9 +152,20 @@ def render_image(view: LinkedView) -> bytes:
         f"{view.long:.6f},{view.lat:.6f},{zoom}/{WIDTH}x{HEIGHT}@{SCALE}x.jpg",
         timeout=20,
     )
+    # Checked whole, so a page or a cut-off image (e.g. TileServer starting) isn't kept
+    try:
+        image = Image.open(io.BytesIO(jpeg))
+        if not view.marked:
+            # Only checked, so decoded at 1/8 scale (it's still read to the end)
+            image.draft("RGB", (WIDTH // 4, HEIGHT // 4))
+        image.load()
+    except OSError as err:
+        raise upstream.Unavailable(f"TileServer's image didn't open: {err}") from err
+    if image.format != "JPEG":
+        raise upstream.Unavailable(f"TileServer answered a {image.format}, not a JPEG")
     if not view.marked:
         return jpeg
-    image = Image.open(io.BytesIO(jpeg)).convert("RGB")
+    image = image.convert("RGB")
     pin = _pin()
     image.paste(pin, (image.width // 2 - pin.width // 2, image.height // 2 - pin.height), pin)
     out = io.BytesIO()
