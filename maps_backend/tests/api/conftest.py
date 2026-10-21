@@ -88,6 +88,9 @@ def _serve(database_url: str, photos_dir: Path, **settings: str):
         "PHOTOS_DIR": str(photos_dir),
         # Nothing listens here, so road data finds GraphHopper down
         "GRAPHHOPPER_URL": f"http://127.0.0.1:{_free_port()}",
+        # and link previews find Photon and TileServer down
+        "PHOTON_URL": f"http://127.0.0.1:{_free_port()}",
+        "TILESERVER_URL": f"http://127.0.0.1:{_free_port()}",
         "ALLOW_SIGNUP": "true",
         "ALLOW_PLACE_EDITS": "true",
         "ALLOW_REVIEWS": "true",

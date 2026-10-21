@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.concurrency import run_in_threadpool
 
-from ..road_data import GraphHopperUnavailable, fetch_tile, slim_tile
+from ..road_data import fetch_tile, slim_tile
+from ..upstream import Unavailable
 
 router = APIRouter(tags=["road data"])
 
@@ -18,7 +19,7 @@ async def road_data(
         raise HTTPException(404, "No such tile.")
     try:
         raw = await run_in_threadpool(fetch_tile, z, x, y)
-    except GraphHopperUnavailable:
+    except Unavailable:
         raise HTTPException(
             503, "Routing data isn't available yet. Check the graphhopper container."
         )

@@ -28,6 +28,8 @@ interface Location {
   kind: '=' | '~' | 'prefix'
   pattern: string
   proxyPass: string | null
+  /** Only nginx's own subrequests reach it (e.g. SSI includes), so the dev proxy has no match */
+  internal: boolean
 }
 
 const variables = Object.fromEntries(
@@ -38,8 +40,9 @@ const locations: Location[] = [
   ...nginxConf.matchAll(/^\s*location (?:(=|~) )?(\S+) \{([^}]*)\}/gm),
 ].map(([, kind, pattern, body]) => ({
   kind: (kind as '=' | '~' | undefined) ?? 'prefix',
-  pattern,
+  pattern: pattern.replace(/^"(.*)"$/, '$1'),
   proxyPass: body.match(/proxy_pass (\S+);/)?.[1] ?? null,
+  internal: /^\s*internal;/m.test(body),
 }))
 
 /** Where nginx sends a request path, following its location precedence. */
@@ -77,11 +80,14 @@ function viteTarget(path: string): Target {
 
 const SAMPLE_PATHS = [
   // Every exact location nginx has, plus a path under each prefix and pattern
-  ...locations.filter((l) => l.kind === '=' && l.pattern !== '/').map((l) => l.pattern),
+  ...locations
+    .filter((l) => l.kind === '=' && l.pattern !== '/' && !l.internal)
+    .map((l) => l.pattern),
   '/api/road-data/15/29590/20107.mvt',
   '/api/me',
   '/api/browse/categories',
   '/api/places/N/123/community',
+  '/api/links/preview/uG4HYp~Z.jpg',
   '/styles/basic-preview/style.json',
   '/data/v3.json',
   '/fonts/Noto Sans Regular/0-255.pbf',
