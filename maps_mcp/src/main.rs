@@ -3,6 +3,7 @@ mod geo;
 mod guard;
 mod links;
 mod places;
+mod routing;
 mod server;
 mod stack;
 mod upstream;

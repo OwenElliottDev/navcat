@@ -17,6 +17,7 @@ pub struct Config {
     pub rate_limit: u32,
     /// Nav Cat's address as people open it, for links to places
     pub public_url: String,
+    pub graphhopper_url: String,
     pub photon_url: String,
     pub backend_url: String,
 }
@@ -52,6 +53,7 @@ impl Config {
             public_url: var("MCP_PUBLIC_URL", "http://localhost:7000")
                 .trim_end_matches('/')
                 .into(),
+            graphhopper_url: var("GRAPHHOPPER_URL", "http://maps-graphhopper:8989"),
             photon_url: var("PHOTON_URL", "http://maps-photon:2322"),
             backend_url: var("BACKEND_URL", "http://maps-backend:8000"),
         };
