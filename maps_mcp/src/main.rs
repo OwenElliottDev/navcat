@@ -1,6 +1,7 @@
 mod browse;
 mod capabilities;
 mod config;
+mod departures;
 mod geo;
 mod guard;
 mod links;

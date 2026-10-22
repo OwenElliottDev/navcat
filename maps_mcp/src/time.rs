@@ -55,6 +55,14 @@ pub fn local(time: DateTime<FixedOffset>, at: Point) -> String {
     time.with_timezone(&zone(at)).format(LOCAL).to_string()
 }
 
+/// Seconds since 1970 as local time where `at` is
+pub fn local_epoch(seconds: i64, at: Point) -> Option<String> {
+    Some(local(
+        DateTime::from_timestamp(seconds, 0)?.fixed_offset(),
+        at,
+    ))
+}
+
 /// One of OTP's times (ISO 8601 with an offset) as local time where `at` is
 pub fn local_otp(text: &str, at: Point) -> String {
     match DateTime::parse_from_rfc3339(text) {

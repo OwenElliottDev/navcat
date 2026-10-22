@@ -19,6 +19,7 @@ All read-only.
 | `find_nearby` | Places of a category within a distance | backend `/api/browse` |
 | `plan_route` | A route through up to 10 waypoints, with legs and climbing | GraphHopper `/route` |
 | `plan_transit` | Public transport journeys, leaving at or arriving by a time | OTP `planConnection` |
+| `stop_departures` | The next services from stops found by name or near a point, each direction separately | OTP `stops`/`nearest`, `stoptimesWithoutPatterns` |
 | `travel_times` | Times from each origin to each destination (up to 25 pairs, 9 by public transport) | GraphHopper `/route` or OTP, per pair |
 | `reachable` | Places of a category within a travel time (up to 30 minutes) | GraphHopper `/isochrone`, backend `/api/browse` |
 

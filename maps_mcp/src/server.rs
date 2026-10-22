@@ -14,6 +14,7 @@ use rmcp::{Json, ServerHandler, prompt_handler, tool, tool_handler, tool_router}
 
 use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
 use crate::capabilities::{self, Capabilities};
+use crate::departures::{self, Departures, DeparturesParams};
 use crate::geo::Point;
 use crate::matrix::{self, TravelTimes, TravelTimesParams};
 use crate::places::{self, Place, Places, Reverse, SearchParams};
@@ -28,10 +29,10 @@ const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map, for planning trips wit
 travel times. capabilities says what it covers: the area, travel modes, and the public \
 transport timetables' modes and dates. Find places with search_places, find_nearby or \
 reachable, and their details (such as opening hours) with get_place. plan_route gives routes by \
-road or path, plan_transit public transport journeys from the timetables, and travel_times \
-compares times between several places, e.g. to order stops. Times are the local time where the \
-trip is, like \"2026-10-24T08:30\". Each place has a link that opens it in Nav Cat, to give \
-people.";
+road or path, plan_transit public transport journeys from the timetables, stop_departures the \
+next services from a stop, and travel_times compares times between several places, e.g. to \
+order stops. Times are the local time where the trip is, like \"2026-10-24T08:30\". Each place \
+has a link that opens it in Nav Cat, to give people.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -142,6 +143,27 @@ impl NavCat {
         Parameters(params): Parameters<ReachableParams>,
     ) -> Result<Json<Reachable>, String> {
         Ok(Json(reachable::reachable(&self.stack, params).await?))
+    }
+
+    #[tool(
+        title = "Next departures",
+        description = "The next services from public transport stops, found by name, near a \
+        point, or both: each departure's time, route and where it's heading. Each platform or \
+        direction is a separate stop, so both directions come back together. Timetabled times \
+        unless marked live. Names are as the timetables spell them (often \"St\" for Street); \
+        if one isn't found, find the stop with search_places and pass its point as `near`.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn stop_departures(
+        &self,
+        Parameters(params): Parameters<DeparturesParams>,
+    ) -> Result<Json<Departures>, String> {
+        Ok(Json(departures::departures(&self.stack, params).await?))
     }
 
     #[tool(

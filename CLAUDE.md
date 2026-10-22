@@ -139,11 +139,11 @@ each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avo
 too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
 
 **MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use
-the stack: tools (search, place details, browse, routes, public transport, travel times,
-reachable places, capabilities), the same data as resources, and prompts. It's off unless the
-`mcp` compose profile is on, and serves stateless Streamable HTTP on its own port (7100,
-localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not through nginx. It's a
-thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
+the stack: tools (search, place details, browse, routes, public transport journeys and stop
+departures, travel times, reachable places, capabilities), the same data as resources, and
+prompts. It's off unless the `mcp` compose profile is on, and serves stateless Streamable HTTP
+on its own port (7100, localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not
+through nginx. It's a thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
 public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
 lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
 `STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone
