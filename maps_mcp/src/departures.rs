@@ -59,6 +59,8 @@ pub struct Stop {
     pub distance_m: Option<u32>,
     /// Opens Nav Cat at the stop
     pub link: String,
+    /// The time now at the stop, to tell how long until each departure
+    pub now: String,
     pub departures: Vec<Departure>,
 }
 
@@ -281,6 +283,7 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
                 lng: stop.lon,
                 distance_m: distance.map(|d| d.round() as u32),
                 link,
+                now: time::now(zone),
                 departures: times.into_iter().map(|t| departure(t, zone)).collect(),
             }
         })

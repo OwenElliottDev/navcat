@@ -92,6 +92,8 @@ pub struct TransitParams {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Journeys {
+    /// The time now where the journey starts
+    pub now: String,
     /// As OpenTripPlanner orders them
     pub journeys: Vec<Journey>,
 }
@@ -260,6 +262,7 @@ fn journeys(data: PlanData, origin: Point) -> Result<Journeys, Error> {
         }
     };
     Ok(Journeys {
+        now: time::now(zone),
         journeys: edges.into_iter().map(journey).collect(),
     })
 }

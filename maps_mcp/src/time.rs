@@ -4,7 +4,7 @@
 
 use std::sync::LazyLock;
 
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::Tz;
 
 use crate::geo::Point;
@@ -57,6 +57,11 @@ pub fn parse(text: &str, at: Point) -> Result<DateTime<FixedOffset>, Error> {
 /// A time as the clock reads in a zone, e.g. "2026-10-24T08:30"
 pub fn local(time: DateTime<FixedOffset>, zone: Tz) -> String {
     time.with_timezone(&zone).format(LOCAL).to_string()
+}
+
+/// The time now in a zone, so agents can say how long until something without their own clock
+pub fn now(zone: Tz) -> String {
+    local(Utc::now().fixed_offset(), zone)
 }
 
 /// Seconds since 1970 as local time in a zone
@@ -115,6 +120,13 @@ mod tests {
         // Melbourne's clocks went from 2:00 to 3:00 on 2026-10-04
         let time = parse("2026-10-04T02:30", MELBOURNE).unwrap();
         assert_eq!(time.to_rfc3339(), "2026-10-04T03:30:00+11:00");
+    }
+
+    #[test]
+    fn says_what_time_it_is_there() {
+        let (melbourne, auckland) = (now(zone(MELBOURNE)), now(zone(AUCKLAND)));
+        assert_eq!(melbourne.len(), "2026-10-24T08:30".len());
+        assert_ne!(melbourne, auckland);
     }
 
     #[test]
