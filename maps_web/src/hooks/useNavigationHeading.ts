@@ -8,7 +8,8 @@ import type { NavigationState } from './useNavigation'
 /**
  * Which way the "you are here" arrow and the camera point while navigating. The arrow shows the
  * way you're really facing (null leaves a dot). The camera faces down the route while you're
- * going along it, else the way you're facing.
+ * on it, unless you've stopped and turned the phone well away from it; off the route, it faces
+ * the way you are.
  */
 export function useNavigationHeading(
   navigation: NavigationState,
@@ -31,7 +32,8 @@ export function useNavigationHeading(
   )
 
   const [wasFacingRoute, setWasFacingRoute] = useState(true)
-  const facesRoute = followsRoute(facing, routeHeading, wasFacingRoute)
+  // Only the compass turns it away: the direction of travel swings off the look-ahead at corners
+  const facesRoute = followsRoute(course === null ? compass : null, routeHeading, wasFacingRoute)
   if (facesRoute !== wasFacingRoute) setWasFacingRoute(facesRoute)
 
   return {

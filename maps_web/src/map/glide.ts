@@ -25,9 +25,14 @@ let timer: ReturnType<typeof setInterval> | undefined
 
 /**
  * Calls `step` with how far along the glide is (0 to 1), now and then GLIDE_FPS times a
- * second until it gets to 1. Returns a function that stops it.
+ * second until it gets to 1 (straight to 1 for people who'd rather less motion). Returns a
+ * function that stops it.
  */
 export function glide(step: (t: number) => void): () => void {
+  if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    step(1)
+    return () => {}
+  }
   const start = performance.now()
   const tick: Tick = () => {
     const t = Math.min(1, (performance.now() - start) / GLIDE_MS)

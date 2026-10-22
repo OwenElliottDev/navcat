@@ -143,10 +143,11 @@ export function guide(route: NavRoute, progress: RouteProgress): Guidance {
 
 /**
  * Too far from the route to be on it: further than `threshold` metres, allowing for how unsure
- * the fix is. Very rough fixes don't count either way.
+ * the fix is, and outside the fix's own accuracy. Very rough fixes don't count either way.
  */
 export function isOffRoute(progress: RouteProgress, accuracy: number, threshold: number) {
-  return accuracy < 100 && progress.offRoute > threshold + Math.min(accuracy, 30)
+  const margin = Math.max(threshold + Math.min(accuracy, 30), accuracy)
+  return accuracy < 100 && progress.offRoute > margin
 }
 
 /** The start of a route is left out: a new route may begin with turning around */

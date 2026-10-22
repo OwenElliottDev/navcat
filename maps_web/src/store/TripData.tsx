@@ -1,7 +1,6 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect } from 'react'
 import { shallow } from 'zustand/shallow'
 import { useShallow } from 'zustand/react/shallow'
-import { COLORS } from '../config'
 import { useBrowse } from '../hooks/useBrowse'
 import { useCategories } from '../hooks/useCategories'
 import { useProfiles } from '../hooks/useProfiles'
@@ -9,25 +8,14 @@ import { useRoute } from '../hooks/useRoute'
 import { useTransitModes } from '../hooks/useTransitModes'
 import { useTransitPlan } from '../hooks/useTransitPlan'
 import { useMap } from '../map/MapContext'
-import type { RouteSegment, TransitLeg } from '../types'
-import { prepareRoute } from '../utils/navigation'
-import { itineraryToPath } from '../utils/transitNavigation'
 import type { DataSlice } from './data'
 import {
+  selectIsNavigating,
   selectIsOnFootOrBike,
   selectIsTransit,
-  selectItinerary,
   selectProfile,
-  selectRoutePath,
 } from './selectors'
 import { useAppStore } from '.'
-
-/** Rides in the route's own colour, walks dotted. */
-function legSegment(leg: TransitLeg): RouteSegment {
-  return leg.isTransit
-    ? { geometry: leg.geometry, color: leg.route?.color ?? COLORS.route }
-    : { geometry: leg.geometry, color: COLORS.walk, walking: true }
-}
 
 /** Copies a value into the store when it changes (fetch states are rebuilt on every render). */
 function useKeep<K extends keyof DataSlice>(key: K, value: DataSlice[K]) {
@@ -45,11 +33,15 @@ export function TripData() {
   useKeep('routing', routing)
   useKeep('categories', useCategories())
 
-  // Counts finished map moves (for "Search this area") without re-rendering anything here
+  // Counts finished map moves (for "Search this area") without re-rendering anything here.
+  // Not while navigating, when the follow camera moves the map many times a second
   const map = useMap()
   useEffect(() => {
     if (!map) return
-    const onMoveEnd = () => useAppStore.setState((s) => ({ moveCount: s.moveCount + 1 }))
+    const onMoveEnd = () => {
+      if (!selectIsNavigating(useAppStore.getState()))
+        useAppStore.setState((s) => ({ moveCount: s.moveCount + 1 }))
+    }
     map.on('moveend', onMoveEnd)
     return () => {
       map.off('moveend', onMoveEnd)
@@ -100,23 +92,5 @@ export function TripData() {
   )
   useKeep('browseResults', useBrowse(browse))
 
-  const itinerary = useAppStore(selectItinerary)
-  const routePath = useAppStore(selectRoutePath)
-  useKeep(
-    'routeSegments',
-    useMemo(() => {
-      if (itinerary) return itinerary.legs.map(legSegment)
-      if (routePath) return [{ geometry: routePath.points, color: COLORS.route }]
-      return []
-    }, [itinerary, routePath]),
-  )
-  // Public transport journeys are followed the same way, as a line with instructions
-  useKeep(
-    'navRoute',
-    useMemo(() => {
-      if (isTransit) return itinerary ? prepareRoute(itineraryToPath(itinerary)) : null
-      return routePath ? prepareRoute(routePath) : null
-    }, [isTransit, itinerary, routePath]),
-  )
   return null
 }

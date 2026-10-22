@@ -33,8 +33,6 @@ EARTH_CIRCUMFERENCE = 40_075_016.686  # metres, at the equator
 
 # An address's parts, smallest first, for naming the area a view shows
 AREAS = ("locality", "district", "city", "county", "state", "country")
-# The smallest area to name a view by, from the zoom it's at; further out, the state
-ZOOM_AREAS = ((14, "locality"), (11, "district"), (8, "city"))
 
 
 @dataclass
@@ -84,7 +82,11 @@ def reverse_geocode(view: LinkedView) -> dict | None:
 
 
 def _join(*parts: str | None) -> str:
-    return ", ".join(dict.fromkeys(part for part in parts if part))
+    seen: list[str] = []
+    for part in parts:
+        if part and part not in seen:
+            seen.append(part)
+    return ", ".join(seen)
 
 
 def _degrees(value: float) -> str:
@@ -101,13 +103,10 @@ def describe(view: LinkedView, place: dict | None) -> Description:
 
     if not view.marked:
         # Named by the area the view shows (smaller the closer in), from the nearest address
-        smallest = next((area for zoom, area in ZOOM_AREAS if view.zoom >= zoom), "state")
-        name = next(
-            (place[key] for key in AREAS[AREAS.index(smallest) :] if place.get(key)), coordinates
-        )
-        region = AREAS[AREAS.index("state") :]
+        first = 0 if view.zoom >= 14 else 1 if view.zoom >= 11 else 2 if view.zoom >= 8 else 4
+        name = next((place[key] for key in AREAS[first:] if place.get(key)), coordinates)
         return Description(
-            name, _join(*(place.get(key) for key in region if place.get(key) != name))
+            name, _join(*(place.get(key) for key in AREAS[4:] if place.get(key) != name))
         )
 
     # As the app names a place (describePlace in maps_web/src/utils/places.ts)

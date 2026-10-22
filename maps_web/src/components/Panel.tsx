@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
 import { useAppStore } from '../store'
 import {
+  selectBrowsing,
   selectIsNavigating,
   selectIsOnFootOrBike,
   selectIsTransit,
@@ -32,7 +33,7 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
     useShallow((s) => ({
       mode: s.mode,
       place: s.place,
-      browse: s.browse,
+      browse: selectBrowsing(s),
       waypoints: s.waypoints,
       route: s.route,
       transitPlan: s.transitPlan,
@@ -46,7 +47,7 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
   const travel = useAppStore(selectTravel)
   const itinerary = useAppStore(selectItinerary)
   const isNavigating = useAppStore(selectIsNavigating)
-  const isBrowsing = mode === 'search' && browse !== null
+  const isBrowsing = browse !== null
   // Walks and rides can be taken to a GPS or bike computer
   const canExportGpx = useAppStore(selectIsOnFootOrBike)
 

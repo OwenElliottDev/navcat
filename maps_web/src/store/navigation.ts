@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 import { requestCompass } from '../utils/compass'
 import { LOCATION_NEEDS_HTTPS } from '../utils/location'
 import { loadMuted, say, storeMuted } from '../utils/voice'
-import { selectProfile } from './selectors'
+import { selectNavRoute, selectProfile } from './selectors'
 import type { Store } from '.'
 
 /** Add ?simulate to the address to try navigation without going anywhere */
@@ -40,7 +40,7 @@ export const createNavigationSlice: StateCreator<Store, [], [], NavigationSlice>
       return
     }
     // Speaking during the tap lets mobile browsers allow speech for the rest of the trip
-    const first = get().navRoute?.path.instructions[0]
+    const first = selectNavRoute(get())?.path.instructions[0]
     if (first) get().speak(first.text)
     requestCompass()
     set({

@@ -83,7 +83,7 @@ describe('measureMovement', () => {
   const after = (...fixes: Fix[]) => fixes.reduce(measureMovement, STILL)
 
   it("uses the device's direction of travel when it gives one", () => {
-    expect(after(fix(0, 0, { heading: 200, speed: 5 }))).toMatchObject({ course: 200, speed: 5 })
+    expect(after(fix(0, 0, { heading: 200, speed: 5 }))).toMatchObject({ course: 200 })
     expect(after(fix(0, 0, { heading: 200, speed: 1.2 })).course).toBe(200)
     expect(after(fix(0, 0, { heading: 200, speed: 0.4 })).course).toBeNull()
   })
@@ -98,13 +98,23 @@ describe('measureMovement', () => {
     expect(after(fix(0, 0), fix(0.5, 1)).course).toBeNull()
     const moving = after(fix(0, 0), fix(0.5, 1), fix(1, 2))
     expect(moving.course).toBeCloseTo(0)
-    expect(moving.speed).toBeCloseTo(5.5, 0)
   })
 
   it('has no direction when barely moving', () => {
-    const drifting = after(fix(0, 0), fix(0.2, 9))
-    expect(drifting.course).toBeNull()
-    expect(drifting.speed).toBeLessThan(1)
+    expect(after(fix(0, 0), fix(0.2, 9)).course).toBeNull()
+  })
+
+  it('stops when the device says it has, though its heading is gone', () => {
+    const walking = fix(0, 0, { heading: 90, speed: 1.4 })
+    expect(after(walking, fix(0, 1, { speed: 0 })).course).toBeNull()
+    expect(after(walking, fix(0, 1, { heading: Number.NaN, speed: 0 })).course).toBeNull()
+  })
+
+  it("doesn't take GPS drift while stopped for a direction", () => {
+    const walking = after(fix(0, 0), fix(1, 8))
+    expect(walking.course).toBeCloseTo(0)
+    // ~3 m of drift over 9 s: stopped, not heading off somewhere
+    expect(after(fix(0, 0), fix(1, 8), fix(1.27, 17)).course).toBeNull()
   })
 
   it('skips rough fixes', () => {

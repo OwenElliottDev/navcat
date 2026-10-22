@@ -126,6 +126,10 @@ describe('isOffRoute', () => {
     expect(isOffRoute(away, 20, 35)).toBe(false)
     expect(isOffRoute(away, 150, 10)).toBe(false)
   })
+
+  it("doesn't count a fix whose accuracy circle reaches the route", () => {
+    expect(isOffRoute(away, 60, 10)).toBe(false)
+  })
 })
 
 describe('isWrongWay', () => {

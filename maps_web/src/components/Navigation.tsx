@@ -10,8 +10,10 @@ import { useAppStore } from '../store'
 import { SIMULATE } from '../store/navigation'
 import {
   selectIsNavigating,
+  selectIsRouteLoading,
   selectIsTransit,
   selectItinerary,
+  selectNavRoute,
   selectTravel,
 } from '../store/selectors'
 import type { NavRoute } from '../utils/navigation'
@@ -26,10 +28,10 @@ export function Navigation() {
   const isTransit = useAppStore(selectIsTransit)
   const travel = useAppStore(selectTravel)
   const itinerary = useAppStore(selectItinerary)
-  const { navRoute, isRerouting, isVoiceMuted, isFollowing, isNavigation3d } = useAppStore(
+  const navRoute = useAppStore(selectNavRoute)
+  const { isRerouting, isVoiceMuted, isFollowing, isNavigation3d } = useAppStore(
     useShallow((s) => ({
-      navRoute: s.navRoute,
-      isRerouting: (selectIsTransit(s) ? s.transitPlan.status : s.route.status) === 'loading',
+      isRerouting: selectIsRouteLoading(s),
       isVoiceMuted: s.isVoiceMuted,
       isFollowing: s.isFollowing,
       isNavigation3d: s.isNavigation3d,

@@ -119,10 +119,11 @@ metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
 **Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
 (what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
-the fetch hooks for the store's choices and copies their results in, so components read fetched
-data from the store too; derived values are in `store/selectors.ts`. Actions move the map through
-the `camera` App puts in the store. `App.tsx` only composes `MapLayers`, `Navigation`, `Panel`
-and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit,
+the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories)
+and copies their results in; values derived from them are in `store/selectors.ts`. Data only one
+component needs (place details, lanes) is fetched there. Actions move the map through the
+`camera` App puts in the store. `App.tsx` sets up the map and its look, and composes
+`MapLayers`, `Navigation`, `Panel` and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit,
 browse, navigation); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
 `RouteLine`, `PoiLayer`, `MapMarker`). Map looks (incl. the topo style with local terrain) are
 built in `map/mapStyles.ts` by recolouring the TileServer style rather than loading other sources.

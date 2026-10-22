@@ -47,7 +47,6 @@ export interface ViewSlice {
   locationProblem: string | null
 
   setPlace: (place: PhotonFeature | null) => void
-  setLocationProblem: (problem: string | null) => void
   /** Opens a place's card, and moves the map to it unless `move` is false. */
   showPlace: (feature: PhotonFeature, move?: boolean) => void
   /** A saved place or recent search, looked up again for its current details. */
@@ -79,7 +78,6 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
   locationProblem: null,
 
   setPlace: (place) => set({ place }),
-  setLocationProblem: (locationProblem) => set({ locationProblem }),
 
   showPlace(feature, move = true) {
     set({ place: feature })
@@ -151,7 +149,9 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
     set({ menu: { ...screen, position, whatsHere: whatsHereAt(get(), screen) } })
   },
 
-  closeMenu: () => set({ menu: null }),
+  closeMenu: () => {
+    if (get().menu) set({ menu: null })
+  },
 
   chooseMenuAction(action) {
     const { menu } = get()

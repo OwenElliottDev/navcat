@@ -2,7 +2,12 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAccount } from '../account/AccountContext'
 import { matchCategories } from '../hooks/useCategories'
 import { useAppStore } from '../store'
-import { selectIsOnFootOrBike, selectIsTransit, selectProfile } from '../store/selectors'
+import {
+  selectBrowsing,
+  selectIsOnFootOrBike,
+  selectIsTransit,
+  selectProfile,
+} from '../store/selectors'
 import type { Category, End, PhotonFeature } from '../types'
 import { describePlace, snapshotToWaypoint, toSnapshot, toWaypoint } from '../utils/places'
 import { categoryShortcut, recentShortcut, savedPlaceShortcut } from '../utils/shortcuts'
@@ -33,7 +38,7 @@ export function PanelTop() {
     useShallow((s) => ({
       mode: s.mode,
       place: s.place,
-      browse: s.browse,
+      browse: selectBrowsing(s),
       categories: s.categories,
       waypoints: s.waypoints,
       routing: s.routing,
@@ -49,7 +54,7 @@ export function PanelTop() {
   const profile = useAppStore(selectProfile)
   const isTransit = useAppStore(selectIsTransit)
   const isOnFootOrBike = useAppStore(selectIsOnFootOrBike)
-  const isBrowsing = mode === 'search' && browse !== null
+  const isBrowsing = browse !== null
 
   function browseCategory(category: Category) {
     account.addRecent({ query: category.label, category: category.id })
@@ -69,11 +74,7 @@ export function PanelTop() {
   }
 
   // The search bar shows what's open, and clearing it closes that
-  const searchValue = place
-    ? describePlace(place).name
-    : browse && mode === 'search'
-      ? browse.category.label
-      : ''
+  const searchValue = place ? describePlace(place).name : browse ? browse.category.label : ''
 
   /* ---------- dropdown shortcuts ---------- */
 

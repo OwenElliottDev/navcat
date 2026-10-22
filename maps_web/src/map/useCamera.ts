@@ -15,6 +15,7 @@ export interface Overlays {
 }
 
 const MARGIN = 40
+const NO_PADDING: Padding = { top: 0, right: 0, bottom: 0, left: 0 }
 
 /** Padding that keeps whatever we zoom to clear of the panel (or top bar and sheet on phones). */
 /** Shrinks padding so at least `room` pixels of map are left each way to fit things into. */
@@ -65,8 +66,10 @@ export function useCamera(overlays: Overlays) {
           }),
         )
       },
-      /** `flat` also turns the map back to top-down and north-up */
+      /** `flat` also turns the map back to top-down and north-up, after navigating */
       fitBounds([west, south, east, north]: Bounds, flat = false) {
+        // The fit is made inside the map's own padding, which navigation leaves set
+        if (flat) map?.setPadding(NO_PADDING)
         map?.fitBounds(
           [
             [west, south],
@@ -78,6 +81,10 @@ export function useCamera(overlays: Overlays) {
             ...(flat && { pitch: 0, bearing: 0 }),
           },
         )
+      },
+      /** Turns the map back to top-down and north-up, after navigating. */
+      flatten() {
+        map?.easeTo({ pitch: 0, bearing: 0, padding: NO_PADDING, duration: 600 })
       },
       /** The part of the map not hidden by the panel, and its middle. */
       visibleArea(): { bounds: Bounds; near: LngLat } | null {

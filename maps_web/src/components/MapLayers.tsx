@@ -8,34 +8,34 @@ import { poiKey } from '../map/poiLayers'
 import { RouteLine } from '../map/RouteLine'
 import { useMapInteractions } from '../map/useMapInteractions'
 import { useAppStore } from '../store'
-import { selectIsNavigating, selectPois } from '../store/selectors'
-import type { Poi } from '../types'
+import {
+  selectBrowsing,
+  selectIsNavigating,
+  selectPois,
+  selectRouteSegments,
+} from '../store/selectors'
 import { boundsOf } from '../utils/geo'
 import { placePosition } from '../utils/places'
 import { Icon } from './icons'
 import { SearchThisArea } from './SearchThisArea'
 
-const NO_POIS: Poi[] = []
-
 /** What's drawn on the map (the route, browse results, pins and dots) and clicks on it. */
 export function MapLayers() {
-  const { mode, place, whatsHere, waypoints, elevationAt, routeSegments, camera, browse } =
-    useAppStore(
-      useShallow((s) => ({
-        mode: s.mode,
-        place: s.place,
-        whatsHere: s.whatsHere,
-        waypoints: s.waypoints,
-        elevationAt: s.elevationAt,
-        routeSegments: s.routeSegments,
-        camera: s.camera,
-        browse: s.browse,
-      })),
-    )
+  const { mode, place, whatsHere, waypoints, elevationAt, camera } = useAppStore(
+    useShallow((s) => ({
+      mode: s.mode,
+      place: s.place,
+      whatsHere: s.whatsHere,
+      waypoints: s.waypoints,
+      elevationAt: s.elevationAt,
+      camera: s.camera,
+    })),
+  )
+  const routeSegments = useAppStore(selectRouteSegments)
   const { selectResult, showPoi, openMenu, closeMenu, setWaypointAt, searchThisArea } =
     useAppStore.getState()
   const isNavigating = useAppStore(selectIsNavigating)
-  const isBrowsing = mode === 'search' && browse !== null
+  const isBrowsing = useAppStore((s) => selectBrowsing(s) !== null)
   const pois = useAppStore(selectPois)
   const isWhatsHere = place !== null && place === whatsHere
   const hasMovedSinceBrowse = useAppStore(
@@ -55,7 +55,7 @@ export function MapLayers() {
     onDismiss: closeMenu,
   })
 
-  // After navigating, the route is shown flat again (its fit would otherwise keep the tilt)
+  // After navigating, the map turns back flat and north-up, showing the route
   const wasNavigating = useRef(false)
   useEffect(() => {
     if (isNavigating) {
@@ -64,13 +64,14 @@ export function MapLayers() {
     }
     const bounds = boundsOf(routeSegments.map((segment) => segment.geometry))
     if (bounds) camera?.fitBounds(bounds, wasNavigating.current)
+    else if (wasNavigating.current) camera?.flatten()
     wasNavigating.current = false
   }, [routeSegments, camera, isNavigating])
 
   return (
     <>
       <RouteLine segments={routeSegments} />
-      <PoiLayer pois={isBrowsing ? pois : NO_POIS} selectedKey={selectedKey} />
+      <PoiLayer pois={pois} selectedKey={selectedKey} />
 
       {mode === 'search' && place && !isWhatsHere && (
         <MapMarker position={placePosition(place)} color={COLORS.route} />

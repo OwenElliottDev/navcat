@@ -5,6 +5,7 @@ import type { End, Itinerary, LngLat, TripTime, Waypoint } from '../types'
 import { coordLabel } from '../utils/format'
 import { currentPosition, isLocationAllowed } from '../utils/location'
 import { describePlace, toWaypoint } from '../utils/places'
+import { selectIsRouteLoading } from './selectors'
 import type { Store } from '.'
 
 const NO_WAYPOINTS = { from: null, to: null }
@@ -86,6 +87,8 @@ export const createDirectionsSlice: StateCreator<Store, [], [], DirectionsSlice>
   },
 
   rerouteFrom(at) {
+    // A new route still on its way isn't asked for again (that would cancel it)
+    if (selectIsRouteLoading(get())) return
     // Only the start changes; the route reloads with the same profile and destination
     set({ waypoints: { ...get().waypoints, from: { position: at, label: 'Your location' } } })
   },

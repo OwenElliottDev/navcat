@@ -51,42 +51,38 @@ export function compassFromOrientation(
 export interface Movement {
   /** Degrees from north, or null when not really moving */
   course: number | null
-  /** Metres a second, or null until it's known */
-  speed: number | null
   /** The fix the direction of travel is next measured from */
   anchor: Fix | null
 }
 
-export const STILL: Movement = { course: null, speed: null, anchor: null }
+export const STILL: Movement = { course: null, anchor: null }
 
 // Moving from this speed (m/s), the direction of travel is used rather than the compass, until
 // slower than STOPPED_SPEED. The gap stops GPS jitter flicking between them
 const MOVING_SPEED = 0.5
 const STOPPED_SPEED = 0.3
-// Without a direction from the device, it's measured over at least this far (metres) ...
+// Without a direction from the device, it's measured over at least this far (metres); going
+// less far than that in COURSE_WITHIN_MS counts as stopped. Only fixes at least
+// COURSE_ACCURACY metres accurate count
 const COURSE_OVER = 8
-// ... between fixes no more than this far apart (ms), from fixes at least this accurate (metres)
 const COURSE_WITHIN_MS = 8000
 const COURSE_ACCURACY = 25
 /** Movement after a new fix: the device's direction of travel, or measured from an earlier fix. */
 export function measureMovement(last: Movement, fix: Fix): Movement {
-  const speed = fix.speed ?? last.speed
   const isMoving = (speed: number) => speed >= (last.course === null ? MOVING_SPEED : STOPPED_SPEED)
+  // A device that knows its speed says when it's stopped (its heading is then null)
+  if (fix.speed !== null && !isMoving(fix.speed)) return { course: null, anchor: fix }
   if (fix.heading !== null && !Number.isNaN(fix.heading) && fix.speed !== null) {
-    return { course: isMoving(fix.speed) ? fix.heading : null, speed, anchor: fix }
+    return { course: fix.heading, anchor: fix }
   }
-  if (fix.accuracy > COURSE_ACCURACY) return { ...last, speed }
+  if (fix.accuracy > COURSE_ACCURACY) return last
   const { anchor } = last
-  if (!anchor) return { ...last, speed, anchor: fix }
+  if (!anchor) return { ...last, anchor: fix }
   const moved = distanceInMetres(anchor.at, fix.at)
   const elapsed = fix.time - anchor.time
-  if (moved < COURSE_OVER && elapsed <= COURSE_WITHIN_MS) return { ...last, speed }
-  const measured = elapsed > 0 ? moved / (elapsed / 1000) : 0
-  return {
-    course: isMoving(measured) ? bearingBetween(anchor.at, fix.at) : null,
-    speed: fix.speed ?? measured,
-    anchor: fix,
-  }
+  if (moved < COURSE_OVER) return elapsed <= COURSE_WITHIN_MS ? last : { course: null, anchor: fix }
+  const speed = fix.speed ?? (elapsed > 0 ? moved / (elapsed / 1000) : 0)
+  return { course: isMoving(speed) ? bearingBetween(anchor.at, fix.at) : null, anchor: fix }
 }
 
 /**
@@ -96,7 +92,8 @@ export function measureMovement(last: Movement, fix: Fix): Movement {
 export const facingHeading = (course: number | null, compass: number | null) => course ?? compass
 
 // Within LOCK of the route's direction, the camera faces down the route (steadier, and it turns
-// just before corners); further than UNLOCK, it faces the way you are. The gap stops it flicking.
+// just before corners); further than UNLOCK, it faces the way the phone points. The gap stops it
+// flicking.
 const LOCK_WITHIN = 45
 const UNLOCK_BEYOND = 75
 
