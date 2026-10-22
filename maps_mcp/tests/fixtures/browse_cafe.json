@@ -1,0 +1,51 @@
+{
+  "results": [
+    {
+      "osmType": "N",
+      "osmId": 1234567890,
+      "name": "Laneway Espresso",
+      "category": "cafe",
+      "lng": 144.9714,
+      "lat": -37.8115,
+      "tags": {
+        "name": "Laneway Espresso",
+        "amenity": "cafe",
+        "addr:housenumber": "66",
+        "addr:street": "Bourke Street",
+        "addr:postcode": "3000",
+        "opening_hours": "Mo-Fr 07:00-16:00; Sa-Su 08:00-15:00",
+        "phone": "+61 3 9000 0000",
+        "website": "https://laneway.example",
+        "cuisine": "coffee_shop"
+      },
+      "distance": 120
+    },
+    {
+      "osmType": "N",
+      "osmId": 2000000001,
+      "name": "Little Bourke Coffee",
+      "category": "cafe",
+      "lng": 144.9661,
+      "lat": -37.8121,
+      "tags": {
+        "name": "Little Bourke Coffee",
+        "amenity": "cafe",
+        "addr:street": "Little Bourke Street"
+      },
+      "distance": 350
+    },
+    {
+      "osmType": "N",
+      "osmId": 2000000002,
+      "name": null,
+      "category": "cafe",
+      "lng": 144.9632,
+      "lat": -37.8139,
+      "tags": {
+        "amenity": "cafe"
+      },
+      "distance": 580
+    }
+  ],
+  "truncated": false
+}

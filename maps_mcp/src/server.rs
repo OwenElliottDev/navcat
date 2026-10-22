@@ -5,7 +5,9 @@ use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{Json, ServerHandler, tool, tool_handler, tool_router};
 
+use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
 use crate::geo::Point;
+use crate::places::Place;
 use crate::places::{self, Places, Reverse, SearchParams};
 use crate::routing::{self, Route, RouteParams};
 use crate::stack::Stack;
@@ -15,7 +17,8 @@ const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for plan
 realistic travel times. Find places with search_places to get their coordinates. Each place \
 has a link that opens it in Nav Cat, to give people. plan_route gives routes and travel times \
 between points by road or path, and plan_transit public transport journeys from the timetables. \
-Give times with their UTC offset.";
+Give times with their UTC offset. get_place gives a place's details such as opening hours; \
+find_nearby finds places of a kind (list_categories) around a point.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -106,6 +109,56 @@ impl NavCat {
         Parameters(params): Parameters<TransitParams>,
     ) -> Result<Json<Journeys>, String> {
         Ok(Json(transit::plan(&self.stack, params).await?))
+    }
+
+    #[tool(
+        title = "Place details",
+        description = "Everything known about a place by its id: its OSM tags such as \
+        opening_hours, phone, website and address.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn get_place(
+        &self,
+        Parameters(params): Parameters<PlaceParams>,
+    ) -> Result<Json<Place>, String> {
+        Ok(Json(browse::get_place(&self.stack, &params.id).await?))
+    }
+
+    #[tool(
+        title = "Place categories",
+        description = "The kinds of place find_nearby can look for, e.g. cafes, pharmacies, \
+        toilets.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn list_categories(&self) -> Result<Json<Categories>, String> {
+        Ok(Json(browse::categories(&self.stack).await?))
+    }
+
+    #[tool(
+        title = "Find nearby",
+        description = "Places of a category within a distance of a point, nearest first.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn find_nearby(
+        &self,
+        Parameters(params): Parameters<NearbyParams>,
+    ) -> Result<Json<Nearby>, String> {
+        Ok(Json(browse::nearby(&self.stack, params).await?))
     }
 }
 
