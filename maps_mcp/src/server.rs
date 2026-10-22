@@ -6,7 +6,7 @@ use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{
     CompleteRequestParams, CompleteResult, Implementation, ListResourceTemplatesResult,
     ListResourcesResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
-    ServerCapabilities, ServerConfig,
+    ServerCapabilities, ServerConfig, ToolAnnotations,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer};
@@ -41,13 +41,22 @@ pub struct NavCat {
     prompt_router: PromptRouter<Self>,
 }
 
-// Every tool only reads from this stack's own services
 #[tool_router]
 impl NavCat {
     pub fn new(stack: Arc<Stack>) -> Self {
+        // Every tool only reads from this stack's own services
+        let hints = ToolAnnotations::new()
+            .read_only(true)
+            .destructive(false)
+            .idempotent(true)
+            .open_world(false);
+        let mut tool_router = Self::tool_router();
+        for route in tool_router.map.values_mut() {
+            route.attr.annotations = Some(hints.clone());
+        }
         NavCat {
             stack,
-            tool_router: Self::tool_router(),
+            tool_router,
             prompt_router: Self::prompt_router(),
         }
     }
@@ -56,13 +65,7 @@ impl NavCat {
         title = "Search places",
         description = "Find places by name, address or kind (\"museum\", \"cafe\"), giving their \
         coordinates, address details and an id for get_place. Pass `near` to prefer places \
-        around a point.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        around a point."
     )]
     async fn search_places(
         &self,
@@ -73,13 +76,7 @@ impl NavCat {
 
     #[tool(
         title = "What's here",
-        description = "The place or address at a point.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        description = "The place or address at a point."
     )]
     async fn reverse_geocode(
         &self,
@@ -93,13 +90,7 @@ impl NavCat {
         description = "A route by road or path through 2 to 10 waypoints in order: its \
         distance, travel time, climbing, and each leg between waypoints. Driving can avoid \
         motorways, tolls, ferries, traffic lights or small roads; walking and cycling can \
-        avoid steep hills. Times are for normal speeds, without live traffic.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        avoid steep hills. Times are for normal speeds, without live traffic."
     )]
     async fn plan_route(
         &self,
@@ -112,13 +103,7 @@ impl NavCat {
         title = "Plan a public transport journey",
         description = "Public transport journeys between two points from the timetables, \
         leaving at or arriving by a time: each walk and ride with its route, headsign, stops \
-        and times. Timetables only cover some areas and dates (see capabilities).",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        and times. Timetables only cover some areas and dates (see capabilities)."
     )]
     async fn plan_transit(
         &self,
@@ -130,13 +115,7 @@ impl NavCat {
     #[tool(
         title = "Reachable places",
         description = "Places of a category (list_categories) reachable from a point within a \
-        travel time by a plan_route mode, e.g. cafes within a 10 minute walk. Up to 30 minutes.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        travel time by a plan_route mode, e.g. cafes within a 10 minute walk. Up to 30 minutes."
     )]
     async fn reachable(
         &self,
@@ -151,13 +130,7 @@ impl NavCat {
         point, or both: each departure's time, route and where it's heading. Each platform or \
         direction is a separate stop, so both directions come back together. Timetabled times \
         unless marked live. Names are as the timetables spell them (often \"St\" for Street); \
-        if one isn't found, find the stop with search_places and pass its point as `near`.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        if one isn't found, find the stop with search_places and pass its point as `near`."
     )]
     async fn stop_departures(
         &self,
@@ -170,13 +143,7 @@ impl NavCat {
         title = "Travel times",
         description = "Travel time (and distance) from each origin to each destination, by a \
         plan_route mode or by public transport, e.g. to choose between places or order stops. \
-        Up to 25 pairs, or 9 by public transport.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        Up to 25 pairs, or 9 by public transport."
     )]
     async fn travel_times(
         &self,
@@ -188,13 +155,7 @@ impl NavCat {
     #[tool(
         title = "Place details",
         description = "Everything known about a place by its id: its OSM tags such as \
-        opening_hours, phone, website and address.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        opening_hours, phone, website and address."
     )]
     async fn get_place(
         &self,
@@ -206,13 +167,7 @@ impl NavCat {
     #[tool(
         title = "What Nav Cat covers",
         description = "The area this server covers, its travel modes and route options, and its \
-        public transport: its modes and the dates its timetables run.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        public transport: its modes and the dates its timetables run."
     )]
     async fn capabilities(&self) -> Result<Json<Capabilities>, String> {
         Ok(Json(capabilities::capabilities(&self.stack).await?))
@@ -221,13 +176,7 @@ impl NavCat {
     #[tool(
         title = "Place categories",
         description = "The kinds of place find_nearby can look for, e.g. cafes, pharmacies, \
-        toilets.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        toilets."
     )]
     async fn list_categories(&self) -> Result<Json<Categories>, String> {
         Ok(Json(browse::categories(&self.stack).await?))
@@ -235,13 +184,7 @@ impl NavCat {
 
     #[tool(
         title = "Find nearby",
-        description = "Places of a category within a distance of a point, nearest first.",
-        annotations(
-            read_only_hint = true,
-            destructive_hint = false,
-            idempotent_hint = true,
-            open_world_hint = false
-        )
+        description = "Places of a category within a distance of a point, nearest first."
     )]
     async fn find_nearby(
         &self,

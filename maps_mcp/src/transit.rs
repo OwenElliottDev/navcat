@@ -5,7 +5,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use chrono_tz::Tz;
+
 use crate::geo::Point;
+use crate::otp;
 use crate::routing::{km, minutes};
 use crate::stack::Stack;
 use crate::time;
@@ -125,18 +128,6 @@ pub struct TransitLeg {
 // ---------- OTP's answer ----------
 
 #[derive(Deserialize)]
-struct PlanResponse {
-    data: Option<PlanData>,
-    #[serde(default)]
-    errors: Vec<GraphQlError>,
-}
-
-#[derive(Deserialize)]
-struct GraphQlError {
-    message: String,
-}
-
-#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlanData {
     plan_connection: PlanConnection,
@@ -179,7 +170,7 @@ struct OtpLeg {
     end: OtpTime,
     from: Named,
     to: Named,
-    route: Option<OtpRoute>,
+    route: Option<otp::Route>,
 }
 
 #[derive(Deserialize)]
@@ -204,13 +195,6 @@ impl OtpTime {
 #[derive(Deserialize)]
 struct Named {
     name: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct OtpRoute {
-    short_name: Option<String>,
-    long_name: Option<String>,
 }
 
 fn variables(params: &TransitParams) -> Result<Value, Error> {
@@ -248,12 +232,7 @@ fn variables(params: &TransitParams) -> Result<Value, Error> {
     Ok(variables)
 }
 
-fn journeys(response: PlanResponse, origin: Point) -> Result<Journeys, Error> {
-    let Some(data) = response.data else {
-        let message = response.errors.into_iter().next();
-        let message = message.map_or("planning failed".into(), |e| e.message);
-        return Err(Error::Rejected("Public transport", message));
-    };
+fn journeys(data: PlanData, origin: Point) -> Result<Journeys, Error> {
     let PlanConnection {
         routing_errors,
         edges,
@@ -266,17 +245,18 @@ fn journeys(response: PlanResponse, origin: Point) -> Result<Journeys, Error> {
         return Err(Error::invalid("no_journey", message));
     }
 
+    let zone = time::zone(origin);
     let journey = |Edge { node }: Edge| {
         let rides = node.legs.iter().filter(|leg| leg.transit_leg).count() as u32;
         let walks = node.legs.iter().filter(|leg| leg.mode == "WALK");
         let walked: f64 = walks.map(|leg| leg.distance).sum();
         Journey {
-            depart: time::local_otp(&node.start, origin),
-            arrive: time::local_otp(&node.end, origin),
+            depart: time::local_otp(&node.start, zone),
+            arrive: time::local_otp(&node.end, zone),
             duration_min: minutes(node.duration),
             transfers: rides.saturating_sub(1),
             walk_km: km(walked),
-            legs: node.legs.into_iter().map(|l| leg(l, origin)).collect(),
+            legs: node.legs.into_iter().map(|l| leg(l, zone)).collect(),
         }
     };
     Ok(Journeys {
@@ -284,18 +264,15 @@ fn journeys(response: PlanResponse, origin: Point) -> Result<Journeys, Error> {
     })
 }
 
-fn leg(leg: OtpLeg, origin: Point) -> TransitLeg {
-    let named = |name: Option<String>| name.filter(|n| !n.is_empty());
+fn leg(leg: OtpLeg, zone: Tz) -> TransitLeg {
     TransitLeg {
-        route: leg
-            .route
-            .and_then(|r| named(r.short_name).or(named(r.long_name))),
+        route: leg.route.and_then(|r| r.label()),
         mode: leg.mode,
         headsign: leg.headsign,
         from: leg.from.name.unwrap_or_default(),
         to: leg.to.name.unwrap_or_default(),
-        depart: time::local_otp(&leg.start.time(), origin),
-        arrive: time::local_otp(&leg.end.time(), origin),
+        depart: time::local_otp(&leg.start.time(), zone),
+        arrive: time::local_otp(&leg.end.time(), zone),
         duration_min: minutes(leg.duration),
         distance_km: km(leg.distance),
     }
@@ -304,9 +281,8 @@ fn leg(leg: OtpLeg, origin: Point) -> TransitLeg {
 pub async fn plan(stack: &Stack, params: TransitParams) -> Result<Journeys, Error> {
     params.from.check()?;
     params.to.check()?;
-    let body = json!({ "query": PLAN_QUERY, "variables": variables(&params)? });
-    let request = stack.otp.post("/otp/gtfs/v1").json(&body);
-    journeys(stack.otp.json(request).await?, params.from)
+    let data = otp::query(stack, PLAN_QUERY, variables(&params)?).await?;
+    journeys(data, params.from)
 }
 
 #[cfg(test)]
@@ -318,8 +294,10 @@ mod tests {
         lng: 144.96706,
     };
 
-    fn fixture() -> PlanResponse {
-        serde_json::from_str(include_str!("../tests/fixtures/otp_plan.json")).unwrap()
+    fn fixture() -> PlanData {
+        let response: Value =
+            serde_json::from_str(include_str!("../tests/fixtures/otp_plan.json")).unwrap();
+        serde_json::from_value(response["data"].clone()).unwrap()
     }
 
     fn params() -> TransitParams {
@@ -366,11 +344,11 @@ mod tests {
 
     #[test]
     fn explains_no_journey() {
-        let response = json!({ "data": { "planConnection": {
+        let response = json!({ "planConnection": {
             "routingErrors": [{ "code": "OUTSIDE_SERVICE_PERIOD" }],
             "edges": [],
-        } } });
-        let response: PlanResponse = serde_json::from_value(response).unwrap();
+        } });
+        let response: PlanData = serde_json::from_value(response).unwrap();
         let error = journeys(response, FLINDERS_STREET).unwrap_err().to_string();
         assert!(error.contains("OUTSIDE_SERVICE_PERIOD"), "{error}");
     }

@@ -8,6 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::otp;
 use crate::routing::{Avoid, STEEP_HILLS_NEEDS};
 use crate::stack::Stack;
 use crate::upstream::Error;
@@ -57,11 +58,6 @@ const TRANSIT_QUERY: &str = "{
 }";
 
 #[derive(Deserialize)]
-struct TransitResponse {
-    data: Option<TransitData>,
-}
-
-#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct TransitData {
     routes: Vec<Mode>,
@@ -85,12 +81,25 @@ struct TimeRange {
     end: Option<i64>,
 }
 
-fn routing(info: Info) -> (Vec<f64>, Vec<String>, Vec<Avoid>, bool) {
+/// What GraphHopper has, before adding the timetables
+fn routing(info: Info) -> Capabilities {
     let has = |value: &str| info.encoded_values.contains_key(value);
-    let avoid = Avoid::ALL.into_iter().filter(|a| has(a.needs())).collect();
-    let steep_hills = has(STEEP_HILLS_NEEDS);
-    let modes = info.profiles.into_iter().map(|p| p.name).collect();
-    (info.bbox, modes, avoid, steep_hills)
+    Capabilities {
+        avoid: Avoid::ALL.into_iter().filter(|a| has(a.needs())).collect(),
+        avoid_steep_hills: has(STEEP_HILLS_NEEDS),
+        modes: info.profiles.into_iter().map(|p| p.name).collect(),
+        area: info.bbox,
+        transit: None,
+    }
+}
+
+/// plan_route's modes: GraphHopper's profiles
+pub async fn modes(stack: &Stack) -> Result<Vec<String>, Error> {
+    let info: Info = stack
+        .graphhopper
+        .json(stack.graphhopper.get("/info"))
+        .await?;
+    Ok(routing(info).modes)
 }
 
 /// A day in the graph's time zone, which OTP's service days are in
@@ -99,37 +108,29 @@ fn day(seconds: Option<i64>, zone: Tz) -> Option<String> {
     Some(time.format("%Y-%m-%d").to_string())
 }
 
-fn transit(response: TransitResponse) -> Option<Transit> {
-    let data = response.data?;
+fn transit(data: TransitData) -> Transit {
     let modes: BTreeSet<String> = data.routes.into_iter().map(|r| r.mode).collect();
     // Every feed is in the graph's zone (docker_maps/download/transit_prepare.py)
     let zone = data.agencies.first().and_then(|a| a.timezone.parse().ok());
     let zone = zone.unwrap_or(Tz::UTC);
     let range = data.service_time_range;
-    Some(Transit {
+    Transit {
         modes: modes.into_iter().collect(),
         timetables_from: day(range.as_ref().and_then(|r| r.start), zone),
         // The range ends at midnight after the last day
         timetables_until: day(range.as_ref().and_then(|r| r.end).map(|end| end - 1), zone),
-    })
+    }
 }
 
 pub async fn capabilities(stack: &Stack) -> Result<Capabilities, Error> {
     let info = stack
         .graphhopper
         .json::<Info>(stack.graphhopper.get("/info"));
-    let body = json!({ "query": TRANSIT_QUERY });
-    let request = stack.otp.post("/otp/gtfs/v1").json(&body);
-    let timetables = stack.otp.json::<TransitResponse>(request);
+    let timetables = otp::query::<TransitData>(stack, TRANSIT_QUERY, json!({}));
     let (info, timetables) = futures::join!(info, timetables);
-
-    let (area, modes, avoid, avoid_steep_hills) = routing(info?);
     Ok(Capabilities {
-        area,
-        modes,
-        avoid,
-        avoid_steep_hills,
-        transit: timetables.ok().and_then(transit),
+        transit: timetables.ok().map(transit),
+        ..routing(info?)
     })
 }
 
@@ -140,31 +141,31 @@ mod tests {
     #[test]
     fn reads_routing_info() {
         let fixture = include_str!("../tests/fixtures/graphhopper_info.json");
-        let (area, modes, avoid, steep_hills) = routing(serde_json::from_str(fixture).unwrap());
-        assert_eq!(area, [112.0, -44.0, 154.0, -10.0]);
-        assert_eq!(modes, ["foot", "bike", "bike_paths", "racingbike", "car"]);
-        assert_eq!(avoid, Avoid::ALL);
-        assert!(steep_hills);
+        let found = routing(serde_json::from_str(fixture).unwrap());
+        assert_eq!(found.area, [112.0, -44.0, 154.0, -10.0]);
+        assert_eq!(
+            found.modes,
+            ["foot", "bike", "bike_paths", "racingbike", "car"]
+        );
+        assert_eq!(found.avoid, Avoid::ALL);
+        assert!(found.avoid_steep_hills);
 
         let bare = json!({ "profiles": [{ "name": "car" }], "encoded_values": { "toll": [] } });
-        let (_, _, avoid, steep_hills) = routing(serde_json::from_value(bare).unwrap());
-        assert_eq!(avoid, [Avoid::Tolls]);
-        assert!(!steep_hills);
+        let found = routing(serde_json::from_value(bare).unwrap());
+        assert_eq!(found.avoid, [Avoid::Tolls]);
+        assert!(!found.avoid_steep_hills);
     }
 
     #[test]
     fn reads_timetables() {
-        let response = json!({ "data": {
+        let data = json!({
             "routes": [{ "mode": "TRAM" }, { "mode": "BUS" }, { "mode": "TRAM" }],
             "agencies": [{ "timezone": "Pacific/Auckland" }, { "timezone": "Pacific/Auckland" }],
             "serviceTimeRange": { "start": 1777032000, "end": 1832583600 },
-        } });
-        let transit = transit(serde_json::from_value(response).unwrap()).unwrap();
+        });
+        let transit = transit(serde_json::from_value(data).unwrap());
         assert_eq!(transit.modes, ["BUS", "TRAM"]);
         assert_eq!(transit.timetables_from.as_deref(), Some("2026-04-25"));
         assert_eq!(transit.timetables_until.as_deref(), Some("2028-01-27"));
-
-        let none = json!({ "data": null, "errors": [{ "message": "x" }] });
-        assert!(super::transit(serde_json::from_value(none).unwrap()).is_none());
     }
 }

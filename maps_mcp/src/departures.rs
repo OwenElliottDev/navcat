@@ -1,13 +1,15 @@
 // The next departures from public transport stops, found by name or near a point, from
 // OpenTripPlanner's GTFS GraphQL API. Each platform or direction is a stop of its own.
 
-use futures::future::try_join_all;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
+use chrono_tz::Tz;
+
 use crate::geo::Point;
-use crate::links::spot_link;
+use crate::links::links;
+use crate::otp;
 use crate::stack::Stack;
 use crate::time;
 use crate::transit::TransitMode;
@@ -90,18 +92,6 @@ const NEAR: &str = "query($lat: Float!, $lon: Float!, $radius: Int!, $modes: [Mo
 }";
 
 #[derive(Deserialize)]
-struct Response<T> {
-    data: Option<T>,
-    #[serde(default)]
-    errors: Vec<GraphQlError>,
-}
-
-#[derive(Deserialize)]
-struct GraphQlError {
-    message: String,
-}
-
-#[derive(Deserialize)]
 struct ByName {
     stops: Vec<OtpStop>,
 }
@@ -128,7 +118,7 @@ struct Node {
     place: Option<OtpStop>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct OtpStop {
     gtfs_id: String,
@@ -137,6 +127,15 @@ struct OtpStop {
     lat: f64,
     lon: f64,
     vehicle_mode: Option<String>,
+}
+
+impl OtpStop {
+    fn at(&self) -> Point {
+        Point {
+            lat: self.lat,
+            lng: self.lon,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -159,35 +158,7 @@ struct StopTime {
 
 #[derive(Deserialize)]
 struct Trip {
-    route: Route,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Route {
-    short_name: Option<String>,
-    long_name: Option<String>,
-    mode: Option<String>,
-}
-
-fn data<T>(response: Response<T>) -> Result<T, Error> {
-    response.data.ok_or_else(|| {
-        let message = response.errors.into_iter().next();
-        Error::Rejected(
-            "Public transport",
-            message.map_or("no answer".into(), |e| e.message),
-        )
-    })
-}
-
-async fn query<T: serde::de::DeserializeOwned>(
-    stack: &Stack,
-    query: &str,
-    variables: Value,
-) -> Result<T, Error> {
-    let body = json!({ "query": query, "variables": variables });
-    let request = stack.otp.post("/otp/gtfs/v1").json(&body);
-    data(stack.otp.json::<Response<T>>(request).await?)
+    route: otp::Route,
 }
 
 /// Stops by name, near a point, or both, with their distance from it
@@ -209,13 +180,13 @@ async fn find_stops(
         _ => true,
     };
 
-    let found: Vec<(OtpStop, Option<f64>)> = match (name, params.near) {
+    let mut found: Vec<(OtpStop, Option<f64>)> = match (name, params.near) {
         (None, None) => {
             let message = "Give a stop name, a point it's near, or both";
             return Err(Error::invalid("no_stop", message));
         }
         (Some(name), None) => {
-            let found: ByName = query(stack, BY_NAME, json!({ "name": name })).await?;
+            let found: ByName = otp::query(stack, BY_NAME, json!({ "name": name })).await?;
             found
                 .stops
                 .into_iter()
@@ -229,7 +200,7 @@ async fn find_stops(
             let variables = json!({
                 "lat": near.lat, "lon": near.lng, "radius": radius, "modes": modes,
             });
-            let found: Near = query(stack, NEAR, variables).await?;
+            let found: Near = otp::query(stack, NEAR, variables).await?;
             let named = |stop: &OtpStop| {
                 name.is_none_or(|n| stop.name.to_lowercase().contains(&n.to_lowercase()))
             };
@@ -238,7 +209,8 @@ async fn find_stops(
             stops.filter(|(stop, _)| named(stop)).collect()
         }
     };
-    Ok(found.into_iter().take(MAX_STOPS).collect())
+    found.truncate(MAX_STOPS);
+    Ok(found)
 }
 
 /// One request for every stop's departures, each from its own start time
@@ -257,18 +229,13 @@ fn departures_query(starts: &[Option<i64>], count: u8) -> String {
     format!("query({}) {{ {} }}", variables.join(", "), fields.join(" "))
 }
 
-fn departure(time: StopTime, at: Point) -> Departure {
+fn departure(time: StopTime, zone: Tz) -> Departure {
     let route = time.trip.map(|t| t.route);
-    let named = |name: Option<String>| name.filter(|n| !n.is_empty());
-    let (name, mode) = match route {
-        Some(r) => (named(r.short_name).or(named(r.long_name)), r.mode),
-        None => (None, None),
-    };
     let seconds = time.service_day + time.realtime_departure;
     Departure {
-        time: time::local_epoch(seconds, at).unwrap_or_default(),
-        route: name,
-        mode,
+        time: time::local_epoch(seconds, zone).unwrap_or_default(),
+        route: route.as_ref().and_then(otp::Route::label),
+        mode: route.and_then(|r| r.mode),
         headsign: time.headsign,
         live: time.realtime.unwrap_or(false),
     }
@@ -280,15 +247,10 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
     if found.is_empty() {
         return Err(Error::invalid("no_stop", "No public transport stop found"));
     }
-    let point = |stop: &OtpStop| Point {
-        lat: stop.lat,
-        lng: stop.lon,
-    };
-
     let starts = found
         .iter()
         .map(|(stop, _)| match &params.after {
-            Some(after) => time::parse(after, point(stop)).map(|t| Some(t.timestamp())),
+            Some(after) => time::parse(after, stop.at()).map(|t| Some(t.timestamp())),
             None => Ok(None),
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -297,20 +259,17 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
         .enumerate()
         .map(|(i, (stop, _))| (format!("s{i}"), json!(stop.gtfs_id)))
         .collect();
-    let mut times: Map<String, Value> = query(
-        stack,
-        &departures_query(&starts, count),
-        Value::Object(variables),
-    )
-    .await?;
+    let query = departures_query(&starts, count);
+    let times = otp::query::<Map<String, Value>>(stack, &query, Value::Object(variables));
+    let links = links(stack, found.iter().map(|(stop, _)| stop.at()));
+    let (mut times, links) = futures::try_join!(times, links)?;
 
-    let links = try_join_all(found.iter().map(|(stop, _)| spot_link(stack, point(stop)))).await?;
     let stops = found
         .into_iter()
         .zip(links)
         .enumerate()
         .map(|(i, ((stop, distance), link))| {
-            let at = point(&stop);
+            let zone = time::zone(stop.at());
             let times = times.remove(&format!("s{i}")).unwrap_or_default();
             let times: Option<StopTimes> = serde_json::from_value(times).ok();
             let times = times.map_or_else(Vec::new, |t| t.stoptimes_without_patterns);
@@ -322,7 +281,7 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
                 lng: stop.lon,
                 distance_m: distance.map(|d| d.round() as u32),
                 link,
-                departures: times.into_iter().map(|t| departure(t, at)).collect(),
+                departures: times.into_iter().map(|t| departure(t, zone)).collect(),
             }
         })
         .collect();
@@ -358,7 +317,7 @@ mod tests {
             lat: -37.8096665,
             lng: 144.9729262,
         };
-        let departure = departure(time, at);
+        let departure = departure(time, time::zone(at));
         assert_eq!(departure.time, "2026-10-22T15:00");
         assert_eq!(departure.route.as_deref(), Some("86"));
         assert!(!departure.live);

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::geo::Point;
-use crate::links::add_links;
+use crate::links::{add_links, spot_link};
 use crate::places::Place;
 use crate::stack::Stack;
 use crate::upstream::Error;
@@ -34,7 +34,7 @@ pub async fn get_place(stack: &Stack, id: &str) -> Result<Place, Error> {
     let request = stack.backend.get(&place_path(id)?);
     let details: Value = stack.backend.json(request).await?;
     let mut place = Place::from_poi(details).ok_or(Error::Unavailable(stack.backend.name))?;
-    add_links(stack, std::slice::from_mut(&mut place)).await?;
+    place.link = spot_link(stack, place.at()).await?;
     Ok(place)
 }
 

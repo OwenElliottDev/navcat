@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
 use crate::geo::Point;
-use crate::links::add_links;
+use crate::links::{Linked, add_links, spot_link};
 use crate::stack::Stack;
 use crate::upstream::Error;
 
@@ -36,15 +36,18 @@ impl Place {
     }
 
     /// A Photon GeoJSON feature
-    pub fn from_feature(feature: Value) -> Option<Place> {
-        let Value::Array(coordinates) = &feature["geometry"]["coordinates"] else {
+    pub fn from_feature(mut feature: Value) -> Option<Place> {
+        let coordinates = feature
+            .pointer_mut("/geometry/coordinates")
+            .map(Value::take);
+        let Some(Value::Array(coordinates)) = coordinates else {
             return None;
         };
         let (lng, lat) = (
             coordinates.first()?.as_f64()?,
             coordinates.get(1)?.as_f64()?,
         );
-        let Value::Object(mut fields) = feature["properties"].clone() else {
+        let Some(Value::Object(mut fields)) = feature.get_mut("properties").map(Value::take) else {
             return None;
         };
         let id = place_id(fields.remove("osm_type"), fields.remove("osm_id"));
@@ -74,6 +77,16 @@ impl Place {
             link: String::new(),
             fields,
         })
+    }
+}
+
+impl Linked for Place {
+    fn at(&self) -> Point {
+        Place::at(self)
+    }
+
+    fn set_link(&mut self, link: String) {
+        self.link = link;
     }
 }
 
@@ -174,7 +187,7 @@ pub async fn reverse(stack: &Stack, at: Point) -> Result<Reverse, Error> {
     let found: FeatureCollection = stack.photon.json(request).await?;
     let mut place = found.features.into_iter().find_map(Place::from_feature);
     if let Some(place) = &mut place {
-        add_links(stack, std::slice::from_mut(place)).await?;
+        place.link = spot_link(stack, place.at()).await?;
     }
     Ok(Reverse { place })
 }

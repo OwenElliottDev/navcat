@@ -56,7 +56,7 @@ pub struct Pair {
 
 pub async fn travel_times(stack: &Stack, params: TravelTimesParams) -> Result<TravelTimes, Error> {
     let by_transit = params.mode == "transit";
-    let (most, at_once) = if by_transit {
+    let (most, slots) = if by_transit {
         (MAX_JOURNEYS, stack.otp.capacity)
     } else {
         (MAX_ROUTES, stack.graphhopper.capacity)
@@ -70,74 +70,69 @@ pub async fn travel_times(stack: &Stack, params: TravelTimesParams) -> Result<Tr
         let message = "depart_at and transit_modes are for mode \"transit\"";
         return Err(Error::invalid("bad_option", message));
     }
-    let points = params.origins.iter().chain(&params.destinations);
-    points.clone().try_for_each(Point::check)?;
+    let mut points = params.origins.iter().chain(&params.destinations);
+    points.try_for_each(Point::check)?;
 
     let pairs: Vec<_> = (0..params.origins.len())
         .flat_map(|from| (0..params.destinations.len()).map(move |to| (from, to)))
-        .map(|(from, to)| time_pair(stack, &params, from, to))
+        .map(|(from, to)| time_pair(stack, &params, by_transit, from, to))
         .collect();
-    // A few at a time, so one call doesn't take every slot a service has
+    // Half a service's slots at most, so one call doesn't hold up everyone else's
+    let at_once = (slots / 2).max(1);
     let pairs = stream::iter(pairs).buffered(at_once).collect().await;
     Ok(TravelTimes { pairs })
 }
 
-async fn time_pair(stack: &Stack, params: &TravelTimesParams, from: usize, to: usize) -> Pair {
+async fn time_pair(
+    stack: &Stack,
+    params: &TravelTimesParams,
+    by_transit: bool,
+    from: usize,
+    to: usize,
+) -> Pair {
     let (origin, destination) = (params.origins[from], params.destinations[to]);
     let pair = Pair {
         from,
         to,
         ..Pair::default()
     };
-    if params.mode != "transit" {
-        let waypoints = [origin, destination];
-        return match routing::route(stack, &waypoints, &params.mode, &params.options).await {
-            Ok(path) => {
-                let route = routing::summarize(path, false);
-                let duration_min = Some(route.duration_min);
-                Pair {
-                    duration_min,
-                    distance_km: Some(route.distance_km),
-                    ..pair
-                }
-            }
-            Err(error) => Pair {
-                error: Some(error.to_string()),
-                ..pair
-            },
+    let timed = if by_transit {
+        let request = TransitParams {
+            from: origin,
+            to: destination,
+            depart_at: params.depart_at.clone(),
+            arrive_by: None,
+            modes: params.transit_modes.clone(),
+            max_options: Some(1),
+            transit_only: true,
         };
-    }
-
-    let request = TransitParams {
-        from: origin,
-        to: destination,
-        depart_at: params.depart_at.clone(),
-        arrive_by: None,
-        modes: params.transit_modes.clone(),
-        max_options: Some(1),
-        transit_only: true,
-    };
-    match transit::plan(stack, request)
-        .await
-        .map(|found| found.journeys.into_iter().next())
-    {
-        Ok(Some(first)) => {
-            let duration_min = Some(first.duration_min);
+        // OTP gives at least one journey or an error
+        transit::plan(stack, request).await.map(|found| {
+            let first = found.journeys.into_iter().next();
             Pair {
-                duration_min,
-                arrive: Some(first.arrive),
+                duration_min: first.as_ref().map(|j| j.duration_min),
+                arrive: first.map(|j| j.arrive),
                 ..pair
             }
-        }
-        Ok(None) => Pair {
-            error: Some("No journey found (code: no_journey)".into()),
-            ..pair
-        },
-        Err(error) => Pair {
-            error: Some(error.to_string()),
-            ..pair
-        },
-    }
+        })
+    } else {
+        let waypoints = [origin, destination];
+        let path = routing::route(stack, &waypoints, &params.mode, &params.options, false);
+        path.await.map(|path| {
+            let route = routing::summarize(path, false);
+            Pair {
+                duration_min: Some(route.duration_min),
+                distance_km: Some(route.distance_km),
+                ..pair
+            }
+        })
+    };
+    timed.unwrap_or_else(|error| Pair {
+        error: Some(error.to_string()),
+        from,
+        to,
+        ..Pair::default()
+    })
 }
 
 #[cfg(test)]

@@ -130,18 +130,18 @@ pub async fn complete(stack: &Stack, request: CompleteRequestParams) -> Complete
     };
     let typed = request.argument.value.to_lowercase();
     let options: Vec<String> = match request.argument.name.as_str() {
-        "mode" => match capabilities::capabilities(stack).await {
-            Ok(found) => found.modes.into_iter().chain(["transit".into()]).collect(),
-            Err(_) => Vec::new(),
-        },
-        "category" => match browse::categories(stack).await {
-            Ok(found) => found
-                .categories
-                .into_iter()
-                .filter_map(|c| c.get("id")?.as_str().map(String::from))
-                .collect(),
-            Err(_) => Vec::new(),
-        },
+        "mode" => capabilities::modes(stack)
+            .await
+            .map(|modes| modes.into_iter().chain(["transit".into()]).collect())
+            .unwrap_or_default(),
+        "category" => browse::categories(stack)
+            .await
+            .map(|found| {
+                let ids = found.categories.into_iter();
+                ids.filter_map(|c| c.get("id")?.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
         _ => Vec::new(),
     };
     let mut values: Vec<String> = options

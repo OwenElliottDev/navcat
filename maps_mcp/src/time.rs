@@ -14,6 +14,10 @@ const LOCAL: &str = "%Y-%m-%dT%H:%M";
 
 static FINDER: LazyLock<tzf_rs::DefaultFinder> = LazyLock::new(tzf_rs::DefaultFinder::new);
 
+pub fn load() {
+    LazyLock::force(&FINDER);
+}
+
 /// The time zone at a point (UTC out at sea)
 pub fn zone(at: Point) -> Tz {
     FINDER
@@ -50,23 +54,23 @@ pub fn parse(text: &str, at: Point) -> Result<DateTime<FixedOffset>, Error> {
         .ok_or_else(|| Error::invalid("bad_time", format!("{text} doesn't exist there")))
 }
 
-/// A time as the clock reads where `at` is, e.g. "2026-10-24T08:30"
-pub fn local(time: DateTime<FixedOffset>, at: Point) -> String {
-    time.with_timezone(&zone(at)).format(LOCAL).to_string()
+/// A time as the clock reads in a zone, e.g. "2026-10-24T08:30"
+pub fn local(time: DateTime<FixedOffset>, zone: Tz) -> String {
+    time.with_timezone(&zone).format(LOCAL).to_string()
 }
 
-/// Seconds since 1970 as local time where `at` is
-pub fn local_epoch(seconds: i64, at: Point) -> Option<String> {
+/// Seconds since 1970 as local time in a zone
+pub fn local_epoch(seconds: i64, zone: Tz) -> Option<String> {
     Some(local(
         DateTime::from_timestamp(seconds, 0)?.fixed_offset(),
-        at,
+        zone,
     ))
 }
 
-/// One of OTP's times (ISO 8601 with an offset) as local time where `at` is
-pub fn local_otp(text: &str, at: Point) -> String {
+/// One of OTP's times (ISO 8601 with an offset) as local time in a zone
+pub fn local_otp(text: &str, zone: Tz) -> String {
     match DateTime::parse_from_rfc3339(text) {
-        Ok(time) => local(time, at),
+        Ok(time) => local(time, zone),
         Err(_) => text.into(),
     }
 }
@@ -117,7 +121,9 @@ mod tests {
     fn gives_otps_times_as_local() {
         // A Melbourne tram, as OTP gives it in the graph's Auckland time
         let tram = "2026-10-22T17:07:00+13:00";
-        assert_eq!(local_otp(tram, MELBOURNE), "2026-10-22T15:07");
-        assert_eq!(local_otp(tram, AUCKLAND), "2026-10-22T17:07");
+        assert_eq!(local_otp(tram, zone(MELBOURNE)), "2026-10-22T15:07");
+        assert_eq!(local_otp(tram, zone(AUCKLAND)), "2026-10-22T17:07");
+        let midnight = local_epoch(1792580400, zone(MELBOURNE));
+        assert_eq!(midnight.as_deref(), Some("2026-10-21T22:00"));
     }
 }

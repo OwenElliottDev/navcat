@@ -6,6 +6,7 @@ mod geo;
 mod guard;
 mod links;
 mod matrix;
+mod otp;
 mod places;
 mod prompts;
 mod reachable;
@@ -55,7 +56,10 @@ async fn main() -> ExitCode {
         return health(&config).await;
     }
 
-    let stack = Arc::new(Stack::new(&config));
+    // Built once: every request (being stateless) gets a copy
+    let navcat = NavCat::new(Arc::new(Stack::new(&config)));
+    // The time zone map takes a moment to load; not on the first request
+    tokio::task::spawn_blocking(time::load);
     let shutdown = CancellationToken::new();
     // Stateless: the server holds nothing per client, so there's nothing for clients to pile up
     let mcp_config = StreamableHttpServerConfig::default()
@@ -67,7 +71,7 @@ async fn main() -> ExitCode {
         .with_max_request_body_bytes(MAX_BODY_BYTES)
         .with_cancellation_token(shutdown.child_token());
     let mcp = StreamableHttpService::new(
-        move || Ok(NavCat::new(stack.clone())),
+        move || Ok(navcat.clone()),
         Arc::new(LocalSessionManager::default()),
         mcp_config,
     );

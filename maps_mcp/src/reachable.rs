@@ -29,7 +29,7 @@ pub struct ReachableParams {
     pub limit: Option<usize>,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Default, Serialize, JsonSchema)]
 pub struct Reachable {
     /// Nearest first, each with its straight-line distance in metres
     pub places: Vec<Place>,
@@ -117,16 +117,10 @@ pub async fn reachable(stack: &Stack, params: ReachableParams) -> Result<Reachab
     let request = stack.graphhopper.get("/isochrone").query(&query);
     let found: IsochroneResponse = stack.graphhopper.json(request).await?;
     let Some(area) = found.polygons.into_iter().next().map(|f| f.geometry) else {
-        return Ok(Reachable {
-            places: Vec::new(),
-            truncated: false,
-        });
+        return Ok(Reachable::default());
     };
     let Some(bbox) = area.bbox() else {
-        return Ok(Reachable {
-            places: Vec::new(),
-            truncated: false,
-        });
+        return Ok(Reachable::default());
     };
 
     let (mut places, more) =

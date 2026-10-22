@@ -180,14 +180,21 @@ pub fn custom_model(options: &RouteOptions) -> Option<Value> {
     (!priority.is_empty()).then(|| json!({ "priority": priority }))
 }
 
-/// GraphHopper's /route request
-pub fn request_body(waypoints: &[Point], mode: &str, options: &RouteOptions) -> Value {
+/// GraphHopper's /route request. Without `detail`, only the distance and time: no
+/// directions (or legs), geometry or climbing.
+pub fn request_body(
+    waypoints: &[Point],
+    mode: &str,
+    options: &RouteOptions,
+    detail: bool,
+) -> Value {
     let points: Vec<[f64; 2]> = waypoints.iter().map(|p| [p.lng, p.lat]).collect();
     let mut body = json!({
         "profile": mode,
         "points": points,
-        "instructions": true,
-        "elevation": true,
+        "instructions": detail,
+        "elevation": detail,
+        "calc_points": detail,
         "locale": "en",
     });
     // A custom model can't use the fast (CH) car routing; GraphHopper falls back to LM
@@ -200,23 +207,21 @@ pub fn request_body(waypoints: &[Point], mode: &str, options: &RouteOptions) -> 
 
 /// The route, split into legs at each stop
 pub fn summarize(path: Path, directions: bool) -> Route {
+    let leg = |metres: f64, ms: f64| Leg {
+        distance_km: km(metres),
+        duration_min: minutes(ms / 1000.0),
+    };
     let mut legs = Vec::new();
     let (mut metres, mut ms) = (0.0, 0.0);
     for instruction in &path.instructions {
         metres += instruction.distance;
         ms += instruction.time;
         if instruction.sign == VIA_REACHED {
-            legs.push(Leg {
-                distance_km: km(metres),
-                duration_min: minutes(ms / 1000.0),
-            });
+            legs.push(leg(metres, ms));
             (metres, ms) = (0.0, 0.0);
         }
     }
-    legs.push(Leg {
-        distance_km: km(metres),
-        duration_min: minutes(ms / 1000.0),
-    });
+    legs.push(leg(metres, ms));
 
     let directions = directions.then(|| {
         let direction = |i: &Instruction| Direction {
@@ -241,6 +246,7 @@ pub async fn route(
     waypoints: &[Point],
     mode: &str,
     options: &RouteOptions,
+    detail: bool,
 ) -> Result<Path, Error> {
     if !(2..=MAX_WAYPOINTS).contains(&waypoints.len()) {
         let message = format!("Give 2 to {MAX_WAYPOINTS} waypoints");
@@ -253,7 +259,7 @@ pub async fn route(
             "For public transport use plan_transit",
         ));
     }
-    let body = request_body(waypoints, mode, options);
+    let body = request_body(waypoints, mode, options, detail);
     let request = stack.graphhopper.post("/route").json(&body);
     let response: RouteResponse = stack.graphhopper.json(request).await?;
     response
@@ -264,7 +270,14 @@ pub async fn route(
 }
 
 pub async fn plan_route(stack: &Stack, params: RouteParams) -> Result<Route, Error> {
-    let path = route(stack, &params.waypoints, &params.mode, &params.options).await?;
+    let path = route(
+        stack,
+        &params.waypoints,
+        &params.mode,
+        &params.options,
+        true,
+    )
+    .await?;
     Ok(summarize(path, params.directions))
 }
 
@@ -285,17 +298,20 @@ mod tests {
 
     #[test]
     fn asks_like_the_app() {
-        let plain = request_body(&POINTS, "foot", &RouteOptions::default());
+        let plain = request_body(&POINTS, "foot", &RouteOptions::default(), true);
         assert_eq!(plain["profile"], "foot");
         assert_eq!(plain["points"], json!([[144.9, -37.8], [145.0, -37.7]]));
         assert!(plain.get("custom_model").is_none());
         assert!(plain.get("ch.disable").is_none());
+        let light = request_body(&POINTS, "foot", &RouteOptions::default(), false);
+        assert_eq!(light["calc_points"], json!(false));
+        assert_eq!(light["instructions"], json!(false));
 
         let tolls = RouteOptions {
             avoid: vec![Avoid::Tolls],
             avoid_steep_hills: false,
         };
-        let body = request_body(&POINTS, "car", &tolls);
+        let body = request_body(&POINTS, "car", &tolls, true);
         let rule = json!({ "if": "toll == ALL", "multiply_by": "0.1" });
         assert_eq!(body["custom_model"], json!({ "priority": [rule] }));
         assert_eq!(body["ch.disable"], json!(true));
@@ -304,7 +320,7 @@ mod tests {
             avoid: vec![],
             avoid_steep_hills: true,
         };
-        let body = request_body(&POINTS, "bike", &hills);
+        let body = request_body(&POINTS, "bike", &hills, true);
         assert_eq!(
             body["custom_model"]["priority"].as_array().unwrap().len(),
             3
