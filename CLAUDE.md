@@ -58,6 +58,14 @@ Use `pycurl` for HTTP in Python (not httpx/requests, and not FastAPI's TestClien
 `tests/client.py`. API tests build fixture `pois`/`turn_lanes` tables in the import's shape
 (`tests/api/conftest.py`) — update them with `pois.lua`.
 
+MCP server (`maps_mcp/`, Rust):
+
+```
+cargo test
+cargo clippy --all-targets -- -D warnings
+cargo fmt
+```
+
 Frontend tests (`maps_web/`):
 
 ```
@@ -129,6 +137,18 @@ shape by `utils/transitNavigation.ts`. Lane guidance looks up OSM `turn:lanes` f
 each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" options (`CAR_AVOIDS` in
 `src/config.ts`) are sent as a GraphHopper custom model with `ch.disable`, so car has an LM profile
 too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
+
+**MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use
+the stack: tools (search, place details, browse, routes, public transport, travel times,
+reachable places, capabilities), the same data as resources, and prompts. It's off unless the
+`mcp` compose profile is on, and serves stateless Streamable HTTP on its own port (7100,
+localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not through nginx. It's a
+thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
+public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
+lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
+`STEEP_HILLS`) is copied, and must change with `src/config.ts`. It protects itself (Host and
+Origin checks, token, rate limit per address, capped concurrent requests per service, size
+limits) and needs nothing changed in the other services.
 
 **Data pipeline (`docker_maps/`).** `./maps` (repo root, POSIX sh) drives the setup-profile
 services; updates build alongside the live data and swap it in, and `maps-updater` (opt-in,

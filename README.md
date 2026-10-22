@@ -16,6 +16,7 @@ Nav Cat downloads all its required data at setup time and then runs without any 
 - **Public transport** journey planning from GTFS timetables
 - **Turn-by-turn navigation** with voice prompts and lane guidance
 - **Accounts** (optional) for saved places, reviews, photos and community edits to places
+- **MCP server** (optional) so AI agents can search places and plan trips with real travel times
 
 It's built from open-source components: [TileServer GL](https://github.com/maptiler/tileserver-gl)
 and [Planetiler](https://github.com/onthegomap/planetiler) for the map,
@@ -96,6 +97,26 @@ services, so it's off by default. `./maps schedule off` turns it off again.
 - `postgres/`: accounts, saved places, reviews, and edits to places
 - `photos/`: uploaded place photos (re-encoded, with location metadata removed)
 
+## AI agents (MCP)
+
+An optional [MCP](https://modelcontextprotocol.io) server lets AI agents use Nav Cat to find
+places and plan trips with realistic travel times: routes, public transport journeys, travel
+times between several places, opening hours, and what's within a few minutes' reach. It only
+reads from the stack, and links its answers to places in Nav Cat.
+
+Turn it on with `COMPOSE_PROFILES=mcp` in `.env`, then `docker compose up -d maps-mcp`. It
+listens on port 7100 of this machine only. To connect Claude Code:
+
+```
+claude mcp add --transport http navcat http://localhost:7100/mcp
+```
+
+To reach it from other machines, set `MCP_BIND=0.0.0.0` (or an address), `MCP_TOKEN` (clients
+send it as `Authorization: Bearer <token>`) and `MCP_ALLOWED_HOSTS` to the names they use for
+this machine. Set `MCP_PUBLIC_URL` to Nav Cat's address so links work for them. `./maps update`
+doesn't update its image; run `docker compose pull maps-mcp` with the rest. See
+[maps_mcp/README.md](maps_mcp/README.md) for its tools.
+
 ## Development
 
 `docker-compose.yml` runs the published images, which only change with a release. To run a dev build from your checkout instead, use the `dev` arg:
@@ -154,6 +175,12 @@ Located in `maps_backend/tests/api/`. Running these requires Docker.
     sh tests/api/run.sh
 
 The API tests start the real backend against a fresh PostGIS database, so migrations are exercised from an empty schema. The `pois` and `turn_lanes` tables are fixtures that mirror the structure produced by the import (defined in `tests/api/conftest.py`). Keep them consistent with `pois.lua` when changing the import. To run against an existing Postgres instance instead, set `TEST_DATABASE_URL`.
+
+### MCP server tests
+
+Located alongside the code in `maps_mcp/src`, run from `maps_mcp/`. Running these requires Rust.
+
+    cargo test
 
 ### Smoke tests
 
