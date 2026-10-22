@@ -24,7 +24,8 @@ pub struct TravelTimesParams {
     pub mode: String,
     #[serde(flatten)]
     pub options: RouteOptions,
-    /// By public transport: leave at or after this time, with its UTC offset. Now if not given.
+    /// By public transport: leave at or after this local time, e.g. "2026-10-24T08:30". Now if
+    /// not given.
     pub depart_at: Option<String>,
     /// By public transport: only these kinds of transport
     pub transit_modes: Option<Vec<TransitMode>>,
@@ -45,7 +46,7 @@ pub struct Pair {
     pub duration_min: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance_km: Option<f64>,
-    /// By public transport: when the first journey arrives
+    /// By public transport: when the first journey arrives, in local time
     #[serde(skip_serializing_if = "Option::is_none")]
     pub arrive: Option<String>,
     /// Why there's no time for this pair
@@ -114,6 +115,7 @@ async fn time_pair(stack: &Stack, params: &TravelTimesParams, from: usize, to: u
         arrive_by: None,
         modes: params.transit_modes.clone(),
         max_options: Some(1),
+        transit_only: true,
     };
     match transit::plan(stack, request)
         .await

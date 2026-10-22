@@ -1,8 +1,9 @@
-// What this server can plan: GraphHopper's /info, and OTP's modes, timetable dates and time zone
+// What this server can plan: GraphHopper's /info, and OTP's modes and timetable dates
 
 use std::collections::BTreeSet;
 
 use chrono::DateTime;
+use chrono_tz::Tz;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -29,10 +30,8 @@ pub struct Capabilities {
 pub struct Transit {
     /// plan_transit's modes
     pub modes: Vec<String>,
-    /// The timetables' time zones, for the UTC offset to give plan_transit times
-    pub time_zones: Vec<String>,
-    /// The first and last times the timetables have services, in UTC. Journeys outside them
-    /// can only walk.
+    /// The first and last days the timetables have services, e.g. "2026-10-24". Journeys
+    /// outside them can only walk.
     pub timetables_from: Option<String>,
     pub timetables_until: Option<String>,
 }
@@ -94,20 +93,24 @@ fn routing(info: Info) -> (Vec<f64>, Vec<String>, Vec<Avoid>, bool) {
     (info.bbox, modes, avoid, steep_hills)
 }
 
-fn utc(seconds: Option<i64>) -> Option<String> {
-    Some(DateTime::from_timestamp(seconds?, 0)?.to_rfc3339())
+/// A day in the graph's time zone, which OTP's service days are in
+fn day(seconds: Option<i64>, zone: Tz) -> Option<String> {
+    let time = DateTime::from_timestamp(seconds?, 0)?.with_timezone(&zone);
+    Some(time.format("%Y-%m-%d").to_string())
 }
 
 fn transit(response: TransitResponse) -> Option<Transit> {
     let data = response.data?;
     let modes: BTreeSet<String> = data.routes.into_iter().map(|r| r.mode).collect();
-    let zones: BTreeSet<String> = data.agencies.into_iter().map(|a| a.timezone).collect();
+    // Every feed is in the graph's zone (docker_maps/download/transit_prepare.py)
+    let zone = data.agencies.first().and_then(|a| a.timezone.parse().ok());
+    let zone = zone.unwrap_or(Tz::UTC);
     let range = data.service_time_range;
     Some(Transit {
         modes: modes.into_iter().collect(),
-        time_zones: zones.into_iter().collect(),
-        timetables_from: utc(range.as_ref().and_then(|r| r.start)),
-        timetables_until: utc(range.as_ref().and_then(|r| r.end)),
+        timetables_from: day(range.as_ref().and_then(|r| r.start), zone),
+        // The range ends at midnight after the last day
+        timetables_until: day(range.as_ref().and_then(|r| r.end).map(|end| end - 1), zone),
     })
 }
 
@@ -153,16 +156,13 @@ mod tests {
     fn reads_timetables() {
         let response = json!({ "data": {
             "routes": [{ "mode": "TRAM" }, { "mode": "BUS" }, { "mode": "TRAM" }],
-            "agencies": [{ "timezone": "Australia/Melbourne" }, { "timezone": "Australia/Melbourne" }],
+            "agencies": [{ "timezone": "Pacific/Auckland" }, { "timezone": "Pacific/Auckland" }],
             "serviceTimeRange": { "start": 1777032000, "end": 1832583600 },
         } });
         let transit = transit(serde_json::from_value(response).unwrap()).unwrap();
         assert_eq!(transit.modes, ["BUS", "TRAM"]);
-        assert_eq!(transit.time_zones, ["Australia/Melbourne"]);
-        assert_eq!(
-            transit.timetables_from.as_deref(),
-            Some("2026-04-24T12:00:00+00:00")
-        );
+        assert_eq!(transit.timetables_from.as_deref(), Some("2026-04-25"));
+        assert_eq!(transit.timetables_until.as_deref(), Some("2028-01-27"));
 
         let none = json!({ "data": null, "errors": [{ "message": "x" }] });
         assert!(super::transit(serde_json::from_value(none).unwrap()).is_none());

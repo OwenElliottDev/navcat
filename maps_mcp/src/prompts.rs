@@ -69,7 +69,7 @@ impl NavCat {
             {mode}.\n\n\
             Use the Nav Cat tools:\n\
             1. capabilities: the travel modes, and for public transport that {date} is within \
-            the timetables and the UTC offset to give times with.\n\
+            the timetables.\n\
             2. search_places (or find_nearby for a kind of place) to find {start} and each \
             stop, and get_place for their opening_hours.\n\
             3. travel_times between the stops to choose a sensible order, and only visit places \
@@ -96,7 +96,7 @@ impl NavCat {
         user(format!(
             "How should I get from {from} to {to}, {when}?\n\n\
             Use the Nav Cat tools: search_places to find both places, capabilities for the \
-            travel modes and the UTC offset to give times with, then plan_route for walking, \
+            travel modes, then plan_route for walking, \
             cycling and driving and plan_transit for public transport. Compare how long each \
             takes (and for public transport, when it leaves and arrives and the changes), and \
             recommend one.",

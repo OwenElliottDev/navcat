@@ -23,8 +23,9 @@ All read-only.
 | `reachable` | Places of a category within a travel time (up to 30 minutes) | GraphHopper `/isochrone`, backend `/api/browse` |
 
 Places come with a link into Nav Cat, from the backend's `/api/links/encode_osm_shortlink`.
-Times are given and returned with their UTC offset; `capabilities` names the timetables' time
-zone.
+Times are the local time where a trip is (e.g. `2026-10-24T08:30`), with its time zone found
+from its coordinates (`tzf-rs`, built in). OTP gives every time in the one zone its graph is in,
+which for a stack covering several zones isn't the trip's.
 
 ## Resources and prompts
 

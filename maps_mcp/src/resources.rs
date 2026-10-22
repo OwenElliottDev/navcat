@@ -21,7 +21,7 @@ pub fn list() -> Vec<Resource> {
             .with_title("What Nav Cat covers")
             .with_description(
                 "The area, travel modes and route options, and the public transport timetables' \
-                modes, dates and time zone",
+                modes and dates",
             )
             .with_mime_type(JSON),
         Resource::new(CATEGORIES, "categories")

@@ -8,6 +8,7 @@ use serde_json::{Value, json};
 use crate::geo::Point;
 use crate::routing::{km, minutes};
 use crate::stack::Stack;
+use crate::time;
 use crate::upstream::Error;
 
 const PLAN_QUERY: &str = "
@@ -71,15 +72,19 @@ pub enum TransitMode {
 pub struct TransitParams {
     pub from: Point,
     pub to: Point,
-    /// Leave at or after this time, with its UTC offset, e.g. "2026-10-23T08:30:00+13:00".
+    /// Leave at or after this local time where the journey starts, e.g. "2026-10-24T08:30".
     /// Leaves now if neither this nor arrive_by is given.
     pub depart_at: Option<String>,
-    /// Arrive by this time, with its UTC offset
+    /// Arrive by this local time instead
     pub arrive_by: Option<String>,
     /// Only these kinds of transport; any by default
     pub modes: Option<Vec<TransitMode>>,
     /// How many journeys to give (1 to 5, default 3)
     pub max_options: Option<u8>,
+    /// Leave out walking the whole way, which OTP otherwise offers first when it's quicker
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub transit_only: bool,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
@@ -90,6 +95,7 @@ pub struct Journeys {
 
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct Journey {
+    /// Local times where the journey starts, as are all its times
     pub depart: String,
     pub arrive: String,
     pub duration_min: u32,
@@ -218,9 +224,18 @@ fn variables(params: &TransitParams) -> Result<Value, Error> {
             let message = "Give depart_at or arrive_by, not both";
             return Err(Error::invalid("bad_time", message));
         }
-        (Some(at), None) => variables["dateTime"] = json!({ "earliestDeparture": at }),
-        (None, Some(by)) => variables["dateTime"] = json!({ "latestArrival": by }),
+        (Some(at), None) => {
+            let at = time::parse(at, params.from)?.to_rfc3339();
+            variables["dateTime"] = json!({ "earliestDeparture": at });
+        }
+        (None, Some(by)) => {
+            let by = time::parse(by, params.from)?.to_rfc3339();
+            variables["dateTime"] = json!({ "latestArrival": by });
+        }
         (None, None) => {}
+    }
+    if params.transit_only {
+        variables["modes"] = json!({ "transitOnly": true });
     }
     if let Some(modes) = &params.modes {
         if modes.is_empty() {
@@ -228,12 +243,12 @@ fn variables(params: &TransitParams) -> Result<Value, Error> {
             return Err(Error::invalid("bad_modes", message));
         }
         let modes: Vec<Value> = modes.iter().map(|mode| json!({ "mode": mode })).collect();
-        variables["modes"] = json!({ "transit": { "transit": modes } });
+        variables["modes"]["transit"] = json!({ "transit": modes });
     }
     Ok(variables)
 }
 
-fn journeys(response: PlanResponse) -> Result<Journeys, Error> {
+fn journeys(response: PlanResponse, origin: Point) -> Result<Journeys, Error> {
     let Some(data) = response.data else {
         let message = response.errors.into_iter().next();
         let message = message.map_or("planning failed".into(), |e| e.message);
@@ -256,12 +271,12 @@ fn journeys(response: PlanResponse) -> Result<Journeys, Error> {
         let walks = node.legs.iter().filter(|leg| leg.mode == "WALK");
         let walked: f64 = walks.map(|leg| leg.distance).sum();
         Journey {
-            depart: node.start,
-            arrive: node.end,
+            depart: time::local_otp(&node.start, origin),
+            arrive: time::local_otp(&node.end, origin),
             duration_min: minutes(node.duration),
             transfers: rides.saturating_sub(1),
             walk_km: km(walked),
-            legs: node.legs.into_iter().map(leg).collect(),
+            legs: node.legs.into_iter().map(|l| leg(l, origin)).collect(),
         }
     };
     Ok(Journeys {
@@ -269,7 +284,7 @@ fn journeys(response: PlanResponse) -> Result<Journeys, Error> {
     })
 }
 
-fn leg(leg: OtpLeg) -> TransitLeg {
+fn leg(leg: OtpLeg, origin: Point) -> TransitLeg {
     let named = |name: Option<String>| name.filter(|n| !n.is_empty());
     TransitLeg {
         route: leg
@@ -279,8 +294,8 @@ fn leg(leg: OtpLeg) -> TransitLeg {
         headsign: leg.headsign,
         from: leg.from.name.unwrap_or_default(),
         to: leg.to.name.unwrap_or_default(),
-        depart: leg.start.time(),
-        arrive: leg.end.time(),
+        depart: time::local_otp(&leg.start.time(), origin),
+        arrive: time::local_otp(&leg.end.time(), origin),
         duration_min: minutes(leg.duration),
         distance_km: km(leg.distance),
     }
@@ -291,7 +306,7 @@ pub async fn plan(stack: &Stack, params: TransitParams) -> Result<Journeys, Erro
     params.to.check()?;
     let body = json!({ "query": PLAN_QUERY, "variables": variables(&params)? });
     let request = stack.otp.post("/otp/gtfs/v1").json(&body);
-    journeys(stack.otp.json(request).await?)
+    journeys(stack.otp.json(request).await?, params.from)
 }
 
 #[cfg(test)]
@@ -315,15 +330,16 @@ mod tests {
             arrive_by: None,
             modes: None,
             max_options: None,
+            transit_only: false,
         }
     }
 
     #[test]
     fn summarizes_journeys() {
-        let journeys = journeys(fixture()).unwrap().journeys;
+        let journeys = journeys(fixture(), FLINDERS_STREET).unwrap().journeys;
         assert_eq!(journeys.len(), 2);
         let tram = &journeys[0];
-        assert_eq!(tram.depart, "2026-10-12T08:05:00+11:00");
+        assert_eq!(tram.depart, "2026-10-12T08:05");
         assert_eq!(tram.duration_min, 19);
         assert_eq!(tram.transfers, 0);
         assert_eq!(tram.walk_km, 0.4);
@@ -331,10 +347,21 @@ mod tests {
         assert_eq!(ride.mode, "TRAM");
         assert_eq!(ride.route.as_deref(), Some("19"));
         assert_eq!(ride.headsign.as_deref(), Some("North Coburg"));
-        assert_eq!(ride.depart, "2026-10-12T08:10:00+11:00");
+        assert_eq!(ride.depart, "2026-10-12T08:10");
         assert_eq!(ride.duration_min, 10);
         // No short name, so the long one
         assert_eq!(journeys[1].legs[1].route.as_deref(), Some("Craigieburn"));
+    }
+
+    #[test]
+    fn gives_local_times_where_the_journey_starts() {
+        let perth = Point {
+            lat: -31.9523,
+            lng: 115.8613,
+        };
+        let journeys = journeys(fixture(), perth).unwrap().journeys;
+        assert_eq!(journeys[0].depart, "2026-10-12T05:05");
+        assert_eq!(journeys[0].legs[1].arrive, "2026-10-12T05:20");
     }
 
     #[test]
@@ -344,7 +371,7 @@ mod tests {
             "edges": [],
         } } });
         let response: PlanResponse = serde_json::from_value(response).unwrap();
-        let error = journeys(response).unwrap_err().to_string();
+        let error = journeys(response, FLINDERS_STREET).unwrap_err().to_string();
         assert!(error.contains("OUTSIDE_SERVICE_PERIOD"), "{error}");
     }
 
@@ -359,7 +386,7 @@ mod tests {
         assert!(vars.get("dateTime").is_none());
 
         let by = TransitParams {
-            arrive_by: Some("2026-10-12T08:00:00+11:00".into()),
+            arrive_by: Some("2026-10-12T08:00".into()),
             modes: Some(vec![TransitMode::Tram, TransitMode::CableCar]),
             ..params()
         };
@@ -368,6 +395,18 @@ mod tests {
         assert_eq!(vars["dateTime"], latest);
         let modes = json!([{ "mode": "TRAM" }, { "mode": "CABLE_CAR" }]);
         assert_eq!(vars["modes"], json!({ "transit": { "transit": modes } }));
+    }
+
+    #[test]
+    fn can_leave_out_walking_the_whole_way() {
+        let only = TransitParams {
+            transit_only: true,
+            modes: Some(vec![TransitMode::Tram]),
+            ..params()
+        };
+        let modes = &variables(&only).unwrap()["modes"];
+        assert_eq!(modes["transitOnly"], json!(true));
+        assert_eq!(modes["transit"], json!({ "transit": [{ "mode": "TRAM" }] }));
     }
 
     #[test]

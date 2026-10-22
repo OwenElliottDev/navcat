@@ -24,13 +24,14 @@ use crate::routing::{self, Route, RouteParams};
 use crate::stack::Stack;
 use crate::transit::{self, Journeys, TransitParams};
 
-const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for planning trips \
-with realistic travel times. capabilities says what it covers: the area, travel modes, and the \
-public transport timetables' modes, dates and time zone. Find places with search_places, \
-find_nearby or reachable, and their details (such as opening hours) with get_place. plan_route \
-gives routes by road or path, plan_transit public transport journeys from the timetables, and \
-travel_times compares times between several places, e.g. to order stops. Give times with their \
-UTC offset. Each place has a link that opens it in Nav Cat, to give people.";
+const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map, for planning trips with realistic \
+travel times. capabilities says what it covers: the area, travel modes, and the public \
+transport timetables' modes and dates. Find places with search_places, find_nearby or \
+reachable, and their details (such as opening hours) with get_place. plan_route gives routes by \
+road or path, plan_transit public transport journeys from the timetables, and travel_times \
+compares times between several places, e.g. to order stops. Times are the local time where the \
+trip is, like \"2026-10-24T08:30\". Each place has a link that opens it in Nav Cat, to give \
+people.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -183,7 +184,7 @@ impl NavCat {
     #[tool(
         title = "What Nav Cat covers",
         description = "The area this server covers, its travel modes and route options, and its \
-        public transport: modes, the dates its timetables run and their time zone.",
+        public transport: its modes and the dates its timetables run.",
         annotations(
             read_only_hint = true,
             destructive_hint = false,

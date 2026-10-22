@@ -146,7 +146,9 @@ localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not throug
 thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
 public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
 lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
-`STEEP_HILLS`) is copied, and must change with `src/config.ts`. It protects itself (Host and
+`STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone
+from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's
+on a stack covering several. It protects itself (Host and
 Origin checks, token, rate limit per address, capped concurrent requests per service, size
 limits) and needs nothing changed in the other services.
 
