@@ -6,6 +6,7 @@ mod guard;
 mod links;
 mod matrix;
 mod places;
+mod reachable;
 mod routing;
 mod server;
 mod stack;

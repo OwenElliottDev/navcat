@@ -11,6 +11,7 @@ use crate::geo::Point;
 use crate::matrix::{self, TravelTimes, TravelTimesParams};
 use crate::places::Place;
 use crate::places::{self, Places, Reverse, SearchParams};
+use crate::reachable::{self, Reachable, ReachableParams};
 use crate::routing::{self, Route, RouteParams};
 use crate::stack::Stack;
 use crate::transit::{self, Journeys, TransitParams};
@@ -22,7 +23,7 @@ has a link that opens it in Nav Cat, to give people. plan_route gives routes and
 between points by road or path, and plan_transit public transport journeys from the timetables. \
 Give times with their UTC offset. get_place gives a place's details such as opening hours; \
 find_nearby finds places of a kind (list_categories) around a point. travel_times compares \
-travel times between several places, e.g. to order stops.";
+travel times between several places, e.g. to order stops, and reachable finds places of a kind within a travel time.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -113,6 +114,24 @@ impl NavCat {
         Parameters(params): Parameters<TransitParams>,
     ) -> Result<Json<Journeys>, String> {
         Ok(Json(transit::plan(&self.stack, params).await?))
+    }
+
+    #[tool(
+        title = "Reachable places",
+        description = "Places of a category (list_categories) reachable from a point within a \
+        travel time by a plan_route mode, e.g. cafes within a 10 minute walk. Up to 30 minutes.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn reachable(
+        &self,
+        Parameters(params): Parameters<ReachableParams>,
+    ) -> Result<Json<Reachable>, String> {
+        Ok(Json(reachable::reachable(&self.stack, params).await?))
     }
 
     #[tool(
