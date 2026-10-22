@@ -14,7 +14,7 @@ reqwest = { version = "0.13.5", default-features = false, features = ["json", "q
 rmcp = { version = "3.6.0", features = ["server", "macros", "schemars", "transport-streamable-http-server"] }
 schemars = "1.2.3"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 tokio = { version = "1.54.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time"] }
 tokio-util = "0.7"
 tracing = "0.1"

@@ -1,20 +1,23 @@
 use std::sync::Arc;
 
+use rmcp::handler::server::router::prompt::PromptRouter;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{
-    Implementation, ListResourceTemplatesResult, ListResourcesResult, PaginatedRequestParams,
-    ReadResourceRequestParams, ReadResourceResponse, ServerCapabilities, ServerConfig,
+    CompleteRequestParams, CompleteResult, Implementation, ListResourceTemplatesResult,
+    ListResourcesResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
+    ServerCapabilities, ServerConfig,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer};
-use rmcp::{Json, ServerHandler, tool, tool_handler, tool_router};
+use rmcp::{Json, ServerHandler, prompt_handler, tool, tool_handler, tool_router};
 
 use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
 use crate::capabilities::{self, Capabilities};
 use crate::geo::Point;
 use crate::matrix::{self, TravelTimes, TravelTimesParams};
 use crate::places::{self, Place, Places, Reverse, SearchParams};
+use crate::prompts;
 use crate::reachable::{self, Reachable, ReachableParams};
 use crate::resources;
 use crate::routing::{self, Route, RouteParams};
@@ -33,6 +36,7 @@ UTC offset. Each place has a link that opens it in Nav Cat, to give people.";
 pub struct NavCat {
     stack: Arc<Stack>,
     tool_router: ToolRouter<Self>,
+    prompt_router: PromptRouter<Self>,
 }
 
 // Every tool only reads from this stack's own services
@@ -42,6 +46,7 @@ impl NavCat {
         NavCat {
             stack,
             tool_router: Self::tool_router(),
+            prompt_router: Self::prompt_router(),
         }
     }
 
@@ -224,11 +229,14 @@ impl NavCat {
 }
 
 #[tool_handler(router = self.tool_router)]
+#[prompt_handler(router = self.prompt_router)]
 impl ServerHandler for NavCat {
     fn get_info(&self) -> ServerConfig {
         let capabilities = ServerCapabilities::builder()
             .enable_tools()
             .enable_resources()
+            .enable_prompts()
+            .enable_completions()
             .build();
         ServerConfig::new(capabilities)
             .with_server_info(Implementation::new("navcat", env!("CARGO_PKG_VERSION")))
@@ -259,5 +267,13 @@ impl ServerHandler for NavCat {
         _context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResponse, ErrorData> {
         Ok(resources::read(&self.stack, &request.uri).await?.into())
+    }
+
+    async fn complete(
+        &self,
+        request: CompleteRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CompleteResult, ErrorData> {
+        Ok(prompts::complete(&self.stack, request).await)
     }
 }
