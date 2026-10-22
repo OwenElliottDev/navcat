@@ -8,6 +8,7 @@ use rmcp::{Json, ServerHandler, tool, tool_handler, tool_router};
 use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
 use crate::capabilities::{self, Capabilities};
 use crate::geo::Point;
+use crate::matrix::{self, TravelTimes, TravelTimesParams};
 use crate::places::Place;
 use crate::places::{self, Places, Reverse, SearchParams};
 use crate::routing::{self, Route, RouteParams};
@@ -20,7 +21,8 @@ public transport timetables' modes, dates and time zone. Find places with search
 has a link that opens it in Nav Cat, to give people. plan_route gives routes and travel times \
 between points by road or path, and plan_transit public transport journeys from the timetables. \
 Give times with their UTC offset. get_place gives a place's details such as opening hours; \
-find_nearby finds places of a kind (list_categories) around a point.";
+find_nearby finds places of a kind (list_categories) around a point. travel_times compares \
+travel times between several places, e.g. to order stops.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -111,6 +113,25 @@ impl NavCat {
         Parameters(params): Parameters<TransitParams>,
     ) -> Result<Json<Journeys>, String> {
         Ok(Json(transit::plan(&self.stack, params).await?))
+    }
+
+    #[tool(
+        title = "Travel times",
+        description = "Travel time (and distance) from each origin to each destination, by a \
+        plan_route mode or by public transport, e.g. to choose between places or order stops. \
+        Up to 25 pairs, or 9 by public transport.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn travel_times(
+        &self,
+        Parameters(params): Parameters<TravelTimesParams>,
+    ) -> Result<Json<TravelTimes>, String> {
+        Ok(Json(matrix::travel_times(&self.stack, params).await?))
     }
 
     #[tool(

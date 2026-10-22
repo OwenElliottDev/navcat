@@ -4,6 +4,7 @@ mod config;
 mod geo;
 mod guard;
 mod links;
+mod matrix;
 mod places;
 mod routing;
 mod server;

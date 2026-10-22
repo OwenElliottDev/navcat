@@ -15,6 +15,8 @@ pub struct Upstream {
     base: String,
     client: Client,
     slots: Semaphore,
+    /// How many requests it gets from here at once
+    pub capacity: usize,
     timeout: Duration,
 }
 
@@ -67,6 +69,7 @@ impl Upstream {
             // Only ever the stack's own services, never a proxy
             client: Client::builder().no_proxy().build().expect("HTTP client"),
             slots: Semaphore::new(slots),
+            capacity: slots,
             timeout,
         }
     }
