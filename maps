@@ -28,6 +28,13 @@ compose() { docker compose "$@"; }
 # Gets the latest of the app's images (or the named services'): pulls the published ones, and
 # builds any that docker-compose.dev.yml builds from this checkout
 get_images() {
+  # All of them by name, as --profile flags turn off the profiles .env turns on (e.g. mcp)
+  if [ $# -eq 0 ]; then
+    set -- $({
+      compose --profile setup --profile updates config --services
+      compose config --services
+    } | sort -u)
+  fi
   compose --profile setup --profile updates pull -q --ignore-buildable "$@"
   compose --profile setup --profile updates build "$@"
 }
