@@ -1,8 +1,8 @@
-// The tools that use the stack come in the next commits
-#![allow(dead_code)]
-
 mod config;
+mod geo;
 mod guard;
+mod links;
+mod places;
 mod server;
 mod stack;
 mod upstream;
