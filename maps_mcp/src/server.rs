@@ -2,28 +2,32 @@ use std::sync::Arc;
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
+use rmcp::model::{
+    Implementation, ListResourceTemplatesResult, ListResourcesResult, PaginatedRequestParams,
+    ReadResourceRequestParams, ReadResourceResponse, ServerCapabilities, ServerConfig,
+};
+use rmcp::service::RequestContext;
+use rmcp::{ErrorData, RoleServer};
 use rmcp::{Json, ServerHandler, tool, tool_handler, tool_router};
 
 use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
 use crate::capabilities::{self, Capabilities};
 use crate::geo::Point;
 use crate::matrix::{self, TravelTimes, TravelTimesParams};
-use crate::places::Place;
-use crate::places::{self, Places, Reverse, SearchParams};
+use crate::places::{self, Place, Places, Reverse, SearchParams};
 use crate::reachable::{self, Reachable, ReachableParams};
+use crate::resources;
 use crate::routing::{self, Route, RouteParams};
 use crate::stack::Stack;
 use crate::transit::{self, Journeys, TransitParams};
 
-const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for planning trips with \
-realistic travel times. capabilities says what it covers: the area, travel modes, and the \
-public transport timetables' modes, dates and time zone. Find places with search_places to get their coordinates. Each place \
-has a link that opens it in Nav Cat, to give people. plan_route gives routes and travel times \
-between points by road or path, and plan_transit public transport journeys from the timetables. \
-Give times with their UTC offset. get_place gives a place's details such as opening hours; \
-find_nearby finds places of a kind (list_categories) around a point. travel_times compares \
-travel times between several places, e.g. to order stops, and reachable finds places of a kind within a travel time.";
+const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for planning trips \
+with realistic travel times. capabilities says what it covers: the area, travel modes, and the \
+public transport timetables' modes, dates and time zone. Find places with search_places, \
+find_nearby or reachable, and their details (such as opening hours) with get_place. plan_route \
+gives routes by road or path, plan_transit public transport journeys from the timetables, and \
+travel_times compares times between several places, e.g. to order stops. Give times with their \
+UTC offset. Each place has a link that opens it in Nav Cat, to give people.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -222,8 +226,38 @@ impl NavCat {
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for NavCat {
     fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+        let capabilities = ServerCapabilities::builder()
+            .enable_tools()
+            .enable_resources()
+            .build();
+        ServerConfig::new(capabilities)
             .with_server_info(Implementation::new("navcat", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
+    }
+
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, ErrorData> {
+        Ok(ListResourcesResult::with_all_items(resources::list()))
+    }
+
+    async fn list_resource_templates(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, ErrorData> {
+        Ok(ListResourceTemplatesResult::with_all_items(
+            resources::templates(),
+        ))
+    }
+
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResponse, ErrorData> {
+        Ok(resources::read(&self.stack, &request.uri).await?.into())
     }
 }

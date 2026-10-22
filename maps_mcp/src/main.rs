@@ -7,6 +7,7 @@ mod links;
 mod matrix;
 mod places;
 mod reachable;
+mod resources;
 mod routing;
 mod server;
 mod stack;
