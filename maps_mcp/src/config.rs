@@ -18,6 +18,7 @@ pub struct Config {
     /// Nav Cat's address as people open it, for links to places
     pub public_url: String,
     pub graphhopper_url: String,
+    pub otp_url: String,
     pub photon_url: String,
     pub backend_url: String,
 }
@@ -54,6 +55,7 @@ impl Config {
                 .trim_end_matches('/')
                 .into(),
             graphhopper_url: var("GRAPHHOPPER_URL", "http://maps-graphhopper:8989"),
+            otp_url: var("OTP_URL", "http://maps-otp:8080"),
             photon_url: var("PHOTON_URL", "http://maps-photon:2322"),
             backend_url: var("BACKEND_URL", "http://maps-backend:8000"),
         };

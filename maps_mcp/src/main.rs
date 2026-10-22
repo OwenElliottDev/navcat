@@ -6,6 +6,7 @@ mod places;
 mod routing;
 mod server;
 mod stack;
+mod transit;
 mod upstream;
 
 use std::net::SocketAddr;

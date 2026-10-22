@@ -9,11 +9,13 @@ use crate::geo::Point;
 use crate::places::{self, Places, Reverse, SearchParams};
 use crate::routing::{self, Route, RouteParams};
 use crate::stack::Stack;
+use crate::transit::{self, Journeys, TransitParams};
 
 const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for planning trips with \
 realistic travel times. Find places with search_places to get their coordinates. Each place \
 has a link that opens it in Nav Cat, to give people. plan_route gives routes and travel times \
-between points by road or path.";
+between points by road or path, and plan_transit public transport journeys from the timetables. \
+Give times with their UTC offset.";
 
 #[derive(Clone)]
 pub struct NavCat {
@@ -85,6 +87,25 @@ impl NavCat {
         Parameters(params): Parameters<RouteParams>,
     ) -> Result<Json<Route>, String> {
         Ok(Json(routing::plan_route(&self.stack, params).await?))
+    }
+
+    #[tool(
+        title = "Plan a public transport journey",
+        description = "Public transport journeys between two points from the timetables, \
+        leaving at or arriving by a time: each walk and ride with its route, headsign, stops \
+        and times. Timetables only cover some areas and dates.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn plan_transit(
+        &self,
+        Parameters(params): Parameters<TransitParams>,
+    ) -> Result<Json<Journeys>, String> {
+        Ok(Json(transit::plan(&self.stack, params).await?))
     }
 }
 
