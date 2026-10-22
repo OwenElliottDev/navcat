@@ -33,6 +33,8 @@ jobs:
             context: docker_maps/terrain
           - image: navcat-updater
             context: docker_maps/updater
+          - image: navcat-mcp
+            context: maps_mcp
 
     permissions:
       contents: read
