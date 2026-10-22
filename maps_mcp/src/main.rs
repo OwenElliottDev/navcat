@@ -1,4 +1,5 @@
 mod browse;
+mod capabilities;
 mod config;
 mod geo;
 mod guard;

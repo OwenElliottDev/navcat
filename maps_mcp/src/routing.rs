@@ -12,7 +12,7 @@ pub const MAX_WAYPOINTS: usize = 10;
 
 // CAR_AVOIDS in maps_web/src/config.ts
 /// Kinds of road a drive can avoid
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Avoid {
     Motorways,
@@ -25,6 +25,24 @@ pub enum Avoid {
 }
 
 impl Avoid {
+    pub const ALL: [Avoid; 5] = [
+        Avoid::Motorways,
+        Avoid::Tolls,
+        Avoid::Ferries,
+        Avoid::TrafficLights,
+        Avoid::SmallRoads,
+    ];
+
+    /// The encoded value its rule needs; the app hides options the routing graph lacks
+    pub fn needs(self) -> &'static str {
+        match self {
+            Avoid::Motorways | Avoid::SmallRoads => "road_class",
+            Avoid::Tolls => "toll",
+            Avoid::Ferries => "road_environment",
+            Avoid::TrafficLights => "crossing",
+        }
+    }
+
     /// Its custom model condition, and how much less likely it makes those roads (not
     /// forbidden, so a route is still found when there's no other way)
     fn rule(self) -> (&'static str, f64) {
@@ -41,7 +59,9 @@ impl Avoid {
     }
 }
 
-/// "Avoid steep hills" (STEEP_HILLS in maps_web/src/config.ts)
+/// "Avoid steep hills" (STEEP_HILLS in maps_web/src/config.ts), on the `max_slope` encoded value
+pub const STEEP_HILLS_NEEDS: &str = "max_slope";
+
 fn steep_hills() -> [Value; 3] {
     [
         json!({ "if": "max_slope >= 12 || max_slope <= -12", "multiply_by": "0.05" }),

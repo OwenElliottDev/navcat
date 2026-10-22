@@ -6,6 +6,7 @@ use rmcp::model::{Implementation, ServerCapabilities, ServerConfig};
 use rmcp::{Json, ServerHandler, tool, tool_handler, tool_router};
 
 use crate::browse::{self, Categories, Nearby, NearbyParams, PlaceParams};
+use crate::capabilities::{self, Capabilities};
 use crate::geo::Point;
 use crate::places::Place;
 use crate::places::{self, Places, Reverse, SearchParams};
@@ -14,7 +15,8 @@ use crate::stack::Stack;
 use crate::transit::{self, Journeys, TransitParams};
 
 const INSTRUCTIONS: &str = "Nav Cat is a self-hosted map of one region, for planning trips with \
-realistic travel times. Find places with search_places to get their coordinates. Each place \
+realistic travel times. capabilities says what it covers: the area, travel modes, and the \
+public transport timetables' modes, dates and time zone. Find places with search_places to get their coordinates. Each place \
 has a link that opens it in Nav Cat, to give people. plan_route gives routes and travel times \
 between points by road or path, and plan_transit public transport journeys from the timetables. \
 Give times with their UTC offset. get_place gives a place's details such as opening hours; \
@@ -96,7 +98,7 @@ impl NavCat {
         title = "Plan a public transport journey",
         description = "Public transport journeys between two points from the timetables, \
         leaving at or arriving by a time: each walk and ride with its route, headsign, stops \
-        and times. Timetables only cover some areas and dates.",
+        and times. Timetables only cover some areas and dates (see capabilities).",
         annotations(
             read_only_hint = true,
             destructive_hint = false,
@@ -127,6 +129,21 @@ impl NavCat {
         Parameters(params): Parameters<PlaceParams>,
     ) -> Result<Json<Place>, String> {
         Ok(Json(browse::get_place(&self.stack, &params.id).await?))
+    }
+
+    #[tool(
+        title = "What Nav Cat covers",
+        description = "The area this server covers, its travel modes and route options, and its \
+        public transport: modes, the dates its timetables run and their time zone.",
+        annotations(
+            read_only_hint = true,
+            destructive_hint = false,
+            idempotent_hint = true,
+            open_world_hint = false
+        )
+    )]
+    async fn capabilities(&self) -> Result<Json<Capabilities>, String> {
+        Ok(Json(capabilities::capabilities(&self.stack).await?))
     }
 
     #[tool(
