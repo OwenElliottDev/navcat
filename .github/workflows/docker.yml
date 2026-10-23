@@ -1,8 +1,8 @@
 name: Build & push images
 
 # Push a v* tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to publish every image as
-# latest, the version and the commit. docker-compose.yml runs these. Pushes to main and pull
-# requests only build them, to catch broken Dockerfiles before a release.
+# latest, the version and the commit. docker-compose.yml runs these. Pushes to main publish
+# edge and the commit; pull requests only build them, to catch broken Dockerfiles.
 on:
   push:
     branches: [main]
@@ -38,6 +38,9 @@ jobs:
       contents: read
       pull-requests: read
 
+    env:
+      PUBLISH: ${{ github.event_name == 'push' }}
+
     steps:
       # Pull requests only build the images whose build context changed
       - name: Check for changes
@@ -64,7 +67,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.PUBLISH == 'true'
         uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -79,6 +82,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=edge,branch=main
             type=sha,format=short
 
       - name: Build and push
@@ -87,7 +91,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           platforms: linux/amd64,linux/arm64
-          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          push: ${{ env.PUBLISH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
