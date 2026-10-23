@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { RoutePath } from '../types'
-import { bearingBetween, guide, locate, pointAlong, prepareRoute } from './navigation'
+import { guide, isOffRoute, isWrongWay, locate, pointAlong, prepareRoute } from './navigation'
 
 // An L-shaped route in Melbourne: ~111 m east along each of points 0-2, then north to 3-4.
 // 0.001° of longitude at this latitude is ~88 m; 0.001° of latitude ~111 m.
@@ -33,16 +33,6 @@ describe('prepareRoute', () => {
     expect(route.along[0]).toBe(0)
     expect(route.along[2]).toBeCloseTo(176, -1)
     expect(route.length).toBeCloseTo(176 + 222, -1)
-  })
-})
-
-describe('bearingBetween', () => {
-  it('measures clockwise from north', () => {
-    const at = { lng: 145, lat: LAT }
-    expect(bearingBetween(at, { lng: 145, lat: LAT + 1 })).toBeCloseTo(0)
-    expect(bearingBetween(at, { lng: 146, lat: LAT })).toBeCloseTo(90, 0)
-    expect(bearingBetween(at, { lng: 145, lat: LAT - 1 })).toBeCloseTo(180)
-    expect(bearingBetween(at, { lng: 144, lat: LAT })).toBeCloseTo(270, 0)
   })
 })
 
@@ -120,6 +110,39 @@ describe('guide', () => {
     })
     expect(guidance.next).toBeNull()
     expect(guidance.nextIndex).toBe(-1)
+  })
+})
+
+describe('isOffRoute', () => {
+  // 50 m south of the first stretch
+  const away = locate(route, { lng: 145.0005, lat: LAT - 0.00045 })
+
+  it('counts a position well away from the route', () => {
+    expect(isOffRoute(away, 5, 35)).toBe(true)
+    expect(isOffRoute(locate(route, { lng: 145.0005, lat: LAT }), 5, 35)).toBe(false)
+  })
+
+  it('allows for an unsure fix, and ignores a very rough one', () => {
+    expect(isOffRoute(away, 20, 35)).toBe(false)
+    expect(isOffRoute(away, 150, 10)).toBe(false)
+  })
+
+  it("doesn't count a fix whose accuracy circle reaches the route", () => {
+    expect(isOffRoute(away, 60, 10)).toBe(false)
+  })
+})
+
+describe('isWrongWay', () => {
+  const along = locate(route, { lng: 145.001, lat: LAT })
+
+  it('spots travelling back along the route', () => {
+    expect(isWrongWay(along, 270)).toBe(true)
+    expect(isWrongWay(along, 95)).toBe(false)
+    expect(isWrongWay(along, null)).toBe(false)
+  })
+
+  it('leaves the start of a route alone', () => {
+    expect(isWrongWay(locate(route, { lng: 145.0001, lat: LAT }), 270)).toBe(false)
   })
 })
 

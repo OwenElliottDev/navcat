@@ -46,6 +46,7 @@ interface PlaceEditorProps {
 
 /** Corrects a place's details, or adds a place the map doesn't have. */
 export function PlaceEditor({ place, position, initial, onSaved, onClose }: PlaceEditorProps) {
+  // Fetched afresh, so a failed load at startup doesn't leave the form unsaveable
   const categories = useCategories()
   const [draft, setDraft] = useState<PlaceDraft>(() => ({
     ...initial,

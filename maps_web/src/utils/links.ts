@@ -34,7 +34,7 @@ export function encodeShortlink({ lng, lat }: LngLat, zoom: number): string {
 }
 
 /** The view an OSM shortlink code points at; null for one too short to place */
-export function decodeShortlink(code: string): { center: LngLat; zoom: number } | null {
+export function decodeShortlink(code: string): Omit<LinkedView, 'marker'> | null {
   let x = 0n
   let y = 0n
   let bits = 0

@@ -63,3 +63,11 @@ export function expectNear([lng, lat]: number[], [wantLng, wantLat]: number[], d
   expect(lng).toBeCloseTo(wantLng, digits)
   expect(lat).toBeCloseTo(wantLat, digits)
 }
+
+/** Opens the map menu at a spot, and reads where it is from the menu ([lng, lat]) */
+export async function menuAt(page: Page, at: { x: number; y: number }) {
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: at })
+  const coords = page.getByRole('menuitem', { name: /^Copy coordinates/ })
+  const [lat, lng] = (await coords.textContent())!.split(', ').map(Number)
+  return [lng, lat]
+}

@@ -12,6 +12,16 @@ export function distanceInMetres(a: LngLat, b: LngLat): number {
   return 2 * R * Math.asin(Math.sqrt(h))
 }
 
+/** Degrees clockwise from north, from a to b */
+export function bearingBetween(a: LngLat, b: LngLat): number {
+  const rad = Math.PI / 180
+  const y = Math.sin((b.lng - a.lng) * rad) * Math.cos(b.lat * rad)
+  const x =
+    Math.cos(a.lat * rad) * Math.sin(b.lat * rad) -
+    Math.sin(a.lat * rad) * Math.cos(b.lat * rad) * Math.cos((b.lng - a.lng) * rad)
+  return (Math.atan2(y, x) / rad + 360) % 360
+}
+
 /** The box around all the lines, or null if there are no points. */
 export function boundsOf(lines: LineString[]): Bounds | null {
   const points = lines.flatMap((line) => line.coordinates)
