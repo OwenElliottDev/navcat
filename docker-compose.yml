@@ -169,6 +169,36 @@ services:
       - ${MAPS_DATA_DIR:-./maps_data}/tiles:/data
     command: ["--file", "/data/${TILES_FILE:-australia.mbtiles}"]
 
+  # ---------- optional ----------
+
+  # MCP server so AI agents can search, route and plan public transport trips (maps_mcp/).
+  # Off unless COMPOSE_PROFILES=mcp is in .env. Only on this machine unless MCP_BIND says
+  # otherwise, which needs MCP_TOKEN.
+  maps-mcp:
+    image: owenelliottdev/navcat-mcp:${MAPS_TAG:-latest}
+    container_name: navcat-mcp
+    profiles: ["mcp"]
+    restart: unless-stopped
+    ports:
+      - "${MCP_BIND:-127.0.0.1}:${MCP_PORT:-7100}:8000"
+    environment:
+      MCP_BIND: ${MCP_BIND:-127.0.0.1}
+      MCP_TOKEN: ${MCP_TOKEN:-}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
+      MCP_RATE_LIMIT: ${MCP_RATE_LIMIT:-120}
+      MCP_TRUSTED_PROXIES: ${MCP_TRUSTED_PROXIES:-}
+      MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:7000} # for links to places
+    healthcheck:
+      test: ["CMD", "/navcat-mcp", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      - maps-backend
+      - maps-graphhopper
+      - maps-otp
+      - maps-photon
+
   # ---------- setup and updates: run by ./maps, or docker compose run --rm <name> ----------
 
   # Keeps the data up to date on a schedule (see .env.example). Started by `./maps schedule on`,

@@ -40,3 +40,6 @@ services:
   maps-transit-download:
     build: ./docker_maps/download
     image: navcat-download:dev
+  maps-mcp:
+    build: ./maps_mcp
+    image: navcat-mcp:dev

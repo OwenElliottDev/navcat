@@ -1,0 +1,47 @@
+{
+  "bbox": [
+    112,
+    -44,
+    154,
+    -10
+  ],
+  "profiles": [
+    {
+      "name": "foot"
+    },
+    {
+      "name": "bike"
+    },
+    {
+      "name": "bike_paths"
+    },
+    {
+      "name": "racingbike"
+    },
+    {
+      "name": "car"
+    }
+  ],
+  "version": "11.0",
+  "encoded_values": {
+    "road_class": [
+      "MOTORWAY",
+      "PRIMARY",
+      "RESIDENTIAL"
+    ],
+    "road_environment": [
+      "ROAD",
+      "FERRY"
+    ],
+    "toll": [
+      "NO",
+      "ALL"
+    ],
+    "crossing": [
+      "MISSING",
+      "TRAFFIC_SIGNALS"
+    ],
+    "max_speed": [],
+    "max_slope": []
+  }
+}
