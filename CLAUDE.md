@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Nav Cat, a self-hosted Google-Maps-style app run with Docker Compose: map tiles (TileServer GL +
+Nav Cat, a self-hosted maps browsing, routing and navigation app run with Docker Compose: map tiles (TileServer GL +
 Planetiler), search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small
 FastAPI backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to
 Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.env` (see `.env.example`).
