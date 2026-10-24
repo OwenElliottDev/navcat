@@ -40,7 +40,8 @@ complete from the stack.
 - Stateless Streamable HTTP at `/mcp`, so nothing is kept per client
 - `Host` checked against `MCP_ALLOWED_HOSTS`, and browser `Origin`s refused
 - A bearer token (`MCP_TOKEN`), required to listen beyond this machine
-- A rate limit per address (`MCP_RATE_LIMIT` a minute)
+- A rate limit per address (`MCP_RATE_LIMIT` a minute), counting refused tokens too; behind a
+  reverse proxy, the client's from `X-Forwarded-For` if the proxy is in `MCP_TRUSTED_PROXIES`
 - A cap on requests at once to each service (GraphHopper 4, OTP 2, Photon and the backend 8),
   limits on each tool's size, and 64 KiB request bodies
 

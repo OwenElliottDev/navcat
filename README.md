@@ -113,7 +113,9 @@ claude mcp add --transport http navcat http://localhost:7100/mcp
 
 To reach it from other machines, set `MCP_BIND=0.0.0.0` (or an address), `MCP_TOKEN` (clients
 send it as `Authorization: Bearer <token>`) and `MCP_ALLOWED_HOSTS` to the names they use for
-this machine. Set `MCP_PUBLIC_URL` to Nav Cat's address so links work for them. See
+this machine. Set `MCP_PUBLIC_URL` to Nav Cat's address so links work for them. Behind a reverse
+proxy, put the proxy's address in `MCP_TRUSTED_PROXIES` so the rate limit is per client rather than
+shared, and its public host name in `MCP_ALLOWED_HOSTS`. See
 [maps_mcp/README.md](maps_mcp/README.md) for its tools.
 
 ## Development

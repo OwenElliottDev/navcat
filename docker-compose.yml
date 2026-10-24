@@ -186,6 +186,7 @@ services:
       MCP_TOKEN: ${MCP_TOKEN:-}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
       MCP_RATE_LIMIT: ${MCP_RATE_LIMIT:-120}
+      MCP_TRUSTED_PROXIES: ${MCP_TRUSTED_PROXIES:-}
       MCP_PUBLIC_URL: ${MCP_PUBLIC_URL:-http://localhost:7000} # for links to places
     healthcheck:
       test: ["CMD", "/navcat-mcp", "health"]

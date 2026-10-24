@@ -76,7 +76,11 @@ async fn main() -> ExitCode {
         mcp_config,
     );
 
-    let guard = Guard::new(config.token.clone(), config.rate_limit);
+    let guard = Guard::new(
+        config.token.clone(),
+        config.rate_limit,
+        config.trusted_proxies.clone(),
+    );
     let app = Router::new()
         .nest_service("/mcp", mcp)
         .layer(axum::middleware::from_fn_with_state(guard, guard::check))

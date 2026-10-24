@@ -1,6 +1,8 @@
 use std::env;
 use std::net::IpAddr;
 
+use crate::guard::Network;
+
 /// Settings from env vars (set in docker-compose.yml)
 pub struct Config {
     /// Where the server listens inside the container
@@ -15,6 +17,8 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     /// Requests per minute from one address
     pub rate_limit: u32,
+    /// Reverse proxies whose `X-Forwarded-For` says who the client is; none by default
+    pub trusted_proxies: Vec<Network>,
     /// Nav Cat's address as people open it, for links to places
     pub public_url: String,
     pub graphhopper_url: String,
@@ -51,6 +55,10 @@ impl Config {
             rate_limit: rate_limit.parse().ok().filter(|n| *n > 0).ok_or(format!(
                 "MCP_RATE_LIMIT must be a positive number, not {rate_limit:?}"
             ))?,
+            trusted_proxies: list("MCP_TRUSTED_PROXIES", "")
+                .iter()
+                .map(|n| n.parse().map_err(|e| format!("MCP_TRUSTED_PROXIES: {e}")))
+                .collect::<Result<_, _>>()?,
             public_url: var("MCP_PUBLIC_URL", "http://localhost:7000")
                 .trim_end_matches('/')
                 .into(),
