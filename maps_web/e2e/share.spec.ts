@@ -1,7 +1,7 @@
 import type { Page } from '@playwright/test'
 import { decodeShortlink } from '../src/utils/links'
 import { CAFE } from './fixtures/places'
-import { expectNear, lastLookup, openApp, openPlace } from './helpers'
+import { expectNear, lastLookup, menuAt, openApp, openPlace } from './helpers'
 import { expect, test } from './mockStack'
 
 /** No share sheet, as in most desktop browsers: sharing copies the link instead */
@@ -44,14 +44,6 @@ function viewOf(page: Page, link: string) {
   expect(url.search).toBe('?m')
   const { center, zoom } = decodeShortlink(url.pathname.replace(/^\/go\//, ''))!
   return { at: [center.lng, center.lat], zoom }
-}
-
-/** Opens the map menu at a spot, and reads where it is from the menu ([lng, lat]) */
-async function menuAt(page: Page, at: { x: number; y: number }) {
-  await page.locator('.maplibregl-canvas').click({ button: 'right', position: at })
-  const coords = page.getByRole('menuitem', { name: /^Copy coordinates/ })
-  const [lat, lng] = (await coords.textContent())!.split(', ').map(Number)
-  return [lng, lat]
 }
 
 /** The map menu at the middle of the map: where it's centred */

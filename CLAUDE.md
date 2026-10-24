@@ -125,9 +125,14 @@ user edits, reviews and photos live in migration-managed tables keyed the same w
 OSM via Photon and `U`/`O` places via `/api/places/search`. Photos are re-encoded with location
 metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
-**Frontend (`maps_web/src`).** `App.tsx` holds top-level state and composes everything. `api/`
-wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit, browse, navigation,
-voice); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
+**Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
+(what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
+the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories)
+and copies their results in; values derived from them are in `store/selectors.ts`. Data only one
+component needs (place details, lanes) is fetched there. Actions move the map through the
+`camera` App puts in the store. `App.tsx` sets up the map and its look, and composes
+`MapLayers`, `Navigation`, `Panel` and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit,
+browse, navigation); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
 `RouteLine`, `PoiLayer`, `MapMarker`). Map looks (incl. the topo style with local terrain) are
 built in `map/mapStyles.ts` by recolouring the TileServer style rather than loading other sources.
 Travel modes are GraphHopper profiles (`src/config.ts`); "transit" is special-cased to OTP.

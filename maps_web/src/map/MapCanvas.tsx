@@ -24,6 +24,9 @@ export function MapCanvas() {
         ? { center: [linkedView.center.lng, linkedView.center.lat], zoom: linkedView.zoom }
         : { bounds: INITIAL_BOUNDS, fitBoundsOptions: { padding: 20 } }),
       attributionControl: { compact: true },
+      // Labels appear without fading in: each fade redraws the map every frame, and while
+      // navigating the camera moves often enough that one is always running (battery drain)
+      fadeDuration: 0,
     })
     map.addControl(new NavigationControl(), 'top-right')
     map.addControl(new ScaleControl(), 'bottom-right')

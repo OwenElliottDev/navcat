@@ -67,7 +67,7 @@ All settings live in `.env`; `.env.example` documents each one. The main ones:
 | `ALLOW_PLACE_EDITS`, `ALLOW_REVIEWS`, `ALLOW_PHOTOS` | Set to `false` to stop people adding and editing places, writing reviews, or adding photos |
 | `SAFETY_CHECK_PHOTOS` | Turns away photos showing nudity or gore (on by default) |
 | `COOKIE_SECURE` | Set to `true` when the site is served over HTTPS |
-| `MAPS_TAG` | Which release of the images to run (default `latest`) |
+| `MAPS_TAG` | Which release of the images to run (default `latest`; `edge` follows main) |
 
 The app is served on port 7000; every other service listens only on localhost. To expose the
 app publicly, put a reverse proxy with HTTPS in front of it.

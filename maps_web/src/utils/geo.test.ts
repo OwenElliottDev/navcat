@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { boundsOf, decodePolyline, distanceInMetres, isNear } from './geo'
+import { bearingBetween, boundsOf, decodePolyline, distanceInMetres, isNear } from './geo'
 
 describe('decodePolyline', () => {
   it("decodes Google's example", () => {
@@ -40,5 +40,16 @@ describe('boundsOf', () => {
     ])
     expect(boundsOf([])).toBeNull()
     expect(boundsOf([line()])).toBeNull()
+  })
+})
+
+describe('bearingBetween', () => {
+  it('measures clockwise from north', () => {
+    const LAT = -37.8
+    const at = { lng: 145, lat: LAT }
+    expect(bearingBetween(at, { lng: 145, lat: LAT + 1 })).toBeCloseTo(0)
+    expect(bearingBetween(at, { lng: 146, lat: LAT })).toBeCloseTo(90, 0)
+    expect(bearingBetween(at, { lng: 145, lat: LAT - 1 })).toBeCloseTo(180)
+    expect(bearingBetween(at, { lng: 144, lat: LAT })).toBeCloseTo(270, 0)
   })
 })

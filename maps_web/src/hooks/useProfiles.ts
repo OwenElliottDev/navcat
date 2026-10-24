@@ -22,13 +22,15 @@ export interface Profiles {
 
 const ALL_CAR_AVOIDS = Object.keys(CAR_AVOIDS) as CarAvoid[]
 
+export const KNOWN_ROUTING: Profiles = {
+  profiles: KNOWN_PROFILES,
+  carAvoids: [],
+  steepHills: false,
+}
+
 /** Travel modes and their options, from what GraphHopper is set up with. */
 export function useProfiles(): Profiles {
-  const [info, setInfo] = useState<Profiles>({
-    profiles: KNOWN_PROFILES,
-    carAvoids: [],
-    steepHills: false,
-  })
+  const [info, setInfo] = useState<Profiles>(KNOWN_ROUTING)
 
   useEffect(() => {
     getRoutingInfo()

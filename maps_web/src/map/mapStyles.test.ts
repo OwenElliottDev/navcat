@@ -108,6 +108,19 @@ describe('buildStyle', () => {
     expect(order.indexOf('housenumber')).toBe(2)
   })
 
+  it('hides house numbers while navigating', () => {
+    expect(ids(buildStyle(BASE, look('standard')))).toContain('housenumber')
+    const navigating = buildStyle(BASE, look('dark', ALL_OVERLAYS), undefined, false, true)
+    const houseNumbers = navigating.layers.find((layer) => layer.id === 'housenumber')
+    expect(houseNumbers?.layout).toMatchObject({ visibility: 'none' })
+    expect(ids(navigating)).toContain('road_label')
+  })
+
+  it('keeps topo contours under the roads while navigating', () => {
+    const order = ids(buildStyle(BASE, look('topo'), TERRAIN, false, true))
+    expect(order.indexOf('topo-contours')).toBeLessThan(order.indexOf('road_minor'))
+  })
+
   it('only adds the road data source for overlays that use it', () => {
     expect(buildStyle(BASE, look('standard', ['rail'])).sources).not.toHaveProperty('road-data')
     const style = buildStyle(BASE, look('standard', ['speedLimits']))
