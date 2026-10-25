@@ -9,7 +9,7 @@ from .db import Db, pool
 from .migrations import migrate
 from .models import Features
 from .photos import UnsafePhoto
-from .routes import auth, browse, lanes, links, me, places, road_data
+from .routes import auth, browse, capabilities, lanes, links, me, places, road_data
 
 
 @asynccontextmanager
@@ -73,6 +73,7 @@ async def features() -> Features:
 api.include_router(auth.router)
 api.include_router(me.router)
 api.include_router(browse.router)
+api.include_router(capabilities.router)
 api.include_router(places.router)
 api.include_router(road_data.router)
 api.include_router(lanes.router)

@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { BrowseState } from '../hooks/useBrowse'
-import { KNOWN_ROUTING, type Profiles } from '../hooks/useProfiles'
+import { KNOWN_ROUTING, type Profiles } from '../hooks/useCapabilities'
 import type { RouteState } from '../hooks/useRoute'
 import type { TransitPlanState } from '../hooks/useTransitPlan'
 import type { Category } from '../types'

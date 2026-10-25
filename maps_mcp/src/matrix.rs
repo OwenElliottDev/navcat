@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::geo::Point;
 use crate::routing::{self, RouteOptions};
 use crate::stack::Stack;
-use crate::transit::{self, TransitMode, TransitParams};
+use crate::transit::{self, TransitParams};
 use crate::upstream::Error;
 
 const MAX_ROUTES: usize = 25;
@@ -28,7 +28,7 @@ pub struct TravelTimesParams {
     /// not given.
     pub depart_at: Option<String>,
     /// By public transport: only these kinds of transport
-    pub transit_modes: Option<Vec<TransitMode>>,
+    pub transit_modes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, JsonSchema)]

@@ -13,6 +13,12 @@ Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.
 `setup`-profile services, run by `./maps setup` and `./maps update`; nothing at runtime (frontend
 or backend) may fetch from external hosts.
 
+**When a service is down.** Features that don't use a service must keep working without it
+(OTP is paused during updates, GraphHopper takes a while to start), which is why nginx resolves
+upstreams per request. But a feature that needs a service fails when it's down, with a clear
+error, and that's fine: don't add fallbacks, copies of its logic, or partly working modes to keep
+it alive. Logic lives in one place, even if that means more things depend on that place being up.
+
 ## Commands
 
 Stack (from repo root; see README.md):
@@ -105,7 +111,13 @@ order at startup (`migrations.py`, tracked in `schema_migrations`) — add a new
 edit an applied one. A middleware rejects POST/PUT/PATCH unless the body is JSON or an image (CSRF
 protection alongside SameSite cookies). Settings come from env vars in `config.py`.
 `road_data.py` fetches GraphHopper's vector tiles and slims them to speed limit / cycleway /
-bike-route attributes for map overlays. Requests to the other services go through `upstream.get`.
+bike-route attributes for map overlays. `/api/capabilities` (`capabilities.py`) says what the
+stack can plan: GraphHopper's travel modes, the car avoid and steep hills options (GraphHopper
+custom model rules, defined only there; an option is left out unless the encoded value it needs,
+`crossing`, `toll`, ..., is in `/info`), and OTP's transit modes and timetable dates, each part
+null while its service is down. `/api/browse` looks in a box, a `radius` around `near`, or the
+area `reachable_from` a point by a travel mode in `minutes` (GraphHopper's isochrone, `areas.py`).
+Requests to the other services go through `upstream.get`/`post_json`.
 The whole API is public, and some routes are there for other apps and scripts rather than the UI
 (e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not
 a reason to remove them.
@@ -127,7 +139,7 @@ metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
 **Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
 (what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
-the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories)
+the fetch hooks for the store's choices (routes, journeys, browse results, capabilities, categories)
 and copies their results in; values derived from them are in `store/selectors.ts`. Data only one
 component needs (place details, lanes) is fetched there. Actions move the map through the
 `camera` App puts in the store. `App.tsx` sets up the map and its look, and composes
@@ -139,9 +151,9 @@ Travel modes are GraphHopper profiles (`src/config.ts`); "transit" is special-ca
 Cycling styles not configured in GraphHopper are hidden automatically. Turn-by-turn
 (`hooks/useNavigation.ts`) follows a GraphHopper route, or a transit journey converted to the same
 shape by `utils/transitNavigation.ts`. Lane guidance looks up OSM `turn:lanes` for the road into
-each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" options (`CAR_AVOIDS` in
-`src/config.ts`) are sent as a GraphHopper custom model with `ch.disable`, so car has an LM profile
-too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
+each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" and steep hills
+options come from `/api/capabilities` with their rules, sent as a GraphHopper custom model with
+`ch.disable`, so car has an LM profile too; the frontend only labels them (`CAR_AVOID_LABELS`).
 
 **MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use
 the stack: tools (search, place details, browse, routes, public transport journeys and stop
@@ -149,13 +161,14 @@ departures, travel times, reachable places, capabilities), the same data as reso
 prompts. It's off unless the `mcp` compose profile is on, and serves stateless Streamable HTTP
 on its own port (7100, localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not
 through nginx. It's a thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
-public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
-lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
-`STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone
+public endpoints, e.g. its shortlinks for place links and its capabilities for route options) and
+never reimplements one, so the logic lives and is tested in one place; logic both it and the
+frontend need goes in the backend. Tool schemas list the stack's own travel modes, avoid options
+and transit modes, from `/api/capabilities` when tools are listed. Times are local where the trip is (its zone
 from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's
 on a stack covering several. It protects itself (Host and
 Origin checks, token, rate limit per address, capped concurrent requests per service, size
-limits) and needs nothing changed in the other services.
+limits).
 
 **Data pipeline (`docker_maps/`).** `./maps` (repo root, POSIX sh) drives the setup-profile
 services; updates build alongside the live data and swap it in, and `maps-updater` (opt-in,
