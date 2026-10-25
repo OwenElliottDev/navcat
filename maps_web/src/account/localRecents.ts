@@ -19,7 +19,7 @@ export function saveLocalRecents(recents: Recent[]) {
     if (recents.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(recents))
     else localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // Storage blocked (private mode): history just won't persist
+    // Storage blocked (private mode): history isn't kept
   }
 }
 

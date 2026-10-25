@@ -121,7 +121,7 @@ async def browse(
                 "lat": lat,
                 "radius": radius,
                 "area": json.dumps(area) if area else None,
-                "limit": limit + 1,  # one extra tells us whether there are more
+                "limit": limit + 1,  # one extra shows whether there are more
             },
         )
     except UndefinedTable:

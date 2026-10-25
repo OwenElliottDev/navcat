@@ -14,8 +14,6 @@
   font-weight: 700;
 }
 
-/* ---------- photos ---------- */
-
 .photo-strip {
   display: flex;
   gap: 8px;
@@ -91,8 +89,6 @@
 .photo-viewer__next .icon {
   transform: scaleX(-1);
 }
-
-/* ---------- reviews ---------- */
 
 .reviews__average {
   font-weight: 700;

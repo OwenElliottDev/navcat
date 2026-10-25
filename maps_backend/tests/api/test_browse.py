@@ -86,9 +86,6 @@ def browse(c, **params):
     return c.get("/api/browse", params={"category": "cafe", **params})
 
 
-# ---------- radius ----------
-
-
 def test_browse_within_a_radius(client):
     response = browse(client(), near=NEAR, radius=250)
     found = ids(response)
@@ -115,12 +112,9 @@ def test_browse_needs_one_area(client):
     c = client()
     assert browse(c).status == 422
     assert browse(c, near=NEAR, radius=100, bbox="144,-38,146,-37").status == 422
-    assert browse(c, radius=100).status == 422  # around where?
+    assert browse(c, radius=100).status == 422  # no near
     assert browse(c, near=NEAR, radius=0).status == 422
-    assert browse(c, reachable_from=NEAR).status == 422  # by what?
-
-
-# ---------- reachable_from ----------
+    assert browse(c, reachable_from=NEAR).status == 422  # no mode
 
 
 def test_browse_where_you_can_get_to(routed):

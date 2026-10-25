@@ -144,7 +144,7 @@ test('a photo the safety check turns away explains why in a popup', async ({ pag
     ),
   })
   const dialog = page.getByRole('dialog', { name: 'Photo not accepted' })
-  await expect(dialog).toContainText('classified as containing NSFW or NSFL content')
+  await expect(dialog).toContainText('explicit or graphic content')
   await dialog.getByRole('button', { name: 'OK' }).click()
   await expect(dialog).toHaveCount(0)
   await expect(photos.getByRole('button', { name: '+ Add photo' })).toBeEnabled()

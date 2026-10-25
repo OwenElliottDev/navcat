@@ -1,4 +1,4 @@
-"""Unit tests for logic that doesn't need a database. The HTTP API is checked end to end."""
+"""Logic that doesn't need a database. The HTTP API is tested in tests/api."""
 
 from app.auth import LoginThrottle, hash_password, verify_password
 from app.categories import CATEGORIES

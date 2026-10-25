@@ -71,7 +71,6 @@ jobs:
       - name: Unit tests
         run: npm test
 
-  # The app in a browser against mocked services (see maps_web/playwright.config.ts)
   ui:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.frontend == 'true') }}
@@ -130,7 +129,6 @@ jobs:
       - name: Unit tests
         run: uv run pytest
 
-      # Against a throwaway Postgres + PostGIS built from docker_maps/db
       - name: API tests
         run: sh tests/api/run.sh
 

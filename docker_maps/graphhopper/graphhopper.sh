@@ -16,7 +16,7 @@ fi
 echo "## using java $vers from $JAVA_HOME"
 
 function printBashUsage {
-  echo "$(basename $0): Start a Gpahhopper server."
+  echo "$(basename $0): Start a GraphHopper server."
   echo "Default user access at 0.0.0.0:8989 and API access at 0.0.0.0:8989/route"
   echo ""
   echo "Usage"
@@ -85,7 +85,7 @@ if [ "$ACTION" = import ]; then
   exit 0
 fi
 
-# Serving memory-maps the graph rather to reduce heap usage at run time
+# Serving memory-maps the graph to keep the heap small
 exec "$JAVA" $JAVA_OPTS ${FILE:+-Ddw.graphhopper.datareader.file="$FILE"} -Ddw.graphhopper.graph.location="$GRAPH" \
         -Ddw.graphhopper.graph.dataaccess.default_type=MMAP \
         $GH_WEB_OPTS -jar "$JAR" $ACTION $CONFIG

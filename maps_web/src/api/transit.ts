@@ -54,8 +54,6 @@ export class TransitPlanError extends Error {
   }
 }
 
-// ---------- response shapes ----------
-
 interface OtpTime {
   scheduledTime: string
   estimated: { time: string } | null
@@ -107,8 +105,6 @@ interface PlanResponse {
   }
   errors?: { message: string }[]
 }
-
-// ---------- mapping to the app's types ----------
 
 /** Live time when there is one, otherwise the timetable. */
 const timeOf = (t: OtpTime) => t.estimated?.time ?? t.scheduledTime

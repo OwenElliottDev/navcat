@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::capabilities::{AvoidOption, Backend, Rules};
 
-/// What each avoid option steers away from, for agents; options without one show just the id
+/// What each avoid option steers away from, for agents; options without one show only the id
 const AVOID_DESCRIPTIONS: [(&str, &str); 5] = [
     ("motorways", "motorways"),
     ("tolls", "toll roads"),

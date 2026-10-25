@@ -18,16 +18,7 @@ def _interleave_bits(x: int, y: int) -> int:
 
 
 def encode_osm_shortlink(lon: float, lat: float, z: int) -> str:
-    """Encodes an OSM shotlink as per the spec in the OSM implementation
-
-    Args:
-        lon (float): longitude of the location
-        lat (float): latitude of the location
-        z (int): the zoom level
-
-    Returns:
-        str: an OSM shortlink for a map view
-    """
+    """The OSM shortlink code for a map view."""
     code = _interleave_bits(
         int((lon + 180.0) * 2**32 / 360.0),
         int((lat + 90.0) * 2**32 / 180.0),
@@ -41,14 +32,7 @@ def encode_osm_shortlink(lon: float, lat: float, z: int) -> str:
 
 
 def decode_osm_shortlink(shortlink: str) -> tuple[float, float, int]:
-    """Decodes an OSM shotlink as per the spec in the OSM implementation
-
-    Args:
-        shortlink (str): An OSM shortlink
-
-    Returns:
-        tuple[float, float, int]: lon, lat, and zoom from the decoded link
-    """
+    """(lon, lat, zoom) for an OSM shortlink code."""
     x = 0
     y = 0
     z = 0

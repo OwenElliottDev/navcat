@@ -5,7 +5,7 @@ interface OrientationPermission {
 
 /**
  * Asks for the compass where the browser needs asking (iOS). Only works during a tap; a refusal
- * just means no compass.
+ * means no compass.
  */
 export function requestCompass() {
   if (typeof DeviceOrientationEvent === 'undefined') return

@@ -3,7 +3,7 @@
 Usage: elevation.py FOLDER WEST,SOUTH,EAST,NORTH [WEST,SOUTH,EAST,NORTH ...]
 
 GraphHopper only downloads the files its roads pass through, and the terrain is built from the
-same folder, so an unmapped area (e.g. the outback) became a square pit at sea level. Files get
+same folder, so an area without roads (e.g. the outback) would be a square pit at sea level. Files get
 GraphHopper's names and source, so it uses them too. srtm-names/ is GraphHopper's list of the
 files that exist: cells not in it are all sea.
 """

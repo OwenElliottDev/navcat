@@ -12,7 +12,7 @@ import type { DataSlice } from './data'
 import { selectIsNavigating, selectIsTransit, selectProfile } from './selectors'
 import { useAppStore } from '.'
 
-/** The rules for the chosen options a travel mode has */
+/** The rules for the chosen options that apply to the travel mode */
 function routeRules(
   options: ReturnType<typeof routeOptionsFor>,
   avoid: string[],

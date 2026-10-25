@@ -82,7 +82,7 @@ export function useNavigation(options: Options): NavigationState {
     latest.current = options
   })
 
-  // Per-route memory: where we last were, what's been said, how long we've been off it
+  // Per-route memory: the last position, what's been said, how long it's been off the route
   const segment = useRef<number | undefined>(undefined)
   const announced = useRef(new Set<string>())
   const offCount = useRef(0)
@@ -132,7 +132,7 @@ export function useNavigation(options: Options): NavigationState {
         onOffRoute(fix.at)
       }
 
-      // Say the next instruction as it gets close (just the nearest threshold passed)
+      // Say the next instruction as it gets close (only the nearest threshold passed)
       if (guidance.arrived) {
         if (!announced.current.has('arrived')) {
           announced.current.add('arrived')

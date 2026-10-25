@@ -86,7 +86,7 @@ class Routing(ApiModel):
     avoid: list[AvoidOption]
     """What a drive can avoid here"""
     steep_hills: SteepHills | None
-    """For walks and rides, when the routing graph knows how steep roads are and has one of them"""
+    """For walks and rides, when the routing graph knows how steep roads are and has either"""
 
 
 class Transit(ApiModel):

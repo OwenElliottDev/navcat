@@ -141,12 +141,10 @@ export class MockStack {
       this.user ? then() : json({ detail: 'Sign in first.' }, 401)
     const route = `${method} ${path}`
 
-    // ---------- map tiles (TileServer) ----------
     if (route === 'GET /styles/basic-preview/style.json') return json(style)
     // Not built: the app carries on without the topo map
     if (path.startsWith('/terrain/')) return json({ detail: 'Not found' }, 404)
 
-    // ---------- search (Photon) ----------
     if (route === 'GET /api/search') {
       const q = (params.get('q') ?? '').toLowerCase()
       const limit = Number(params.get('limit') ?? 6)
@@ -159,19 +157,16 @@ export class MockStack {
       return json({ type: 'FeatureCollection', features: [PHOTON_FEATURES[0]] })
     }
 
-    // ---------- routing (GraphHopper) ----------
     if (route === 'POST /api/route') {
       return json(routeResponse((body as { profile: string }).profile))
     }
 
-    // ---------- public transport (OpenTripPlanner) ----------
     if (route === 'POST /api/transit') {
       const { variables } = body as { variables?: TransitVariables }
       const allowed = variables?.modes?.transit.transit.map((m) => m.mode) ?? null
       return json(transitPlan(allowed))
     }
 
-    // ---------- maps_backend ----------
     if (route === 'GET /api/capabilities') {
       return json({
         routing: routingCapabilities(this.profiles, this.avoidOptions, this.steepHills),
@@ -228,7 +223,6 @@ export class MockStack {
       }
     }
 
-    // ---------- accounts ----------
     if (route === 'GET /api/features') return json(this.features)
     if (route === 'GET /api/me') return json({ user: this.user })
     if (route === 'POST /api/auth/login') {

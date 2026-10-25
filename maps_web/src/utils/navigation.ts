@@ -111,7 +111,7 @@ function closestOnSegments(route: NavRoute, at: LngLat, from: number, to: number
 export function guide(route: NavRoute, progress: RouteProgress): Guidance {
   const instructions = route.path.instructions
 
-  // The instruction whose stretch of road we're on
+  // The instruction whose stretch of road the position is on
   let current = 0
   instructions.forEach((instruction, i) => {
     if (instruction.interval[0] <= progress.segment) current = i

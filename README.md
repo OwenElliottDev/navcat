@@ -6,17 +6,19 @@
 [![Docker pulls](https://img.shields.io/docker/pulls/owenelliottdev/navcat-web)](https://hub.docker.com/r/owenelliottdev/navcat-web)
 [![Licence: AGPL-3.0](https://img.shields.io/badge/licence-AGPL--3.0-blue)](LICENSE)
 
-Nav Cat is a self-hosted map browsing and routing web app for desktop and mobile. It features advanced routing for walking, cycling, public transport, and driving. Walking and cycling have advanced features such as optional hill avoidance, bike type specific routing, GPX exporting, and elevation graphs. Public transport uses publicly released timetables and allows you to set target arrival and departure times.
+Nav Cat is a self-hosted map browsing and routing web app for desktop and mobile. It has
+vector maps with a topographic style (hill shading and a 3D view), search for addresses and
+places, browsing nearby places by category, and directions for driving, walking, several cycling
+styles and public transport. Walking and cycling routes can avoid steep hills, suit your type of
+bike, show an elevation graph and export to GPX. Public transport journeys are planned from GTFS
+timetables, leaving or arriving at a time you choose. Turn-by-turn navigation has voice prompts
+and lane guidance.
 
-Nav Cat downloads all its required data at setup time and then runs without any external APIs, it can we run offline after setup is completed. Any searches, reviews, photos, or saved places all remain on your server.
+Optional accounts add saved places, reviews, photos and community edits to places, and an
+optional MCP server lets AI agents search places and plan trips with real travel times.
 
-- **Map** with vector tiles, plus a topographic style with hill shading and 3D view
-- **Search** for addresses and places, and browse places nearby by category
-- **Directions** for driving, walking and several cycling styles, with elevation-aware routing
-- **Public transport** journey planning from GTFS timetables
-- **Turn-by-turn navigation** with voice prompts and lane guidance
-- **Accounts** (optional) for saved places, reviews, photos and community edits to places
-- **MCP server** (optional) so AI agents can search places and plan trips with real travel times
+Nav Cat downloads all the data it needs at setup and then runs without any external APIs, so it
+works offline. Searches, reviews, photos and saved places all stay on your server.
 
 It's built from open-source components: [TileServer GL](https://github.com/maptiler/tileserver-gl)
 and [Planetiler](https://github.com/onthegomap/planetiler) for the map,
@@ -35,7 +37,7 @@ and GTFS timetables works.
 - Memory for Docker: by default, building the routing graph and the public transport graph uses
   up to 8 GB each, and the running stack about 8 GB. 16 GB or more is comfortable; with less,
   updates pause public transport while the large builds run.
-- Disk space for the data. For Australia, the data is > 10GB.
+- Disk space for the data: more than 10 GB for Australia.
 
 ## Getting started
 
@@ -47,9 +49,12 @@ cp .env.example .env    # then set MAPS_POSTGRES_PASSWORD
 ```
 
 `./maps setup` pulls the released images, downloads the map, places and timetables, then builds the map
-tiles, the routing graph and the public transport graph before starting everything. The setup time can vary significantly with map area selection and hardware specs, it can range from minutes to hours. It only does whats missing so you can re-run it anytime.
+tiles, the routing graph and the public transport graph before starting everything. It takes
+anywhere from minutes to hours, depending on the region and your hardware. It only does what's
+missing, so you can re-run it any time.
 
-When it finishes, open http://localhost:7000. The search index downloads on first start, so it address search may not be instantly operational.
+When it finishes, open http://localhost:7000. Search downloads its index on first start, so
+address search may take a few minutes to start working.
 
 ## Configuration
 
@@ -120,7 +125,8 @@ shared, and its public host name in `MCP_ALLOWED_HOSTS`. See
 
 ## Development
 
-`docker-compose.yml` runs the published images, which only change with a release. To run a dev build from your checkout instead, use the `dev` arg:
+`docker-compose.yml` runs the published images, which only change with a release. To build them
+from your checkout instead, run:
 
 ```
 ./maps dev
@@ -135,61 +141,35 @@ re-import, run `docker compose run --rm -e FORCE=1 maps-poi-import`. The topo te
 
 ## Testing
 
-Run the tests relevant to your change before opening a pull request. CI runs the full suite on every pull request. Frontend commands are run from `maps_web/` and backend commands from `maps_backend/`.
+Frontend commands run from `maps_web/`, backend ones from `maps_backend/` and `cargo test` from
+`maps_mcp/`.
 
-### Frontend unit tests
+```
+npm test                  # frontend unit tests
+npm run test:e2e          # the app in a browser, with every service mocked
+npm run test:e2e:docker   # the same plus screenshot comparison (needs Docker)
+npm run test:e2e:update   # re-record screenshots after an intended UI change
+uv run pytest             # backend unit tests
+sh tests/api/run.sh       # backend API tests (needs Docker)
+cargo test                # MCP server
+MAPS_URL=http://localhost:7000 uv run pytest tests/smoke   # against a running stack
+```
 
-Located in `maps_web/src/**/*.test.ts`. These cover navigation, opening hours, lane guidance, transit, and map styles. They also verify that the nginx and Vite proxy configurations stay in sync.
+The browser tests answer every request from `e2e/fixtures` (see `e2e/mockStack.ts`) and fail on
+any request with no fixture or to an external host, so a new API call needs a fixture. Tests can
+check outgoing requests with `stack.requestsTo(...)`, and `npx playwright test --ui` runs them
+interactively. Screenshots cover the UI panels only, with the map canvas hidden, and are only
+compared inside the pinned Playwright container, since font rendering differs between systems;
+after re-recording them, review the changed images in the diff.
 
-    npm test
+The API tests start the real backend against a fresh PostGIS database, so migrations run from an
+empty schema. The `pois` and `turn_lanes` tables are fixtures in the shape the import makes
+(`tests/api/conftest.py`); keep them in step with `pois.lua`. Set `TEST_DATABASE_URL` to use an
+existing Postgres instead.
 
-### End-to-end tests
-
-Located in `maps_web/e2e/`. These run the app in a browser with all backend services mocked.
-
-    npm run test:e2e
-
-Responses are served from fixtures in `e2e/fixtures` (see `e2e/mockStack.ts`). A test fails if the app makes a request that has no matching fixture or that targets an external host. Tests can assert on outgoing requests using `stack.requestsTo(...)`. When adding a new API call, add a corresponding fixture.
-
-For interactive debugging, use `npx playwright test --ui`.
-
-### Screenshot tests
-
-Baselines are stored in `maps_web/e2e/__screenshots__/`. Running these requires Docker.
-
-    npm run test:e2e:docker
-
-Screenshot comparisons cover the UI panels only; the map canvas is hidden. Because font rendering differs between systems, screenshots are compared only inside the pinned Playwright Docker container used by CI. After an intentional UI change, regenerate the baselines and review the updated images in the diff:
-
-    npm run test:e2e:update
-
-### Backend unit tests
-
-Located in `maps_backend/tests/test_*.py`.
-
-    uv run pytest
-
-### Backend API tests
-
-Located in `maps_backend/tests/api/`. Running these requires Docker.
-
-    sh tests/api/run.sh
-
-The API tests start the real backend against a fresh PostGIS database, so migrations are exercised from an empty schema. The `pois` and `turn_lanes` tables are fixtures that mirror the structure produced by the import (defined in `tests/api/conftest.py`). Keep them consistent with `pois.lua` when changing the import. To run against an existing Postgres instance instead, set `TEST_DATABASE_URL`.
-
-### MCP server tests
-
-Located alongside the code in `maps_mcp/src`, run from `maps_mcp/`. Running these requires Rust.
-
-    cargo test
-
-### Smoke tests
-
-Located in `maps_backend/tests/smoke/`. Running these requires a running stack.
-
-    MAPS_URL=http://localhost:7000 uv run pytest tests/smoke
-
-The smoke tests send requests through nginx and verify that every service returns real data. Run them after a data update, or after changes to the import pipeline or `nginx.conf`. They target Melbourne by default; to test another region, set `SMOKE_FROM`, `SMOKE_TO`, and `SMOKE_QUERY` (see `tests/smoke/` for details).
+The smoke tests go through nginx and check that every service returns real data. Run them after
+a data update, or after changing the import or `nginx.conf`. They target Melbourne; set
+`SMOKE_FROM`, `SMOKE_TO` and `SMOKE_QUERY` for another region (see `tests/smoke/`).
 
 ## Data sources and attribution
 

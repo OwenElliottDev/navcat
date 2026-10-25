@@ -37,7 +37,7 @@ export function useStoredLook(): [MapLook, (look: MapLook) => void] {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
     } catch {
-      // Storage blocked: the choice just won't be remembered
+      // Storage blocked: the choice isn't remembered
     }
   }
 

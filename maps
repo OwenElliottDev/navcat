@@ -1,23 +1,22 @@
 #!/bin/sh
-# Sets up, updates and checks on the maps. A wrapper around docker compose.
+# Sets up, updates and checks on Nav Cat's data.
 #
-#   ./maps setup             Downloads and builds everything that's missing, then starts it all
-#   ./maps update [what...]  Refreshes data while everything keeps running. what is any of:
-#                              map      OSM map data: tiles, routing, browse (and places)
-#                              places   just the Overture places in browse and search
-#                              routing  rebuild the routing graph, e.g. after editing its config
+#   ./maps setup             Downloads and builds anything missing, then starts the stack
+#   ./maps update [what...]  Refreshes data on the running stack. what is any of:
+#                              map      the OSM extract, and the tiles, routing and POIs from it
+#                              places   only the Overture places
+#                              routing  the routing graph, e.g. after changing its config
 #                              transit  public transport timetables
 #                              search   the search index
-#                              all      all of the above (the default)
+#                              all      everything above (the default)
 #   ./maps status            How old each piece of data is
-#   ./maps schedule on|off   Runs updates automatically (schedules are in .env)
-#   ./maps dev [command]     Runs a command (setup if none) with the app built from this
-#                            checkout instead of the published images, e.g. ./maps dev to try
-#                            out changes, or ./maps dev update routing
+#   ./maps schedule on|off   Runs updates on the schedules in .env
+#   ./maps dev [command]     Runs a command (setup if none) with images built from this
+#                            checkout, e.g. ./maps dev update routing
 #
-# Updates build the new data alongside the old and swap it in, so each part only stops for a
-# restart. With under 20 GB of memory for Docker, public transport is paused while the big
-# builds run, since there isn't room for them and everything else at once.
+# Updates build new data alongside the old and swap it in, so each service only stops to
+# restart. With under 20 GB of memory for Docker, public transport (and for a routing build,
+# routing) stops while the large builds run.
 set -eu
 cd "$(dirname "$0")"
 
@@ -25,24 +24,24 @@ LOW_MEMORY_BYTES=$((20 * 1024 * 1024 * 1024))
 
 compose() { docker compose "$@"; }
 
-# Gets the latest of the app's images (or the named services'): pulls the published ones, and
-# builds any that docker-compose.dev.yml builds from this checkout
+# Pulls the published images and builds any that docker-compose.dev.yml builds (all services,
+# or the named ones)
 get_images() {
-  # All of them by name, as --profile flags turn off the profiles .env turns on (e.g. mcp)
+  # Named explicitly, as --profile flags replace the profiles .env turns on (e.g. mcp)
   if [ $# -eq 0 ]; then
     set -- $({
       compose --profile setup --profile updates config --services
       compose config --services
     } | sort -u)
   fi
-  compose --profile setup --profile updates pull -q --ignore-buildable "$@"
+  compose --profile setup --profile updates --ignore-buildable "$@"
   compose --profile setup --profile updates build "$@"
 }
 
 log() { printf '\n==> %s %s\n' "$(date +%H:%M:%S)" "$*"; }
 
-# Runs a shell command in the data folder, in the maps-data container. Single-quote it so
-# variables like $OSM_FILE are filled in there, from .env.
+# Runs a shell command in the data folder (maps-data). Single-quote it so variables like
+# $OSM_FILE expand in the container, from .env.
 in_data() { compose run --rm --no-deps maps-data "$1"; }
 data_has() { in_data "test -e $1" >/dev/null 2>&1; }
 
@@ -72,6 +71,7 @@ routing_config_changed() {
     -c 'cmp -s graph-config.sha /data/default-gh/graph-config.sha' >/dev/null 2>&1
 }
 
+# OTP only loads a graph saved by its own serialization version
 transit_graph_outdated() {
   data_has transit/graph.obj || return 1
   image_id=$(compose run --rm --no-deps maps-otp --version 2>/dev/null |
@@ -81,9 +81,7 @@ transit_graph_outdated() {
   [ -n "$image_id" ] && [ "$image_id" != "$graph_id" ]
 }
 
-# ---------- the steps ----------
-
-# With "reuse", extracts already downloaded from one of OSM_URL's URLs aren't downloaded again
+# With "reuse", skips extracts already downloaded from the same URL
 download_map() {
   log "Downloading OSM map data, elevation and Overture places"
   reuse=""
@@ -102,7 +100,7 @@ download_elevation() {
   compose run --rm maps-download elevation
 }
 
-# Only builds when the elevation files have changed, as on every `up`
+# Skips the build unless the elevation files changed
 build_terrain() {
   log "Building terrain for the topo map"
   compose run --rm --no-deps -e WAIT_FOR= maps-terrain-build
@@ -174,7 +172,7 @@ download_transit() {
   compose run --rm maps-transit-download
 }
 
-# OTP writes graph.obj in place; the old one is kept until the new one is built
+# OTP writes graph.obj in place, so the old one is moved aside and restored if the build fails
 build_transit() {
   in_data 'if [ -e transit/graph.obj ]; then mv transit/graph.obj transit/graph.obj.old; fi'
   if ! heavy run_otp_build; then
@@ -182,7 +180,7 @@ build_transit() {
     return 1
   fi
   in_data 'rm -f transit/graph.obj.old'
-  # Paused for the build, it has already started again on the new graph
+  # If heavy paused OTP, it already restarted on the new graph
   if [ -z "$paused" ] && is_running maps-otp; then compose restart maps-otp; fi
 }
 
@@ -214,13 +212,11 @@ update_search() {
   in_data 'rm -rf photon.old'
 }
 
-# ---------- commands ----------
-
 setup() {
   log "Getting images"
   get_images
 
-  # When the extract is new, tiles and routing built from an earlier one are rebuilt too
+  # A new extract means rebuilding the tiles and routing graph made from the old one
   new_map=""
   if ! data_has 'osm/$OSM_FILE'; then
     download_map reuse
@@ -262,7 +258,7 @@ setup() {
   compose up -d
   echo
   echo "Done: open http://localhost:7000"
-  echo "Place search must download its index on first start, it may take a few minutes to become operational."
+  echo "Search downloads its index on first start, so it may take a few minutes to start working."
 }
 
 update() {
@@ -283,7 +279,7 @@ update() {
   fi
   trap 'rmdir .update.lock' EXIT
 
-  # The download and import scripts and routing profiles are in these, so pick up any changes
+  # These images hold the download and import scripts and the routing profiles
   get_images maps-download maps-db maps-graphhopper maps-terrain-build
   case " $what " in
     *" map "* | *" routing "*) ;;
@@ -313,7 +309,7 @@ update() {
   done
 
   if [ -n "$failed" ]; then
-    log "Failed to update:$failed (the rest updated; what was there before is still in use)"
+    log "Failed to update:$failed (still using the previous data)"
     exit 1
   fi
   log "Updated: $what"
@@ -346,7 +342,6 @@ main() {
     status) in_data 'python3 /status.py' 2>/dev/null ;;
     schedule) schedule "$@" ;;
     dev)
-      # Builds the app's images from this checkout (docker-compose.dev.yml) for this command
       export COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
       if [ $# -eq 0 ]; then set -- setup; fi
       main "$@"

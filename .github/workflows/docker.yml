@@ -1,8 +1,7 @@
 name: Build & push images
 
-# Push a v* tag (e.g. git tag v1.2.0 && git push origin v1.2.0) to publish every image as
-# latest, the version and the commit. docker-compose.yml runs these. Pushes to main publish
-# edge and the commit; pull requests only build them, to catch broken Dockerfiles.
+# A v* tag (git tag v1.2.0 && git push origin v1.2.0) publishes every image as latest, the
+# version and the commit. Pushes to main publish edge and the commit; pull requests only build.
 on:
   push:
     branches: [main]

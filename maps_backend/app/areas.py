@@ -51,7 +51,7 @@ def reachable(lng: float, lat: float, mode: str, minutes: int) -> dict:
     try:
         body = upstream.get(f"{settings.graphhopper_url}/isochrone?{urlencode(params)}", TIMEOUT)
     except upstream.Rejected as err:
-        # GraphHopper's two answers for what the caller asked; anything else is a bug here
+        # The two rejections the request's own values can cause; anything else is a bug here
         if mode not in fetch_routing().profiles:
             raise ApiError(
                 422,

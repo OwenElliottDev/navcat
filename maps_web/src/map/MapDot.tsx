@@ -24,7 +24,7 @@ export function MapDot({ position, className, children }: MapDotProps) {
     return div
   })
 
-  // One marker for as long as the dot is shown; moving it just repositions it
+  // One marker for as long as the dot is shown; moving it repositions it
   useEffect(() => {
     if (!map) return
     const marker = new Marker({ element })
