@@ -10,7 +10,7 @@ function fingers(radius: number, degrees: number) {
 /** Moves a pinch from `fromRadius` to `toRadius` while twisting `twist` degrees, over `ms`, in
  * 20 steps, then holds still for `restMs`; returns whether it held the bearing throughout */
 function pinch(fromRadius: number, toRadius: number, twist: number, ms: number, restMs = 0) {
-  const pinch = new PinchTwist(fingers(fromRadius, 0), 0)
+  const pinch = new PinchTwist(fingers(fromRadius, 0))
   let held = true
   for (let i = 1; i <= 20; i++) {
     const radius = fromRadius + ((toRadius - fromRadius) * i) / 20
@@ -53,8 +53,27 @@ it("doesn't start rotating when a fast zoom slows down before the fingers lift",
   expect(pinch(60, 140, 40, 200, 1000)).toBe(true)
 })
 
-it('measures speed only between moves at different times', () => {
-  const pinch = new PinchTwist(fingers(60, 0), 0)
-  expect(pinch.move(fingers(140, 5), 0)).toBe(true)
-  expect(pinch.move(fingers(140, 20), 0)).toBe(false)
+it("doesn't count twist before the pinch's speed is known", () => {
+  // Moves the browser gave one time, before any later one: no speed yet, so no weight to use
+  const pinch = new PinchTwist(fingers(60, 0))
+  expect(pinch.move(fingers(80, 20), 1000)).toBe(true)
+  expect(pinch.move(fingers(100, 40), 1000)).toBe(true)
+  // Turning on the spot from then on counts
+  for (let i = 1; i <= 10; i++) pinch.move(fingers(100, 40 + 2 * i), 1000 + 50 * i)
+  expect(pinch.move(fingers(100, 62), 1550)).toBe(false)
+})
+
+it('needs fingers close together to turn further, so jitter does not rotate the map', () => {
+  // 30 px apart: 10 px around the circle is 38°
+  expect(pinch(15, 15, 30, 500)).toBe(true)
+  expect(pinch(15, 15, 50, 500)).toBe(false)
+})
+
+it("doesn't rotate when turning the fingers back after a fast zoom's sloppy twist", () => {
+  const pinch = new PinchTwist(fingers(60, 0))
+  for (let i = 1; i <= 20; i++) pinch.move(fingers(60 + 4 * i, 2 * i), 10 * i)
+  // Back 20° slowly: that counts, but the fingers are still 20° the other way from the start
+  let held = true
+  for (let i = 1; i <= 20; i++) held &&= pinch.move(fingers(140, 40 - i), 200 + 50 * i)
+  expect(held).toBe(true)
 })

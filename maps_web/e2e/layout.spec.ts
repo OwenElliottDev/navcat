@@ -244,12 +244,16 @@ test('a fast pinch does not rotate the map, but a slow one with the same twist d
   const scale = page.locator('.maplibregl-ctrl-scale')
   const scaleBefore = (await scale.textContent())!
 
-  // Spreading the fingers 1.2 zoom levels in 200 ms while twisting 40°: a zoom with a sloppy
-  // twist. Zoom and bearing change in the same frame, so once the zoom shows, any rotation would
-  // have too
+  /** The scale and compass together, to tell when the map has stopped (it can glide on) */
+  const view = () =>
+    Promise.all([scale.textContent(), compass.getAttribute('style')]).then((v) => v.join(' '))
+
+  // Spreading the fingers 1.2 zoom levels in 200 ms while twisting 40°: a zoom with a sloppy twist
   await pinch(60, 140, 40, 200)
   await expect(scale).not.toHaveText(scaleBefore)
-  await expect(compass).not.toHaveAttribute('style', rotated)
+  let last = ''
+  await expect.poll(async () => last === (last = await view()), { intervals: [300] }).toBe(true)
+  expect(last).not.toMatch(rotated)
 
   // The same pinch over 2 s: a deliberate twist
   await pinch(60, 140, 40, 2000)
