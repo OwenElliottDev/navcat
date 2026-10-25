@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sets up, updates and checks on Nav Cat's data.
+# Sets up, updates and reports on Nav Cat's data.
 #
 #   ./maps setup             Downloads and builds anything missing, then starts the stack
 #   ./maps update [what...]  Refreshes data on the running stack. what is any of:
@@ -15,8 +15,8 @@
 #                            checkout, e.g. ./maps dev update routing
 #
 # Updates build new data alongside the old and swap it in, so each service only stops to
-# restart. With under 20 GB of memory for Docker, public transport (and for a routing build,
-# routing) stops while the large builds run.
+# restart. With under 20 GB of memory for Docker, public transport stops while the map tiles,
+# routing graph or transit graph build, and routing stops while its graph builds.
 set -eu
 cd "$(dirname "$0")"
 

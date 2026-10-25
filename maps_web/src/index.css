@@ -246,7 +246,6 @@ body {
   color: var(--accent);
 }
 
-/* Read by screen readers, not shown */
 .sr-only {
   position: absolute;
   width: 1px;

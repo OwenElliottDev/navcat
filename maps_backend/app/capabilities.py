@@ -32,7 +32,6 @@ class Avoid:
 DRIVING = ("car",)
 WALKING_AND_CYCLING = ("foot", "bike", "bike_paths", "racingbike", "gravel", "mtb")
 
-# What a drive can avoid
 AVOIDS = {
     "motorways": Avoid("road_class", "road_class == MOTORWAY", 0.1),
     "tolls": Avoid("toll", "toll == ALL", 0.1),

@@ -12,7 +12,6 @@ export function Popups() {
   const { closeMenu, chooseMenuAction, closeAdding, showPlace } = useAppStore.getState()
 
   function handleMenuAction(action: MenuAction) {
-    // Adding a place needs an account
     if (action === 'add' && !account.user) {
       closeMenu()
       account.requestSignIn()

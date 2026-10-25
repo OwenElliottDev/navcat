@@ -1,6 +1,6 @@
 import type { Recent, RecentSearch } from '../types'
 
-// Recent searches for signed-out users. They never leave this browser.
+// Recent searches for signed-out users
 
 const STORAGE_KEY = 'maps.recents'
 export const MAX_RECENTS = 20

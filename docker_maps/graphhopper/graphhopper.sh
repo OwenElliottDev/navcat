@@ -33,7 +33,6 @@ function printBashUsage {
   echo "-h | --help               display this message"
 }
 
-# one character parameters have one minus character'-'. longer parameters have two minus characters '--'
 while [ ! -z $1 ]; do
   case $1 in
     --import) ACTION=import; shift 1;;
@@ -52,7 +51,6 @@ while [ ! -z $1 ]; do
   esac
 done
 
-# Defaults
 : "${ACTION:=server}"
 : "${GRAPH:=/data/default-gh}"
 : "${CONFIG:=config-example.yml}"
@@ -63,7 +61,6 @@ if [ "$URL" != "" ]; then
   wget -S -nv -O "${FILE:=data.pbf}" "$URL"
 fi
 
-# create the directories if needed
 mkdir -p $(dirname "${GRAPH}")
 
 echo "## Executing $ACTION. JAVA_OPTS=$JAVA_OPTS"

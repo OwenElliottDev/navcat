@@ -35,16 +35,20 @@ and GTFS timetables works.
 
 - Docker with Docker Compose v2
 - Memory for Docker: by default, building the routing graph and the public transport graph uses
-  up to 8 GB each, and the running stack about 8 GB. 16 GB or more is comfortable; with less,
-  updates pause public transport while the large builds run.
+  up to 8 GB each, and the running stack about 8 GB. 16 GB or more is comfortable. With under
+  20 GB, updates pause public transport while the map tiles and the routing and transit graphs
+  build.
 - Disk space for the data: more than 10 GB for Australia.
 
 ## Getting started
 
+Clone the repository, copy `.env.example` to `.env` and set `MAPS_POSTGRES_PASSWORD` in it, then
+run setup:
+
 ```
 git clone https://github.com/OwenElliottDev/navcat.git
 cd navcat
-cp .env.example .env    # then set MAPS_POSTGRES_PASSWORD
+cp .env.example .env
 ./maps setup
 ```
 
@@ -79,10 +83,12 @@ app publicly, put a reverse proxy with HTTPS in front of it.
 
 ## Keeping data up to date
 
+`./maps status` shows how old each piece of data is and when the timetables expire.
+`./maps update` refreshes everything, or name what to refresh, any of `map`, `places`,
+`routing`, `transit` and `search`:
+
 ```
-./maps status            # how old each piece of data is, and when the timetables expire
-./maps update            # refresh everything
-./maps update transit    # or just some of it: map, places, routing, transit, search
+./maps update transit search
 ```
 
 Each update builds the new data alongside the old and swaps it in, so each service is only down

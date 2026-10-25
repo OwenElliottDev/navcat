@@ -69,7 +69,6 @@ export function TripData() {
   const from = waypoints.from?.position ?? null
   const to = waypoints.to?.position ?? null
 
-  // Walking, cycling and driving come from GraphHopper; public transport from OpenTripPlanner
   useKeep(
     'route',
     useRoute(
