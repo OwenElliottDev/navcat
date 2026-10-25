@@ -1,12 +1,12 @@
 // The backend's /capabilities (GraphHopper's side), and a walk from Flinders Street Station to
 // Queen Victoria Market.
 
-const AVOID_RULES: Record<string, string> = {
-  motorways: 'road_class == MOTORWAY',
-  tolls: 'toll == ALL',
-  ferries: 'road_environment == FERRY',
-  traffic_lights: 'crossing == TRAFFIC_SIGNALS',
-  small_roads: 'road_class == RESIDENTIAL || road_class == SERVICE',
+const AVOID_RULES: Record<string, Record<string, string>> = {
+  motorways: { if: 'road_class == MOTORWAY', multiply_by: '0.1' },
+  tolls: { if: 'toll == ALL', multiply_by: '0.1' },
+  ferries: { if: 'road_environment == FERRY', multiply_by: '0.1' },
+  traffic_lights: { if: 'crossing == TRAFFIC_SIGNALS', multiply_by: '0.4' },
+  small_roads: { if: 'road_class == RESIDENTIAL || road_class == SERVICE', multiply_by: '0.4' },
 }
 
 const STEEP_HILLS = [
@@ -26,11 +26,12 @@ export function routingCapabilities(
   return {
     area: [112, -44, 154, -10],
     profiles,
-    avoid: avoid.map((id) => ({
-      id,
-      priority: [{ if: AVOID_RULES[id], multiply_by: id === 'traffic_lights' ? '0.4' : '0.1' }],
-    })),
-    steepHills: steepHills ? { priority: STEEP_HILLS } : null,
+    avoid: profiles.includes('car')
+      ? avoid.map((id) => ({ id, profiles: ['car'], priority: [AVOID_RULES[id]] }))
+      : [],
+    steepHills: steepHills
+      ? { profiles: profiles.filter((p) => p !== 'car'), priority: STEEP_HILLS }
+      : null,
   }
 }
 

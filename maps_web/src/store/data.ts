@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { BrowseState } from '../hooks/useBrowse'
-import { KNOWN_ROUTING, type Profiles } from '../hooks/useCapabilities'
+import { KNOWN_ROUTING, type Routing } from '../hooks/useCapabilities'
 import type { RouteState } from '../hooks/useRoute'
 import type { TransitPlanState } from '../hooks/useTransitPlan'
 import type { Category } from '../types'
@@ -8,7 +8,7 @@ import type { Store } from '.'
 
 /** What's been fetched for the other slices' choices; kept up to date by TripData. */
 export interface DataSlice {
-  routing: Profiles
+  routing: Routing
   categories: Category[]
   /** How many times the map has finished moving */
   moveCount: number

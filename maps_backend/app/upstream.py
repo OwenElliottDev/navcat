@@ -10,8 +10,24 @@ class Unavailable(Exception):
     """The service isn't answering, e.g. still starting or importing."""
 
 
-class Rejected(Unavailable):
-    """The service turned the request down (a 4xx); the message is its answer."""
+class Rejected(Exception):
+    """The service turned the request down (a 4xx). Callers turn the causes they know into an
+    ApiError; any other is a request this app shouldn't have sent, so a 500."""
+
+    def __init__(self, url: str, status: int, reason: str):
+        super().__init__(f"{url} answered {status}: {reason}")
+        self.status = status
+        self.reason = reason
+
+
+def _reason(body: bytes) -> str:
+    """A 4xx answer's reason: GraphHopper's `message`, FastAPI's `detail`, or the body."""
+    text = body.decode(errors="replace")
+    try:
+        answer = json.loads(text)
+        return str(answer.get("message") or answer.get("detail") or text)
+    except (ValueError, AttributeError):
+        return text
 
 
 def _perform(url: str, timeout: float, setup=None) -> bytes:
@@ -32,7 +48,7 @@ def _perform(url: str, timeout: float, setup=None) -> bytes:
     finally:
         curl.close()
     if 400 <= status < 500:
-        raise Rejected(buffer.getvalue().decode(errors="replace"))
+        raise Rejected(url, status, _reason(buffer.getvalue()))
     if status != 200:
         raise Unavailable(f"{url} answered {status}")
     return buffer.getvalue()

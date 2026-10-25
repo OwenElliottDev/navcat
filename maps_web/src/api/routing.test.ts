@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { http } from './http'
 import { getRoute } from './routing'
 
-vi.mock('./http', () => ({ http: { post: vi.fn(), get: vi.fn() } }))
+vi.mock('./http', () => ({ http: { post: vi.fn() } }))
 const post = vi.mocked(http.post)
 
 const FROM = { lng: 144.96, lat: -37.81 }

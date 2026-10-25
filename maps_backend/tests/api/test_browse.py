@@ -2,6 +2,7 @@
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
@@ -29,6 +30,9 @@ def _places(places):
     pass
 
 
+PROFILES = ["foot", "car", "glitchy"]
+
+
 class _GraphHopper(BaseHTTPRequestHandler):
     asked: ClassVar[list[dict]] = []
 
@@ -36,11 +40,19 @@ class _GraphHopper(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        params = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
-        _GraphHopper.asked.append(params)
-        if params.get("profile") == "boat":
-            status, body = 400, {"message": "The requested profile 'boat' does not exist"}
+        url = urlparse(self.path)
+        params = {k: v[0] for k, v in parse_qs(url.query).items()}
+        profile = params.get("profile")
+        if url.path == "/info":
+            status, body = 200, {"profiles": [{"name": p} for p in PROFILES]}
+        elif profile not in PROFILES:
+            status, body = 400, {"message": f"The requested profile '{profile}' does not exist"}
+        elif params["point"] == "10.0,10.0":
+            status, body = 400, {"message": "Point not found:10.0,10.0"}
+        elif profile == "glitchy":
+            status, body = 400, {"message": "Something only a bug here could cause"}
         else:
+            _GraphHopper.asked.append(params)
             status, body = 200, {"polygons": [{"type": "Feature", "geometry": REACHABLE}]}
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -123,14 +135,29 @@ def test_browse_where_you_can_get_to(routed):
     assert (asked["profile"], asked["time_limit"]) == ("foot", "300")
 
 
-def test_reachable_passes_on_why_graphhopper_said_no(routed):
-    response = browse(routed, reachable_from=NEAR, mode="boat")
-    assert response.status == 400
-    assert response.json()["detail"] == "The requested profile 'boat' does not exist"
+def test_reachable_says_what_was_wrong_with_the_request(routed):
+    boat = browse(routed, reachable_from=NEAR, mode="boat")
+    assert (boat.status, boat.json()["code"]) == (422, "unknown_mode")
+    at_sea = browse(routed, reachable_from="10,10", mode="foot")
+    assert (at_sea.status, at_sea.json()["code"]) == (422, "point_not_found")
     assert browse(routed, reachable_from=NEAR, mode="foot", minutes=61).status == 422
 
 
+def test_anything_else_graphhopper_turns_down_is_a_logged_500(routed, photos_dir):
+    response = browse(routed, reachable_from=NEAR, mode="glitchy")
+    assert response.status == 500
+    assert response.json()["code"] == "internal_error"
+    assert "bug" not in response.json()["detail"]
+    # The server logs it once the answer has gone
+    log = photos_dir.parent / f"uvicorn-{routed.base_url.rsplit(':', 1)[1]}.log"
+    deadline = time.monotonic() + 5
+    while "Something only a bug" not in log.read_text() and time.monotonic() < deadline:
+        time.sleep(0.1)
+    assert "Something only a bug here could cause" in log.read_text()
+
+
 def test_reachable_when_graphhopper_is_down(client):
-    assert browse(client(), reachable_from=NEAR, mode="foot").status == 503
+    response = browse(client(), reachable_from=NEAR, mode="foot")
+    assert (response.status, response.json()["code"]) == (503, "routing_unavailable")
     # Nothing else in browse needs it
     assert browse(client(), near=NEAR, radius=250).status == 200

@@ -6,7 +6,9 @@ from math import asin, cos, degrees, radians, sin
 from urllib.parse import urlencode
 
 from . import upstream
+from .capabilities import fetch_routing
 from .config import settings
+from .errors import ApiError
 
 type Box = tuple[float, float, float, float]
 """west, south, east, north"""
@@ -42,10 +44,6 @@ def geometry_box(geometry: dict) -> Box:
     return min(lngs), min(lats), max(lngs), max(lats)
 
 
-class BadRequest(Exception):
-    """GraphHopper turned it down, e.g. for an unknown travel mode; the message is its reason."""
-
-
 def reachable(lng: float, lat: float, mode: str, minutes: int) -> dict:
     """The area reachable from a point within the time, as a GeoJSON (Multi)Polygon (blocking:
     run it in a thread)."""
@@ -53,11 +51,20 @@ def reachable(lng: float, lat: float, mode: str, minutes: int) -> dict:
     try:
         body = upstream.get(f"{settings.graphhopper_url}/isochrone?{urlencode(params)}", TIMEOUT)
     except upstream.Rejected as err:
-        try:
-            message = json.loads(str(err))["message"]
-        except (ValueError, KeyError, TypeError):
-            message = str(err)
-        raise BadRequest(message) from err
+        # GraphHopper's two answers for what the caller asked; anything else is a bug here
+        if mode not in fetch_routing().profiles:
+            raise ApiError(
+                422,
+                f"There's no travel mode {mode!r}; /api/capabilities lists them.",
+                "unknown_mode",
+            ) from err
+        if err.reason.startswith("Point not found"):
+            raise ApiError(
+                422,
+                "There's no road for that travel mode near the point.",
+                "point_not_found",
+            ) from err
+        raise
     try:
         return json.loads(body)["polygons"][0]["geometry"]
     except (ValueError, KeyError, IndexError, TypeError) as err:

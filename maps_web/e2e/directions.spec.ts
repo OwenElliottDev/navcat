@@ -107,6 +107,22 @@ test('only the avoid options the backend offers are shown', async ({ page, stack
   ])
 })
 
+test("route options GraphHopper didn't have ready are asked for again", async ({ page }) => {
+  let graphHopperUp = false
+  await page.route('**/api/capabilities', (route) =>
+    graphHopperUp ? route.fallback() : route.fulfill({ json: { routing: null, transit: null } }),
+  )
+  await openApp(page)
+  await planRoute(page)
+  graphHopperUp = true
+  await page
+    .getByRole('group', { name: 'Travel mode' })
+    .getByRole('button', { name: 'Drive' })
+    .click()
+
+  await expect(page.getByRole('group', { name: 'Avoid' }).getByRole('button')).toHaveCount(5)
+})
+
 test('walks and rides can avoid steep hills, under additional options', async ({ page, stack }) => {
   await openApp(page)
   await planRoute(page)
