@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for coding agents working in this repository.
 
 ## What this is
 
@@ -170,3 +170,107 @@ zones are rewritten into the graph's one, as OTP 2.10's own adjustment never run
 (`download/transit.sh`, `transit_prepare.py`). Terrain tiles are built by
 `docker_maps/terrain/build_terrain.py` from GraphHopper's downloaded SRTM data. `maps_data/` holds
 all data; `postgres/` and `photos/` are user-created and not rebuildable.
+
+## Working here
+
+- The user owns every change; an agent is at most a co-owner. Commits are authored by the user,
+  with the agent credited only in a `Co-Authored-By` trailer.
+- Before a pull request is raised, make sure the user can explain and defend every line of the
+  change without your help. If they can't yet, walk them through it first.
+- Don't commit, push, open pull requests or comment on issues unless asked to, for that
+  specific change.
+- Don't generate a pull request description for the user to paste. Help them write their own:
+  point out a key detail they missed, cut what's padded, fix what's wrong. It should be a few
+  sentences on what changed and why, in their words.
+- Fix lint and formatting failures with the formatters (`npm run format`, `ruff format`,
+  `cargo fmt`), not by hand.
+- Don't create files nobody asked for (a CONTRIBUTING.md, a new README). Suggest them instead.
+- Propose a plan before building a feature that spans several services.
+
+## Examples
+
+Commands:
+
+```
+# GOOD: commands that give you context or verify correctness
+git log --oneline -- maps_backend/app/capabilities.py
+grep -rn "STEEP_HILLS" maps_backend maps_web/src maps_mcp/src
+npm test
+uv run pytest
+
+# BAD: acting on the user's behalf
+git commit -m "..."
+git push
+gh pr create --body "..."
+```
+
+Code comments:
+
+```ts
+// GOOD: the code says it all, no comment
+const placePath = ({ type, id }: PlaceRef) => `/places/${type}/${id}`
+
+// BAD: restates the code
+// Builds the API path for a place from its type and id
+const placePath = ({ type, id }: PlaceRef) => `/places/${type}/${id}`
+```
+
+```python
+# GOOD: says why, which the code can't
+# Checked when the username doesn't exist, so a wrong username takes as long as a wrong password
+_DUMMY_HASH = _hasher.hash("not a real password")
+
+# GOOD: a side effect you'd miss
+await _load(db, place_type, place_id)  # 404 if it isn't a known place
+```
+
+```ts
+// BAD: written for the task at hand, meaningless to the next reader
+// Fixes the empty sheet you saw on mobile when "What's here?" found nothing
+if (!place) return null
+
+// BAD: a label or banner
+// ---------- Reviews ----------
+// Reviews
+```
+
+```ts
+// GOOD: one line with the one fact that matters
+// Hidden rather than removed: the topo contours go in before the first label
+
+// BAD: a paragraph wrapped to the column, retelling the code
+// Instead of removing the house number layers from the style when navigating, we
+// set their visibility to none. This is because the topo map's contour layers are
+// inserted before the first label layer, so removing layers would change which
+// layer is first and the contours would end up in the wrong place.
+```
+
+Code copied or moved from elsewhere keeps its comments as they were. Don't add new ones to it.
+
+Pull requests:
+
+```
+User: Write up the PR description for this.
+Agent: Write a first go in your own words and I'll help tighten it. Two things worth covering:
+why steep hills are only offered when the graph has max_slope, and that it needs
+./maps update routing.
+
+User: Open the PR.
+Agent: Before you do: can you explain why the custom model disables CH, and what happens when
+GraphHopper is down? Those are the questions a reviewer is likely to ask.
+```
+
+Commit messages:
+
+```
+# BEST: the user writes it
+
+# GOOD: short, says what changed
+Avoid steep hills for walks and rides
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+
+# BAD: verbose, and claims more than it says
+This commit introduces a comprehensive enhancement to the routing system, adding
+robust support for avoiding steep hills, thereby improving accessibility.
+```
