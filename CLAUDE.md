@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Nav Cat, a self-hosted Google-Maps-style app run with Docker Compose: map tiles (TileServer GL +
+Nav Cat, a self-hosted maps browsing, routing and navigation app run with Docker Compose: map tiles (TileServer GL +
 Planetiler), search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small
 FastAPI backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to
 Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.env` (see `.env.example`).
@@ -58,6 +58,14 @@ Use `pycurl` for HTTP in Python (not httpx/requests, and not FastAPI's TestClien
 `tests/client.py`. API tests build fixture `pois`/`turn_lanes` tables in the import's shape
 (`tests/api/conftest.py`) — update them with `pois.lua`.
 
+MCP server (`maps_mcp/`, Rust):
+
+```
+cargo test
+cargo clippy --all-targets -- -D warnings
+cargo fmt
+```
+
 Frontend tests (`maps_web/`):
 
 ```
@@ -82,6 +90,9 @@ bump `.github/workflows/ci.yml`'s image with it).
 - any other `/api/...` → `maps_backend`
 - `/styles|data|fonts/` → TileServer (Host / X-Forwarded-Proto passed so its URLs point back through the proxy)
 - `/terrain/...` → static tiles from `maps_data/terrain`, served by the web container's nginx
+- `/go/<code>` (shared links) → the app, with OpenGraph tags from the backend's
+  `/api/links/meta/<code>` put into `index.html` by an nginx SSI include; preview images
+  (`/api/links/preview/`) are rendered by the backend from TileServer and nginx-cached
 
 nginx resolves upstreams per request (proxying to variables), so the site still runs when a
 service (e.g. OTP, paused during an update) is down. Only port 7000 is public; other services bind to 127.0.0.1 for
@@ -94,7 +105,10 @@ order at startup (`migrations.py`, tracked in `schema_migrations`) — add a new
 edit an applied one. A middleware rejects POST/PUT/PATCH unless the body is JSON or an image (CSRF
 protection alongside SameSite cookies). Settings come from env vars in `config.py`.
 `road_data.py` fetches GraphHopper's vector tiles and slims them to speed limit / cycleway /
-bike-route attributes for map overlays.
+bike-route attributes for map overlays. Requests to the other services go through `upstream.get`.
+The whole API is public, and some routes are there for other apps and scripts rather than the UI
+(e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not
+a reason to remove them.
 
 **Places & POIs.** The `pois` and `turn_lanes` tables are not created by migrations: the
 `maps-poi-import` job (`docker_maps/db/import-pois.sh`) builds them, swapping them in atomically and
@@ -111,9 +125,14 @@ user edits, reviews and photos live in migration-managed tables keyed the same w
 OSM via Photon and `U`/`O` places via `/api/places/search`. Photos are re-encoded with location
 metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
-**Frontend (`maps_web/src`).** `App.tsx` holds top-level state and composes everything. `api/`
-wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit, browse, navigation,
-voice); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
+**Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
+(what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
+the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories)
+and copies their results in; values derived from them are in `store/selectors.ts`. Data only one
+component needs (place details, lanes) is fetched there. Actions move the map through the
+`camera` App puts in the store. `App.tsx` sets up the map and its look, and composes
+`MapLayers`, `Navigation`, `Panel` and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit,
+browse, navigation); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
 `RouteLine`, `PoiLayer`, `MapMarker`). Map looks (incl. the topo style with local terrain) are
 built in `map/mapStyles.ts` by recolouring the TileServer style rather than loading other sources.
 Travel modes are GraphHopper profiles (`src/config.ts`); "transit" is special-cased to OTP.
@@ -123,6 +142,20 @@ shape by `utils/transitNavigation.ts`. Lane guidance looks up OSM `turn:lanes` f
 each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" options (`CAR_AVOIDS` in
 `src/config.ts`) are sent as a GraphHopper custom model with `ch.disable`, so car has an LM profile
 too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
+
+**MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use
+the stack: tools (search, place details, browse, routes, public transport journeys and stop
+departures, travel times, reachable places, capabilities), the same data as resources, and
+prompts. It's off unless the `mcp` compose profile is on, and serves stateless Streamable HTTP
+on its own port (7100, localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not
+through nginx. It's a thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
+public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
+lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
+`STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone
+from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's
+on a stack covering several. It protects itself (Host and
+Origin checks, token, rate limit per address, capped concurrent requests per service, size
+limits) and needs nothing changed in the other services.
 
 **Data pipeline (`docker_maps/`).** `./maps` (repo root, POSIX sh) drives the setup-profile
 services; updates build alongside the live data and swap it in, and `maps-updater` (opt-in,

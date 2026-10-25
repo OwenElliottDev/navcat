@@ -3,6 +3,7 @@ import { GeolocateControl, Map, NavigationControl, ScaleControl, setWorkerUrl } 
 import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { INITIAL_BOUNDS, MAP_STYLE_URL } from '../config'
+import { linkedView } from '../linkedView'
 import { MapContext } from './MapContext'
 import { steadyPinchRotation } from './pinchRotation'
 import { addPoiLayers } from './poiLayers'
@@ -19,9 +20,14 @@ export function MapCanvas() {
     const map = new Map({
       container: containerRef.current!,
       style: MAP_STYLE_URL,
-      bounds: INITIAL_BOUNDS,
-      fitBoundsOptions: { padding: 20 },
+      // At a shared link's view if there is one
+      ...(linkedView
+        ? { center: [linkedView.center.lng, linkedView.center.lat], zoom: linkedView.zoom }
+        : { bounds: INITIAL_BOUNDS, fitBoundsOptions: { padding: 20 } }),
       attributionControl: { compact: true },
+      // Labels appear without fading in: each fade redraws the map every frame, and while
+      // navigating the camera moves often enough that one is always running (battery drain)
+      fadeDuration: 0,
     })
     steadyPinchRotation(map)
     map.addControl(new NavigationControl(), 'top-right')
@@ -33,6 +39,15 @@ export function MapCanvas() {
         'top-right',
       )
     }
+
+    // MapLibre opens the compact attribution until the first drag; start it collapsed
+    const collapseAttribution = () => {
+      const attribution = map.getContainer().querySelector('.maplibregl-compact-show')
+      if (!attribution) return
+      attribution.classList.remove('maplibregl-compact-show')
+      map.off('data', collapseAttribution)
+    }
+    map.on('data', collapseAttribution)
 
     map.on('load', () => {
       addRouteLayers(map)

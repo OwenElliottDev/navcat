@@ -1,10 +1,19 @@
 import { useState, type ReactNode } from 'react'
 import { useAccount } from '../account/AccountContext'
+import { useFeatures } from '../features/FeaturesContext'
 import { useCommunity } from '../hooks/useCommunity'
+import { useShare } from '../hooks/useShare'
 import { usePlaceDetails } from '../hooks/usePlaceDetails'
 import type { End, PhotonFeature, SavedPlace, SavedPlaceKind } from '../types'
 import { humanize } from '../utils/format'
-import { describePlace, isSamePlace, placeRef, toSnapshot, withDetails } from '../utils/places'
+import {
+  describePlace,
+  isSamePlace,
+  placePosition,
+  placeRef,
+  toSnapshot,
+  withDetails,
+} from '../utils/places'
 import { ActionButton } from './ActionButton'
 import { CopyButton } from './CopyButton'
 import { Icon } from './icons'
@@ -23,6 +32,7 @@ interface PlaceCardProps {
 
 export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
   const { user, savedPlaces, savePlace, removePlace, requestSignIn } = useAccount()
+  const { allowPlaceEdits } = useFeatures()
   const ref = placeRef(place)
 
   // Bumped after an edit, review or photo so the card fetches the latest
@@ -31,6 +41,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
   const details = usePlaceDetails(ref, detailsVersion)
   const community = useCommunity(ref, communityVersion)
   const [isEditing, setIsEditing] = useState(false)
+  const sharing = useShare()
 
   // Search results carry few details; show the full set, with people's corrections
   const shown = withDetails(place, details)
@@ -67,8 +78,10 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
         </button>
       )}
 
-      <h2 className="card__title">{name}</h2>
-      {kind && <p className="card__kind">{kind}</p>}
+      <header data-sheet-peek>
+        <h2 className="card__title">{name}</h2>
+        {kind && <p className="card__kind">{kind}</p>}
+      </header>
       {community.status === 'ready' && community.data.rating !== null && (
         <p className="place-rating">
           <strong>{community.data.rating.toFixed(1)}</strong>{' '}
@@ -79,7 +92,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
         </p>
       )}
 
-      <div className="place-actions">
+      <div className="place-actions" data-sheet-low>
         <ActionButton
           icon="directions"
           label="Directions"
@@ -95,7 +108,15 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
           pressed={Boolean(savedAs('favourite'))}
           onClick={() => toggleSaved('favourite', snapshot.name)}
         />
+        <ActionButton
+          icon={sharing.icon}
+          label={sharing.copied ? 'Copied' : 'Share'}
+          onClick={() => sharing.share(placePosition(place))}
+        />
       </div>
+      <span className="sr-only" aria-live="polite">
+        {sharing.message}
+      </span>
 
       {(address || hours || phone || safeWebsite) && (
         <dl className="place-details">
@@ -130,7 +151,7 @@ export function PlaceCard({ place, onDirections, onBack }: PlaceCardProps) {
       <HomeWork savedAs={savedAs} onToggle={toggleSaved} />
 
       {/* Details are in the backend only for imported places and places people added */}
-      {ref && details && (
+      {ref && details && allowPlaceEdits && (
         <button
           type="button"
           className="link-button edit-link"

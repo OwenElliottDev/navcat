@@ -1,0 +1,123 @@
+{
+  "paths": [
+    {
+      "distance": 1610,
+      "time": 1150000,
+      "ascend": 16,
+      "descend": 2,
+      "bbox": [
+        144.9572,
+        -37.81827,
+        144.96706,
+        -37.8072
+      ],
+      "points": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            144.96706,
+            -37.81827,
+            12
+          ],
+          [
+            144.9653,
+            -37.81776,
+            11
+          ],
+          [
+            144.9644,
+            -37.8175,
+            11
+          ],
+          [
+            144.9629,
+            -37.8146,
+            15
+          ],
+          [
+            144.9614,
+            -37.8117,
+            19
+          ],
+          [
+            144.9599,
+            -37.8088,
+            24
+          ],
+          [
+            144.9585,
+            -37.8072,
+            27
+          ],
+          [
+            144.9572,
+            -37.8076,
+            26
+          ]
+        ]
+      },
+      "points_encoded": false,
+      "instructions": [
+        {
+          "text": "Continue onto Flinders Street",
+          "sign": 0,
+          "interval": [
+            0,
+            2
+          ],
+          "distance": 250,
+          "time": 178571
+        },
+        {
+          "text": "Turn right onto Elizabeth Street",
+          "sign": 2,
+          "interval": [
+            2,
+            6
+          ],
+          "distance": 1240,
+          "time": 885714
+        },
+        {
+          "text": "Turn left onto Victoria Street",
+          "sign": -2,
+          "interval": [
+            6,
+            7
+          ],
+          "distance": 120,
+          "time": 85714
+        },
+        {
+          "text": "Arrive at destination",
+          "sign": 4,
+          "interval": [
+            7,
+            7
+          ],
+          "distance": 0,
+          "time": 0
+        }
+      ],
+      "details": {
+        "osm_way_id": [
+          [
+            0,
+            2,
+            111
+          ],
+          [
+            2,
+            6,
+            222
+          ],
+          [
+            6,
+            7,
+            333
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -3,8 +3,12 @@ from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from . import photo_safety
+from .config import settings
 from .db import Db, pool
 from .migrations import migrate
+from .models import Features
+from .photos import UnsafePhoto
 from .routes import auth, browse, lanes, links, me, places, road_data
 
 
@@ -12,6 +16,8 @@ from .routes import auth, browse, lanes, links, me, places, road_data
 async def lifespan(_app: FastAPI):
     await pool.open(wait=True)
     await migrate(pool)
+    if settings.features.allow_photos and settings.check_photos:
+        photo_safety.load()
     yield
     await pool.close()
 
@@ -33,6 +39,14 @@ async def require_safe_writes(request: Request, call_next):
     return await call_next(request)
 
 
+@app.exception_handler(UnsafePhoto)
+async def unsafe_photo(_request: Request, _err: UnsafePhoto) -> JSONResponse:
+    return JSONResponse(
+        {"detail": "The photo was rejected by the safety check.", "code": "unsafe_photo"},
+        status_code=422,
+    )
+
+
 api = APIRouter(prefix="/api")
 
 
@@ -49,6 +63,11 @@ async def health(db: Db) -> dict:
         cursor = await db.execute("SELECT source, poi_count, imported_at FROM poi_import")
         pois = await cursor.fetchone()
     return {"postgres": row["postgres"], "postgis": row["postgis"], "pois": pois}
+
+
+@api.get("/features")
+async def features() -> Features:
+    return settings.features
 
 
 api.include_router(auth.router)

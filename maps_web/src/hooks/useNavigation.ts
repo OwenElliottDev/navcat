@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LngLat } from '../types'
+import { measureMovement, STILL, type Fix, type Movement } from '../utils/heading'
 import { SIGN_ALIGHT } from '../utils/transitNavigation'
 import {
   guide,
+  isOffRoute,
+  isWrongWay,
   locate,
   pointAlong,
   type Guidance,
@@ -12,16 +15,10 @@ import {
 
 export type Travel = 'walk' | 'ride' | 'drive' | 'transit'
 
-export interface Fix {
-  at: LngLat
-  /** Metres */
-  accuracy: number
-  /** Degrees from north, when the device knows */
-  heading: number | null
-}
-
 export interface NavigationState {
   fix: Fix | null
+  /** The way you're travelling (degrees from north), or null when not really moving */
+  course: number | null
   progress: RouteProgress | null
   guidance: Guidance | null
   error: string | null
@@ -51,6 +48,8 @@ const ANNOUNCE_STOP_AT = [1000, 300]
 // Further than this from the route, for a few fixes in a row, means a wrong turn
 const OFF_ROUTE_METRES: Record<Travel, number> = { walk: 35, ride: 45, drive: 60, transit: 80 }
 const OFF_ROUTE_FIXES = 3
+// Heading back along the route takes a few more, to let the direction of travel settle
+const WRONG_WAY_FIXES = 5
 const REROUTE_COOLDOWN_MS = 15_000
 // Simulated trips run at this many times normal speed (m/s)
 const SIMULATED_SPEED: Record<Travel, number> = {
@@ -71,6 +70,7 @@ const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1
 export function useNavigation(options: Options): NavigationState {
   const [state, setState] = useState<NavigationState>({
     fix: null,
+    course: null,
     progress: null,
     guidance: null,
     error: null,
@@ -86,6 +86,7 @@ export function useNavigation(options: Options): NavigationState {
   const segment = useRef<number | undefined>(undefined)
   const announced = useRef(new Set<string>())
   const offCount = useRef(0)
+  const wrongWayCount = useRef(0)
   const lastReroute = useRef(0)
   const lastRoute = useRef<NavRoute | null>(null)
 
@@ -94,33 +95,40 @@ export function useNavigation(options: Options): NavigationState {
     lastRoute.current = options.route
     segment.current = undefined
     offCount.current = 0
+    wrongWayCount.current = 0
   }, [options.route])
 
   useEffect(() => {
     if (!options.active) return
     announced.current = new Set()
     lastReroute.current = 0
+    let movement: Movement = STILL
 
     function update(fix: Fix) {
       const { route, travel, speak, onOffRoute } = latest.current
       const followed = route ?? lastRoute.current
       if (!followed) return
+      movement = measureMovement(movement, fix)
+      const { course } = movement
 
       const progress = locate(followed, fix.at, segment.current)
       segment.current = progress.segment
       const guidance = guide(followed, progress)
 
-      // Off the route? Only trust reasonably accurate fixes, and wait for a few in a row
-      const isOff = progress.offRoute > OFF_ROUTE_METRES[travel] && fix.accuracy < 50
-      offCount.current = isOff ? offCount.current + 1 : 0
+      // Off the route, or going back along it? Wait for a few fixes in a row. This also asks
+      // again (after the cooldown) when the last new route couldn't be found
+      offCount.current = isOffRoute(progress, fix.accuracy, OFF_ROUTE_METRES[travel])
+        ? offCount.current + 1
+        : 0
+      wrongWayCount.current = isWrongWay(progress, course) ? wrongWayCount.current + 1 : 0
       const now = Date.now()
       if (
-        route &&
-        offCount.current >= OFF_ROUTE_FIXES &&
+        (offCount.current >= OFF_ROUTE_FIXES || wrongWayCount.current >= WRONG_WAY_FIXES) &&
         now - lastReroute.current > REROUTE_COOLDOWN_MS
       ) {
         lastReroute.current = now
         offCount.current = 0
+        wrongWayCount.current = 0
         onOffRoute(fix.at)
       }
 
@@ -149,7 +157,7 @@ export function useNavigation(options: Options): NavigationState {
         }
       }
 
-      setState({ fix, progress, guidance, error: null })
+      setState({ fix, course, progress, guidance, error: null })
     }
 
     if (options.simulate) {
@@ -158,7 +166,13 @@ export function useNavigation(options: Options): NavigationState {
         const route = latest.current.route ?? lastRoute.current
         if (!route) return
         travelled = Math.min(route.length, travelled + SIMULATED_SPEED[latest.current.travel])
-        update({ at: pointAlong(route, travelled), accuracy: 5, heading: null })
+        update({
+          at: pointAlong(route, travelled),
+          accuracy: 5,
+          heading: null,
+          speed: null,
+          time: Date.now(),
+        })
       }, 1000)
       return () => clearInterval(timer)
     }
@@ -170,6 +184,8 @@ export function useNavigation(options: Options): NavigationState {
           at: { lng: position.coords.longitude, lat: position.coords.latitude },
           accuracy: position.coords.accuracy,
           heading: position.coords.heading,
+          speed: position.coords.speed,
+          time: position.timestamp,
         }),
       (err) =>
         setState((s) => ({

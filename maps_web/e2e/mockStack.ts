@@ -66,6 +66,8 @@ export class MockStack {
   savedPlaces: SavedPlace[] = []
   recents: Recent[] = []
   reviews: Record<string, ReviewFixture[]> = initialReviews()
+  /** What the backend lets people do */
+  features = { allowPlaceEdits: true, allowReviews: true, allowPhotos: true }
   /** Profiles GraphHopper says it has */
   profiles = ALL_PROFILES
   /** What GraphHopper's graph knows about roads (decides which car avoid options show) */
@@ -212,9 +214,16 @@ export class MockStack {
           return json(review)
         })
       }
+      if (place[3] === '/review' && method === 'DELETE') {
+        return signedIn(() => {
+          this.reviews[key] = reviews.filter((r) => r.username !== this.user!.username)
+          return { status: 204 }
+        })
+      }
     }
 
     // ---------- accounts ----------
+    if (route === 'GET /api/features') return json(this.features)
     if (route === 'GET /api/me') return json({ user: this.user })
     if (route === 'POST /api/auth/login') {
       const { username, password } = body as typeof ACCOUNT

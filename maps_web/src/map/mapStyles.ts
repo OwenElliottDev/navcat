@@ -458,6 +458,11 @@ function labelRoadsWithNumbers(layer: LayerSpecification): LayerSpecification {
   return { ...layer, layout: { ...layer.layout, 'text-field': routeNumber(label) } }
 }
 
+function hideHouseNumbers(layer: LayerSpecification): LayerSpecification {
+  if (!('source-layer' in layer) || layer['source-layer'] !== 'housenumber') return layer
+  return { ...layer, layout: { ...layer.layout, visibility: 'none' } } as LayerSpecification
+}
+
 // ---------- putting it together ----------
 
 export function buildStyle(
@@ -466,10 +471,14 @@ export function buildStyle(
   /** Needed for the topo map */
   terrain?: TerrainUrls,
   tilted = false,
+  /** Turn-by-turn shows less detail: no house numbers */
+  navigating = false,
 ): StyleSpecification {
   const palette = look.base === 'standard' || look.base === 'topo' ? null : PALETTES[look.base]
   let layers = palette ? base.layers.map((layer) => recolour(layer, palette)) : [...base.layers]
   if (look.roadLabels === 'numbers') layers = layers.map(labelRoadsWithNumbers)
+  // Hidden rather than removed: the topo contours go in before the first label
+  if (navigating) layers = layers.map(hideHouseNumbers)
   let sources = base.sources
 
   if (look.base === 'topo' && terrain) {

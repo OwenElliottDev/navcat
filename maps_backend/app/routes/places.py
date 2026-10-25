@@ -9,6 +9,7 @@ from psycopg.types.json import Jsonb
 from pydantic import Field, field_validator
 
 from ..auth import CurrentUser, OptionalUser
+from ..config import settings
 from ..db import Db
 from ..models import ApiModel
 from ..photos import (
@@ -135,6 +136,8 @@ async def search_added_places(
 @router.post("/places", status_code=201)
 async def add_place(place: NewPlace, user: CurrentUser, db: Db) -> PoiDetails:
     """Adds a place OSM doesn't have."""
+    if not settings.features.allow_place_edits:
+        raise HTTPException(403, "Adding and editing places is turned off on this server.")
     cursor = await db.execute(
         "INSERT INTO user_places (name, category, tags, geom, created_by, updated_by)"
         " VALUES (%s, %s, %s, ST_SetSRID(ST_MakePoint(%s, %s), 4326), %s, %s) RETURNING id",
@@ -168,6 +171,8 @@ async def edit_place(
     db: Db,
 ) -> PoiDetails:
     """Corrects a place. Any signed-in user can; the latest correction wins."""
+    if not settings.features.allow_place_edits:
+        raise HTTPException(403, "Adding and editing places is turned off on this server.")
     tags = dict(changes.tags)
 
     if place_type == "U":
@@ -287,6 +292,8 @@ async def write_review(
     place_type: PlaceType, place_id: int, review: ReviewIn, user: CurrentUser, db: Db
 ) -> Review:
     """Writes your review of a place, replacing your earlier one."""
+    if not settings.features.allow_reviews:
+        raise HTTPException(403, "Reviews are turned off on this server.")
     cursor = await db.execute(
         "INSERT INTO reviews (place_type, place_id, user_id, rating, body) VALUES (%s, %s, %s, %s, %s)"
         " ON CONFLICT (place_type, place_id, user_id) DO UPDATE SET"
@@ -312,6 +319,8 @@ async def add_photo(
     place_type: PlaceType, place_id: int, request: Request, user: CurrentUser, db: Db
 ) -> Photo:
     """Adds a photo, sent as the raw image body (JPEG, PNG or WebP)."""
+    if not settings.features.allow_photos:
+        raise HTTPException(403, "Adding photos is turned off on this server.")
     if int(request.headers.get("content-length") or 0) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "Photos can be up to 20 MB.")
     data = await request.body()
@@ -319,7 +328,7 @@ async def add_photo(
         raise HTTPException(413, "Photos can be up to 20 MB.")
 
     try:
-        processed = await run_in_threadpool(process_photo, data)
+        processed = await run_in_threadpool(process_photo, data, settings.check_photos)
     except ValueError:
         raise HTTPException(422, "That doesn't look like a photo.")
 

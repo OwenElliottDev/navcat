@@ -1,0 +1,236 @@
+{
+  "data": {
+    "planConnection": {
+      "routingErrors": [],
+      "edges": [
+        {
+          "node": {
+            "start": "2026-10-12T08:05:00+11:00",
+            "end": "2026-10-12T08:24:00+11:00",
+            "duration": 1140,
+            "legs": [
+              {
+                "mode": "WALK",
+                "transitLeg": false,
+                "headsign": null,
+                "distance": 260,
+                "duration": 240,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:05:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:09:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Origin"
+                },
+                "to": {
+                  "name": "Flinders St/Elizabeth St #1"
+                },
+                "route": null,
+                "legGeometry": {
+                  "points": "dkyeFc{xsZeB~Is@rD"
+                },
+                "steps": [
+                  {
+                    "distance": 200,
+                    "relativeDirection": "DEPART",
+                    "absoluteDirection": "WEST",
+                    "streetName": "Flinders Street",
+                    "bogusName": false,
+                    "lat": -37.81827,
+                    "lon": 144.96706,
+                    "exit": null
+                  },
+                  {
+                    "distance": 60,
+                    "relativeDirection": "RIGHT",
+                    "absoluteDirection": null,
+                    "streetName": "Elizabeth Street",
+                    "bogusName": false,
+                    "lat": -37.8175,
+                    "lon": 144.9644,
+                    "exit": null
+                  }
+                ]
+              },
+              {
+                "mode": "TRAM",
+                "transitLeg": true,
+                "headsign": "North Coburg",
+                "distance": 1240,
+                "duration": 600,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:10:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:20:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Flinders St/Elizabeth St #1"
+                },
+                "to": {
+                  "name": "Queen Victoria Market/Elizabeth St #7"
+                },
+                "route": {
+                  "shortName": "19",
+                  "longName": "North Coburg - Flinders Street Station",
+                  "color": "8A1B61",
+                  "textColor": "FFFFFF"
+                },
+                "legGeometry": {
+                  "points": "jfyeFojxsZcQjHcQjHcQjH_IvG"
+                },
+                "steps": []
+              },
+              {
+                "mode": "WALK",
+                "transitLeg": false,
+                "headsign": null,
+                "distance": 150,
+                "duration": 240,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:20:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:24:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Queen Victoria Market/Elizabeth St #7"
+                },
+                "to": {
+                  "name": "Destination"
+                },
+                "route": null,
+                "legGeometry": {
+                  "points": "~eweFsewsZnAbG"
+                },
+                "steps": [
+                  {
+                    "distance": 150,
+                    "relativeDirection": "DEPART",
+                    "absoluteDirection": "WEST",
+                    "streetName": "Victoria Street",
+                    "bogusName": false,
+                    "lat": -37.8072,
+                    "lon": 144.9585,
+                    "exit": null
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "node": {
+            "start": "2026-10-12T08:12:00+11:00",
+            "end": "2026-10-12T08:31:00+11:00",
+            "duration": 1140,
+            "legs": [
+              {
+                "mode": "WALK",
+                "transitLeg": false,
+                "headsign": null,
+                "distance": 40,
+                "duration": 120,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:12:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:14:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Origin"
+                },
+                "to": {
+                  "name": "Flinders Street Station"
+                },
+                "route": null,
+                "legGeometry": {
+                  "points": "dkyeFc{xsZa@r@"
+                },
+                "steps": []
+              },
+              {
+                "mode": "RAIL",
+                "transitLeg": true,
+                "headsign": "Craigieburn",
+                "distance": 1900,
+                "duration": 360,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:16:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:22:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Flinders Street Station"
+                },
+                "to": {
+                  "name": "Flagstaff Station"
+                },
+                "route": {
+                  "shortName": null,
+                  "longName": "Craigieburn",
+                  "color": "FFBE00",
+                  "textColor": "000000"
+                },
+                "legGeometry": {
+                  "points": "bjyeFoyxsZ_q@zYfJ~f@"
+                },
+                "steps": []
+              },
+              {
+                "mode": "WALK",
+                "transitLeg": false,
+                "headsign": null,
+                "distance": 600,
+                "duration": 540,
+                "start": {
+                  "scheduledTime": "2026-10-12T08:22:00+11:00",
+                  "estimated": null
+                },
+                "end": {
+                  "scheduledTime": "2026-10-12T08:31:00+11:00",
+                  "estimated": null
+                },
+                "from": {
+                  "name": "Flagstaff Station"
+                },
+                "to": {
+                  "name": "Destination"
+                },
+                "route": null,
+                "legGeometry": {
+                  "points": "jcxeFsvvsZ{Y{E"
+                },
+                "steps": [
+                  {
+                    "distance": 600,
+                    "relativeDirection": "DEPART",
+                    "absoluteDirection": "NORTH",
+                    "streetName": "William Street",
+                    "bogusName": false,
+                    "lat": -37.8119,
+                    "lon": 144.9561,
+                    "exit": null
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

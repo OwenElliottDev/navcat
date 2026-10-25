@@ -15,6 +15,7 @@ export interface Overlays {
 }
 
 const MARGIN = 40
+const NO_PADDING: Padding = { top: 0, right: 0, bottom: 0, left: 0 }
 
 /** Padding that keeps whatever we zoom to clear of the panel (or top bar and sheet on phones). */
 /** Shrinks padding so at least `room` pixels of map are left each way to fit things into. */
@@ -47,20 +48,28 @@ function paddingAround({ panel, top, sheet }: Overlays): Padding {
   })
 }
 
+export type Camera = ReturnType<typeof useCamera>
+
 export function useCamera(overlays: Overlays) {
   const map = useMap()
 
   return useMemo(
     () => ({
       flyTo(at: LngLat, minZoom: number) {
-        map?.flyTo({
-          center: [at.lng, at.lat],
-          zoom: Math.max(map.getZoom(), minZoom),
-          padding: paddingAround(overlays),
-        })
+        // Measures the overlays a frame later, once a sheet opened or closed by the same change
+        // is on screen
+        requestAnimationFrame(() =>
+          map?.flyTo({
+            center: [at.lng, at.lat],
+            zoom: Math.max(map.getZoom(), minZoom),
+            padding: paddingAround(overlays),
+          }),
+        )
       },
-      /** `flat` also turns the map back to top-down and north-up */
+      /** `flat` also turns the map back to top-down and north-up, after navigating */
       fitBounds([west, south, east, north]: Bounds, flat = false) {
+        // The fit is made inside the map's own padding, which navigation leaves set
+        if (flat) map?.setPadding(NO_PADDING)
         map?.fitBounds(
           [
             [west, south],
@@ -72,6 +81,10 @@ export function useCamera(overlays: Overlays) {
             ...(flat && { pitch: 0, bearing: 0 }),
           },
         )
+      },
+      /** Turns the map back to top-down and north-up, after navigating. */
+      flatten() {
+        map?.easeTo({ pitch: 0, bearing: 0, padding: NO_PADDING, duration: 600 })
       },
       /** The part of the map not hidden by the panel, and its middle. */
       visibleArea(): { bounds: Bounds; near: LngLat } | null {
@@ -88,6 +101,10 @@ export function useCamera(overlays: Overlays) {
           bounds: [southWest.lng, southWest.lat, northEast.lng, northEast.lat],
           near: { lng: middle.lng, lat: middle.lat },
         }
+      },
+      /** Where a point is drawn, in pixels from the map's top left. */
+      project(at: LngLat): { x: number; y: number } | null {
+        return map?.project([at.lng, at.lat]) ?? null
       },
     }),
     [map, overlays],

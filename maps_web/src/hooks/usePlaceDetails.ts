@@ -8,11 +8,12 @@ import { useFetch } from './useFetch'
  * Null while loading, and for things that aren't places (streets, suburbs).
  */
 export function usePlaceDetails(place: PlaceRef | null, version = 0): PoiDetails | null {
-  const key = place ? `${place.type}${place.id}@${version}` : null
+  const key = place ? `${place.type}${place.id}` : null
   const details = useFetch(
     key,
     (signal) => getPlace(place!, signal),
     () => '',
+    version,
   )
   return details.status === 'ready' ? details.data : null
 }

@@ -56,9 +56,31 @@ def photos_dir(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="session")
-def base_url(database_url, photos_dir):
+def base_url(database_url, photos_dir, safety_model):
     """Starts the backend. Migrations run on startup, so this also checks they apply to an
-    empty database."""
+    empty database. Uploads go through the real photo safety check."""
+    with _serve(
+        database_url, photos_dir, SAFETY_CHECK_PHOTOS="true", PHOTO_SAFETY_MODEL=str(safety_model)
+    ) as url:
+        yield url
+
+
+@pytest.fixture(scope="session")
+def reviews_off_url(base_url, database_url, photos_dir):
+    """Another backend on the same database, with reviews turned off."""
+    with _serve(database_url, photos_dir, ALLOW_REVIEWS="false") as url:
+        yield url
+
+
+@pytest.fixture(scope="session")
+def photos_and_place_edits_off_url(base_url, database_url, photos_dir):
+    """Another backend on the same database, with photos and place edits turned off."""
+    with _serve(database_url, photos_dir, ALLOW_PHOTOS="false", ALLOW_PLACE_EDITS="false") as url:
+        yield url
+
+
+@contextlib.contextmanager
+def _serve(database_url: str, photos_dir: Path, **settings: str):
     port = _free_port()
     env = {
         **os.environ,
@@ -66,9 +88,17 @@ def base_url(database_url, photos_dir):
         "PHOTOS_DIR": str(photos_dir),
         # Nothing listens here, so road data finds GraphHopper down
         "GRAPHHOPPER_URL": f"http://127.0.0.1:{_free_port()}",
+        # and link previews find Photon and TileServer down
+        "PHOTON_URL": f"http://127.0.0.1:{_free_port()}",
+        "TILESERVER_URL": f"http://127.0.0.1:{_free_port()}",
         "ALLOW_SIGNUP": "true",
+        "ALLOW_PLACE_EDITS": "true",
+        "ALLOW_REVIEWS": "true",
+        "ALLOW_PHOTOS": "true",
+        "SAFETY_CHECK_PHOTOS": "false",
+        **settings,
     }
-    log_path = photos_dir.parent / "uvicorn.log"
+    log_path = photos_dir.parent / f"uvicorn-{port}.log"
     with open(log_path, "w") as log:
         server = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", "app.main:app", "--port", str(port)],

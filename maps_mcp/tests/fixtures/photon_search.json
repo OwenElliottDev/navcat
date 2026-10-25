@@ -1,0 +1,100 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          144.96706,
+          -37.81827
+        ]
+      },
+      "properties": {
+        "name": "Flinders Street Station",
+        "street": "Flinders Street",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "postcode": "3000",
+        "osm_type": "W",
+        "osm_id": 23075050,
+        "osm_key": "railway",
+        "osm_value": "station",
+        "type": "house"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          144.95679,
+          -37.80762
+        ]
+      },
+      "properties": {
+        "name": "Queen Victoria Market",
+        "housenumber": "513",
+        "street": "Elizabeth Street",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "postcode": "3000",
+        "osm_type": "W",
+        "osm_id": 25089834,
+        "osm_key": "amenity",
+        "osm_value": "marketplace",
+        "type": "house"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          144.9714,
+          -37.8115
+        ]
+      },
+      "properties": {
+        "name": "Laneway Espresso",
+        "housenumber": "66",
+        "street": "Bourke Street",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "postcode": "3000",
+        "osm_type": "N",
+        "osm_id": 1234567890,
+        "osm_key": "amenity",
+        "osm_value": "cafe",
+        "type": "house"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          144.9612,
+          -37.7667
+        ]
+      },
+      "properties": {
+        "name": "Brunswick",
+        "city": "Melbourne",
+        "state": "Victoria",
+        "postcode": "3056",
+        "osm_type": "R",
+        "osm_id": 2041256,
+        "osm_key": "place",
+        "osm_value": "suburb",
+        "type": "district",
+        "extent": [
+          144.9447,
+          -37.7568,
+          144.9785,
+          -37.7783
+        ]
+      }
+    }
+  ]
+}

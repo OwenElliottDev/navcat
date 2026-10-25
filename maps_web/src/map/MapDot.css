@@ -7,3 +7,24 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
+
+.map-dot--query {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  background: #c4c9cc;
+  color: #3c4446;
+}
+
+.map-dot--query .icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* Bolder than elsewhere, to read at this size */
+.map-dot--query .icon path {
+  stroke-width: 2.2;
+}
