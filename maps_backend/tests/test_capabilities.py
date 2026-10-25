@@ -22,8 +22,10 @@ def test_offers_what_the_routing_graph_supports():
     assert [option.id for option in routing.avoid] == list(AVOIDS)
     tolls = next(option for option in routing.avoid if option.id == "tolls")
     assert tolls.priority == [{"if": "toll == ALL", "multiply_by": "0.1"}]
+    assert tolls.profiles == ["car"]
     assert routing.steep_hills is not None
     assert len(routing.steep_hills.priority) == 3
+    assert routing.steep_hills.profiles == ["foot", "bike"]
 
 
 def test_hides_options_the_routing_graph_cant_use():
@@ -31,6 +33,14 @@ def test_hides_options_the_routing_graph_cant_use():
     assert [option.id for option in routing.avoid] == ["tolls"]
     assert routing.steep_hills is None
     assert routing.area is None
+
+
+def test_options_need_a_mode_theyre_for():
+    walking_only = routing_from_info({**INFO, "profiles": [{"name": "foot"}]})
+    assert walking_only.avoid == []
+    assert walking_only.steep_hills is not None
+    driving_only = routing_from_info({**INFO, "profiles": [{"name": "car"}]})
+    assert driving_only.steep_hills is None
 
 
 def test_rules_are_sent_as_graphhopper_spells_them():

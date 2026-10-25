@@ -5,6 +5,7 @@ use futures::StreamExt;
 use futures::stream;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::geo::Point;
 use crate::routing::{self, RouteOptions};
@@ -70,12 +71,22 @@ pub async fn travel_times(stack: &Stack, params: TravelTimesParams) -> Result<Tr
         let message = "depart_at and transit_modes are for mode \"transit\"";
         return Err(Error::invalid("bad_option", message));
     }
+    if by_transit && !params.options.is_empty() {
+        let message = "avoid and avoid_steep_hills aren't for mode \"transit\"";
+        return Err(Error::invalid("bad_option", message));
+    }
     let mut points = params.origins.iter().chain(&params.destinations);
     points.try_for_each(Point::check)?;
+    // Once for every pair
+    let rules = if by_transit {
+        Vec::new()
+    } else {
+        routing::rules(stack, &params.mode, &params.options).await?
+    };
 
     let pairs: Vec<_> = (0..params.origins.len())
         .flat_map(|from| (0..params.destinations.len()).map(move |to| (from, to)))
-        .map(|(from, to)| time_pair(stack, &params, by_transit, from, to))
+        .map(|(from, to)| time_pair(stack, &params, &rules, by_transit, from, to))
         .collect();
     // Half a service's slots at most, so one call doesn't hold up everyone else's
     let at_once = (slots / 2).max(1);
@@ -86,6 +97,7 @@ pub async fn travel_times(stack: &Stack, params: TravelTimesParams) -> Result<Tr
 async fn time_pair(
     stack: &Stack,
     params: &TravelTimesParams,
+    rules: &[Value],
     by_transit: bool,
     from: usize,
     to: usize,
@@ -117,7 +129,7 @@ async fn time_pair(
         })
     } else {
         let waypoints = [origin, destination];
-        let path = routing::route(stack, &waypoints, &params.mode, &params.options, false);
+        let path = routing::route(stack, &waypoints, &params.mode, rules, false);
         path.await.map(|path| {
             let route = routing::summarize(path, false);
             Pair {
@@ -137,8 +149,11 @@ async fn time_pair(
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
     use crate::config::Config;
+    use crate::upstream::Upstream;
 
     fn params(origins: usize, destinations: usize, mode: &str) -> TravelTimesParams {
         let point = Point {
@@ -171,5 +186,22 @@ mod tests {
         let mut at = params(1, 2, "car");
         at.depart_at = Some("2026-10-23T08:30:00+13:00".into());
         assert!(error(at).await.contains("bad_option"));
+
+        let mut avoiding = params(1, 2, "transit");
+        avoiding.options.avoid = vec!["tolls".into()];
+        assert!(error(avoiding).await.contains("bad_option"));
+    }
+
+    // The route options are looked up once for every pair, so when that fails the whole call
+    // does, rather than each pair saying the same thing
+    #[tokio::test]
+    async fn fails_as_a_whole_when_its_options_cant_be_looked_up() {
+        let mut stack = Stack::new(&Config::from_env().unwrap());
+        // Nothing listens here
+        stack.backend = Upstream::new("Places", "http://127.0.0.1:9", 1, Duration::from_secs(2));
+        let mut tolls = params(1, 2, "car");
+        tolls.options.avoid = vec!["tolls".into()];
+        let error = travel_times(&stack, tolls).await.unwrap_err().to_string();
+        assert!(error.contains("unavailable"), "{error}");
     }
 }

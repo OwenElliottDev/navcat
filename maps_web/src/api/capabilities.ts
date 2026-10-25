@@ -7,6 +7,8 @@ export type RouteRule = Record<string, string>
 
 export interface AvoidOption {
   id: string
+  /** The travel modes it's for */
+  profiles: string[]
   priority: RouteRule[]
 }
 
@@ -19,7 +21,7 @@ export interface Capabilities {
     /** What a drive can avoid here */
     avoid: AvoidOption[]
     /** For walks and rides, when the routing graph knows how steep roads are */
-    steepHills: { priority: RouteRule[] } | null
+    steepHills: { profiles: string[]; priority: RouteRule[] } | null
   } | null
   /** null while OpenTripPlanner isn't answering */
   transit: {

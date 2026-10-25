@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from . import photo_safety
 from .config import settings
 from .db import Db, pool
+from .errors import ApiError
 from .migrations import migrate
 from .models import Features
 from .photos import UnsafePhoto
@@ -37,6 +38,21 @@ async def require_safe_writes(request: Request, call_next):
     if is_write and not content_type.startswith(WRITE_CONTENT_TYPES):
         return JSONResponse({"detail": "Send JSON (or an image)."}, status_code=415)
     return await call_next(request)
+
+
+@app.exception_handler(Exception)
+async def unhandled(_request: Request, _err: Exception) -> JSONResponse:
+    """Anything the routes didn't expect, answered in the usual shape (the server still logs it
+    in full, as Starlette raises it again after this)."""
+    return JSONResponse(
+        {"detail": "Something went wrong on the server.", "code": "internal_error"},
+        status_code=500,
+    )
+
+
+@app.exception_handler(ApiError)
+async def api_error(_request: Request, err: ApiError) -> JSONResponse:
+    return JSONResponse({"detail": err.detail, "code": err.code}, status_code=err.status)
 
 
 @app.exception_handler(UnsafePhoto)

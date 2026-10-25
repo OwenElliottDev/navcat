@@ -4,7 +4,7 @@
 use rmcp::model::{JsonObject, Tool};
 use serde_json::{Value, json};
 
-use crate::capabilities::Backend;
+use crate::capabilities::{AvoidOption, Backend, Rules};
 
 /// What each avoid option steers away from, for agents; options without one show just the id
 const AVOID_DESCRIPTIONS: [(&str, &str); 5] = [
@@ -21,37 +21,50 @@ const AVOID_DESCRIPTIONS: [(&str, &str); 5] = [
     ),
 ];
 
+/// What GraphHopper can do here, as the tools' fields take it
+struct Routing<'a> {
+    profiles: &'a [String],
+    /// The profiles, and "transit" when public transport is answering (travel_times' modes)
+    with_transit: Vec<String>,
+    avoid: &'a [AvoidOption],
+    steep_hills: Option<&'a Rules>,
+}
+
 /// Fills in the values each tool's fields can take. A part of the stack that isn't answering
 /// leaves its fields as they are.
 pub fn fit(tools: &mut [Tool], found: &Backend) {
-    let transit_modes = found.transit.as_ref().map(|t| t.modes.clone());
+    let routing = found.routing.as_ref().map(|routing| Routing {
+        profiles: &routing.profiles,
+        with_transit: routing
+            .profiles
+            .iter()
+            .cloned()
+            .chain(found.transit.is_some().then(|| "transit".into()))
+            .collect(),
+        avoid: &routing.avoid,
+        steep_hills: routing.steep_hills.as_ref(),
+    });
+    let transit_modes = found.transit.as_ref().map(|t| &t.modes);
     for tool in tools {
         let schema = std::sync::Arc::make_mut(&mut tool.input_schema);
-        if let Some(routing) = &found.routing {
-            let profiles = routing.profiles.clone();
-            let avoid: Vec<String> = routing.avoid.iter().map(|a| a.id.clone()).collect();
-            let steep_hills = routing.steep_hills.is_some();
+        if let Some(routing) = &routing {
             match tool.name.as_ref() {
                 "plan_route" => {
-                    values(schema, "mode", profiles);
-                    route_options(schema, avoid, steep_hills);
+                    values(schema, "mode", routing.profiles);
+                    route_options(schema, routing);
                 }
                 "travel_times" => {
-                    let mut modes = profiles;
-                    if found.transit.is_some() {
-                        modes.push("transit".into());
-                    }
-                    values(schema, "mode", modes);
-                    route_options(schema, avoid, steep_hills);
+                    values(schema, "mode", &routing.with_transit);
+                    route_options(schema, routing);
                 }
-                "reachable" => values(schema, "mode", profiles),
+                "reachable" => values(schema, "mode", routing.profiles),
                 _ => {}
             }
         }
-        if let Some(modes) = &transit_modes {
+        if let Some(modes) = transit_modes {
             match tool.name.as_ref() {
-                "plan_transit" | "stop_departures" => values(schema, "modes", modes.clone()),
-                "travel_times" => values(schema, "transit_modes", modes.clone()),
+                "plan_transit" | "stop_departures" => values(schema, "modes", modes),
+                "travel_times" => values(schema, "transit_modes", modes),
                 _ => {}
             }
         }
@@ -63,7 +76,7 @@ fn property<'a>(schema: &'a mut JsonObject, field: &str) -> Option<&'a mut Value
 }
 
 /// A field's allowed values, or its items' for a list
-fn values(schema: &mut JsonObject, field: &str, values: Vec<String>) {
+fn values(schema: &mut JsonObject, field: &str, values: &[String]) {
     let Some(property) = property(schema, field) else {
         return;
     };
@@ -73,35 +86,50 @@ fn values(schema: &mut JsonObject, field: &str, values: Vec<String>) {
     }
 }
 
-/// The avoid options this stack has, described, and steep hills only where it can avoid them
-fn route_options(schema: &mut JsonObject, avoid: Vec<String>, steep_hills: bool) {
-    if let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) {
-        if avoid.is_empty() {
-            properties.remove("avoid");
+fn describe(schema: &mut JsonObject, field: &str, description: String) {
+    if let Some(property) = property(schema, field) {
+        property["description"] = json!(description);
+    }
+}
+
+/// The avoid options this stack has and the modes they're for, and steep hills only where they
+/// can be avoided
+fn route_options(schema: &mut JsonObject, routing: &Routing) {
+    let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) else {
+        return;
+    };
+    match routing.steep_hills {
+        Some(steep) => {
+            let modes = steep.profiles.join(", ");
+            let text = format!("For {modes}: steer away from steep hills, e.g. with a pram");
+            describe(schema, "avoid_steep_hills", text);
         }
-        if !steep_hills {
+        None => {
             properties.remove("avoid_steep_hills");
         }
     }
-    if avoid.is_empty() {
+    if routing.avoid.is_empty() {
+        if let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) {
+            properties.remove("avoid");
+        }
         return;
     }
-    let described: Vec<String> = avoid
+    let described: Vec<String> = routing
+        .avoid
         .iter()
-        .map(
-            |id| match AVOID_DESCRIPTIONS.iter().find(|(known, _)| known == id) {
-                Some((_, description)) => format!("{id} ({description})"),
-                None => id.clone(),
-            },
-        )
+        .map(|option| {
+            let what = AVOID_DESCRIPTIONS.iter().find(|(id, _)| *id == option.id);
+            let what = what.map_or(String::new(), |(_, what)| format!(", {what}"));
+            format!("{} ({}{what})", option.id, option.profiles.join(", "))
+        })
         .collect();
-    if let Some(property) = property(schema, "avoid") {
-        property["description"] = json!(format!(
-            "For driving: kinds of road to steer away from: {}",
-            described.join(", ")
-        ));
-    }
-    values(schema, "avoid", avoid);
+    let text = format!(
+        "Kinds of road to steer away from, each for the modes given: {}",
+        described.join("; ")
+    );
+    describe(schema, "avoid", text);
+    let ids: Vec<String> = routing.avoid.iter().map(|a| a.id.clone()).collect();
+    values(schema, "avoid", &ids);
 }
 
 #[cfg(test)]
@@ -138,7 +166,17 @@ mod tests {
             json!(["motorways", "tolls", "traffic_lights"])
         );
         let description = avoid["description"].as_str().unwrap();
-        assert!(description.contains("traffic_lights (roads at traffic lights"));
+        assert!(
+            description.contains("traffic_lights (car, roads at traffic lights"),
+            "{description}"
+        );
+        let steep = field(&tools, "plan_route", "avoid_steep_hills");
+        assert!(
+            steep["description"]
+                .as_str()
+                .unwrap()
+                .starts_with("For foot, bike")
+        );
         assert!(!field(&tools, "plan_route", "avoid_steep_hills").is_null());
 
         let matrix_modes = field(&tools, "travel_times", "mode")["enum"].clone();

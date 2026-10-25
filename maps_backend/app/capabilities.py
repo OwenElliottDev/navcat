@@ -28,6 +28,10 @@ class Avoid:
     factor: float
 
 
+# The GraphHopper profiles (docker_maps/graphhopper/config.yml) each kind of option is for
+DRIVING = ("car",)
+WALKING_AND_CYCLING = ("foot", "bike", "bike_paths", "racingbike", "gravel", "mtb")
+
 # What a drive can avoid
 AVOIDS = {
     "motorways": Avoid("road_class", "road_class == MOTORWAY", 0.1),
@@ -63,10 +67,14 @@ TRANSIT_QUERY = """{
 
 class AvoidOption(ApiModel):
     id: str
+    profiles: list[str]
+    """The travel modes it's for"""
     priority: list[Rule]
 
 
 class SteepHills(ApiModel):
+    profiles: list[str]
+    """The travel modes it's for"""
     priority: list[Rule]
 
 
@@ -78,7 +86,7 @@ class Routing(ApiModel):
     avoid: list[AvoidOption]
     """What a drive can avoid here"""
     steep_hills: SteepHills | None
-    """For walks and rides, when the routing graph knows how steep roads are"""
+    """For walks and rides, when the routing graph knows how steep roads are and has one of them"""
 
 
 class Transit(ApiModel):
@@ -97,18 +105,24 @@ class Capabilities(ApiModel):
 
 def routing_from_info(info: dict) -> Routing:
     has = set(info.get("encoded_values") or {})
+    profiles = [profile["name"] for profile in info["profiles"]]
+    driving = [p for p in profiles if p in DRIVING]
+    walking_and_cycling = [p for p in profiles if p in WALKING_AND_CYCLING]
     return Routing(
         area=info.get("bbox"),
-        profiles=[profile["name"] for profile in info["profiles"]],
+        profiles=profiles,
         avoid=[
             AvoidOption(
                 id=name,
+                profiles=driving,
                 priority=[{"if": avoid.condition, "multiply_by": str(avoid.factor)}],
             )
             for name, avoid in AVOIDS.items()
-            if avoid.needs in has
+            if avoid.needs in has and driving
         ],
-        steep_hills=SteepHills(priority=STEEP_HILLS) if STEEP_HILLS_NEEDS in has else None,
+        steep_hills=SteepHills(profiles=walking_and_cycling, priority=STEEP_HILLS)
+        if STEEP_HILLS_NEEDS in has and walking_and_cycling
+        else None,
     )
 
 

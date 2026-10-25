@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use crate::capabilities::{self, BackendRouting};
+use crate::capabilities::{self, AvoidOption, BackendRouting};
 use crate::geo::Point;
 use crate::stack::Stack;
 use crate::upstream::Error;
@@ -19,6 +19,12 @@ pub struct RouteOptions {
     /// For walking and cycling: steer away from steep hills, e.g. with a wheelchair or pram
     #[serde(default)]
     pub avoid_steep_hills: bool,
+}
+
+impl RouteOptions {
+    pub fn is_empty(&self) -> bool {
+        self.avoid.is_empty() && !self.avoid_steep_hills
+    }
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -105,34 +111,49 @@ pub fn minutes(seconds: f64) -> u32 {
     }
 }
 
-/// The options' GraphHopper rules, from the backend (none without options)
-pub async fn rules(stack: &Stack, options: &RouteOptions) -> Result<Vec<Value>, Error> {
-    if options.avoid.is_empty() && !options.avoid_steep_hills {
+/// The options' GraphHopper rules for a mode, from the backend (none without options)
+pub async fn rules(stack: &Stack, mode: &str, options: &RouteOptions) -> Result<Vec<Value>, Error> {
+    if options.is_empty() {
         return Ok(Vec::new());
     }
     let found = capabilities::fetch(stack).await?;
     let routing = found
         .routing
         .ok_or(Error::Unavailable(stack.graphhopper.name))?;
-    pick_rules(routing, options)
+    pick_rules(routing, mode, options)
 }
 
-fn pick_rules(routing: BackendRouting, options: &RouteOptions) -> Result<Vec<Value>, Error> {
+fn pick_rules(
+    routing: BackendRouting,
+    mode: &str,
+    options: &RouteOptions,
+) -> Result<Vec<Value>, Error> {
+    let for_mode: Vec<&AvoidOption> = routing
+        .avoid
+        .iter()
+        .filter(|a| a.profiles.iter().any(|p| p == mode))
+        .collect();
     let mut rules = Vec::new();
     for name in &options.avoid {
-        let Some(option) = routing.avoid.iter().find(|a| &a.id == name) else {
-            let offered: Vec<&str> = routing.avoid.iter().map(|a| a.id.as_str()).collect();
-            let message = format!(
-                "Can't avoid {name:?} here; it can avoid: {}",
-                offered.join(", ")
-            );
+        let Some(option) = for_mode.iter().find(|a| &a.id == name) else {
+            let offered: Vec<&str> = for_mode.iter().map(|a| a.id.as_str()).collect();
+            let message = match offered.as_slice() {
+                [] => format!("Mode {mode:?} can't avoid kinds of road here"),
+                _ => format!(
+                    "Mode {mode:?} can't avoid {name:?} here; it can avoid: {}",
+                    offered.join(", ")
+                ),
+            };
             return Err(Error::invalid("bad_avoid", message));
         };
         rules.extend(option.priority.iter().cloned());
     }
     if options.avoid_steep_hills {
-        let Some(steep) = routing.steep_hills else {
-            let message = "Avoiding steep hills isn't available here (no slope data)";
+        let steep = routing
+            .steep_hills
+            .filter(|s| s.profiles.iter().any(|p| p == mode));
+        let Some(steep) = steep else {
+            let message = format!("Mode {mode:?} can't avoid steep hills here");
             return Err(Error::invalid("bad_avoid", message));
         };
         rules.extend(steep.priority);
@@ -142,7 +163,7 @@ fn pick_rules(routing: BackendRouting, options: &RouteOptions) -> Result<Vec<Val
 
 /// GraphHopper's /route request. Without `detail`, only the distance and time: no
 /// directions (or legs), geometry or climbing.
-pub fn request_body(waypoints: &[Point], mode: &str, rules: Vec<Value>, detail: bool) -> Value {
+pub fn request_body(waypoints: &[Point], mode: &str, rules: &[Value], detail: bool) -> Value {
     let points: Vec<[f64; 2]> = waypoints.iter().map(|p| [p.lng, p.lat]).collect();
     let mut body = json!({
         "profile": mode,
@@ -195,14 +216,8 @@ pub fn summarize(path: Path, directions: bool) -> Route {
     }
 }
 
-/// GraphHopper's best route through the waypoints
-pub async fn route(
-    stack: &Stack,
-    waypoints: &[Point],
-    mode: &str,
-    options: &RouteOptions,
-    detail: bool,
-) -> Result<Path, Error> {
+/// Turns down what no route can be planned for, before asking any service
+fn check(waypoints: &[Point], mode: &str) -> Result<(), Error> {
     if !(2..=MAX_WAYPOINTS).contains(&waypoints.len()) {
         let message = format!("Give 2 to {MAX_WAYPOINTS} waypoints");
         return Err(Error::invalid("bad_waypoints", message));
@@ -214,7 +229,17 @@ pub async fn route(
             "For public transport use plan_transit",
         ));
     }
-    let rules = rules(stack, options).await?;
+    Ok(())
+}
+
+/// GraphHopper's best route through checked waypoints, steered by the options' `rules`
+pub async fn route(
+    stack: &Stack,
+    waypoints: &[Point],
+    mode: &str,
+    rules: &[Value],
+    detail: bool,
+) -> Result<Path, Error> {
     let body = request_body(waypoints, mode, rules, detail);
     let request = stack.graphhopper.post("/route").json(&body);
     let response: RouteResponse = stack.graphhopper.json(request).await?;
@@ -226,14 +251,9 @@ pub async fn route(
 }
 
 pub async fn plan_route(stack: &Stack, params: RouteParams) -> Result<Route, Error> {
-    let path = route(
-        stack,
-        &params.waypoints,
-        &params.mode,
-        &params.options,
-        true,
-    )
-    .await?;
+    check(&params.waypoints, &params.mode)?;
+    let rules = rules(stack, &params.mode, &params.options).await?;
+    let path = route(stack, &params.waypoints, &params.mode, &rules, true).await?;
     Ok(summarize(path, params.directions))
 }
 
@@ -260,17 +280,17 @@ mod tests {
 
     #[test]
     fn asks_like_the_app() {
-        let plain = request_body(&POINTS, "foot", vec![], true);
+        let plain = request_body(&POINTS, "foot", &[], true);
         assert_eq!(plain["profile"], "foot");
         assert_eq!(plain["points"], json!([[144.9, -37.8], [145.0, -37.7]]));
         assert!(plain.get("custom_model").is_none());
         assert!(plain.get("ch.disable").is_none());
-        let light = request_body(&POINTS, "foot", vec![], false);
+        let light = request_body(&POINTS, "foot", &[], false);
         assert_eq!(light["calc_points"], json!(false));
         assert_eq!(light["instructions"], json!(false));
 
         let rule = json!({ "if": "toll == ALL", "multiply_by": "0.1" });
-        let body = request_body(&POINTS, "car", vec![rule.clone()], true);
+        let body = request_body(&POINTS, "car", std::slice::from_ref(&rule), true);
         assert_eq!(body["custom_model"], json!({ "priority": [rule] }));
         assert_eq!(body["ch.disable"], json!(true));
     }
@@ -282,13 +302,13 @@ mod tests {
             avoid_steep_hills: false,
         };
         let rule = json!({ "if": "toll == ALL", "multiply_by": "0.1" });
-        assert_eq!(pick_rules(routing(), &tolls).unwrap(), [rule]);
+        assert_eq!(pick_rules(routing(), "car", &tolls).unwrap(), [rule]);
 
         let hills = RouteOptions {
             avoid: vec![],
             avoid_steep_hills: true,
         };
-        assert_eq!(pick_rules(routing(), &hills).unwrap().len(), 3);
+        assert_eq!(pick_rules(routing(), "bike", &hills).unwrap().len(), 3);
     }
 
     #[test]
@@ -297,7 +317,9 @@ mod tests {
             avoid: vec!["ferries".into()],
             avoid_steep_hills: false,
         };
-        let error = pick_rules(routing(), &ferries).unwrap_err().to_string();
+        let error = pick_rules(routing(), "car", &ferries)
+            .unwrap_err()
+            .to_string();
         assert!(
             error.contains("motorways, tolls, traffic_lights"),
             "{error}"
@@ -310,7 +332,56 @@ mod tests {
             avoid: vec![],
             avoid_steep_hills: true,
         };
-        assert!(pick_rules(flat, &hills).is_err());
+        assert!(pick_rules(flat, "bike", &hills).is_err());
+    }
+
+    #[test]
+    fn options_are_only_for_their_modes() {
+        let tolls = RouteOptions {
+            avoid: vec!["tolls".into()],
+            avoid_steep_hills: false,
+        };
+        let error = pick_rules(routing(), "foot", &tolls)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("\"foot\" can't avoid kinds of road"),
+            "{error}"
+        );
+        let hills = RouteOptions {
+            avoid: vec![],
+            avoid_steep_hills: true,
+        };
+        let error = pick_rules(routing(), "car", &hills)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("bad_avoid"), "{error}");
+    }
+
+    // Bad input is turned down before the backend is asked for the options' rules
+    #[tokio::test]
+    async fn checks_the_trip_before_looking_up_options() {
+        let mut stack = Stack::new(&crate::config::Config::from_env().unwrap());
+        // Nothing listens here, so asking the backend would fail as unavailable
+        let secs = std::time::Duration::from_secs(2);
+        stack.backend = crate::upstream::Upstream::new("Places", "http://127.0.0.1:9", 1, secs);
+        let trip = |waypoints: Vec<Point>, mode: &str| RouteParams {
+            waypoints,
+            mode: mode.into(),
+            options: RouteOptions {
+                avoid: vec!["tolls".into()],
+                avoid_steep_hills: true,
+            },
+            directions: false,
+        };
+        let error = plan_route(&stack, trip(vec![POINTS[0]], "car"))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("bad_waypoints"), "{error}");
+        let error = plan_route(&stack, trip(POINTS.to_vec(), "transit"))
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("bad_mode"), "{error}");
     }
 
     #[test]

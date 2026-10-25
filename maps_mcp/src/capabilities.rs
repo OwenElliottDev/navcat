@@ -22,10 +22,16 @@ pub struct Routing {
     pub area: Option<Vec<f64>>,
     /// plan_route's modes
     pub modes: Vec<String>,
-    /// What a drive can avoid here
-    pub avoid: Vec<String>,
-    /// Whether walks and rides can avoid steep hills here
-    pub avoid_steep_hills: bool,
+    /// What plan_route's `avoid` can steer away from here, and the modes each is for
+    pub avoid: Vec<Avoidable>,
+    /// The modes that can avoid steep hills here (none without slope data)
+    pub avoid_steep_hills: Vec<String>,
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Avoidable {
+    pub id: String,
+    pub modes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -59,11 +65,15 @@ pub struct BackendRouting {
 #[derive(Deserialize)]
 pub struct AvoidOption {
     pub id: String,
+    /// The modes it's for
+    pub profiles: Vec<String>,
     pub priority: Vec<Value>,
 }
 
 #[derive(Deserialize)]
 pub struct Rules {
+    /// The modes it's for
+    pub profiles: Vec<String>,
     pub priority: Vec<Value>,
 }
 
@@ -80,8 +90,15 @@ impl From<Backend> for Capabilities {
             routing: found.routing.map(|routing| Routing {
                 area: routing.area,
                 modes: routing.profiles,
-                avoid: routing.avoid.into_iter().map(|a| a.id).collect(),
-                avoid_steep_hills: routing.steep_hills.is_some(),
+                avoid: routing
+                    .avoid
+                    .into_iter()
+                    .map(|a| Avoidable {
+                        id: a.id,
+                        modes: a.profiles,
+                    })
+                    .collect(),
+                avoid_steep_hills: routing.steep_hills.map_or_else(Vec::new, |s| s.profiles),
             }),
             transit: found.transit,
         }
@@ -106,8 +123,13 @@ mod tests {
             routing.modes,
             ["foot", "bike", "bike_paths", "racingbike", "car"]
         );
-        assert_eq!(routing.avoid, ["motorways", "tolls", "traffic_lights"]);
-        assert!(routing.avoid_steep_hills);
+        let ids: Vec<&str> = routing.avoid.iter().map(|a| a.id.as_str()).collect();
+        assert_eq!(ids, ["motorways", "tolls", "traffic_lights"]);
+        assert_eq!(routing.avoid[0].modes, ["car"]);
+        assert_eq!(
+            routing.avoid_steep_hills,
+            ["foot", "bike", "bike_paths", "racingbike"]
+        );
         let transit = found.transit.unwrap();
         assert_eq!(transit.modes, ["BUS", "TRAM"]);
         assert_eq!(transit.timetables_until.as_deref(), Some("2028-01-27"));

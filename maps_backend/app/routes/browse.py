@@ -4,11 +4,13 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from psycopg.errors import UndefinedTable
 
-from ..areas import BadRequest, circle_box, geometry_box, reachable
+from ..areas import circle_box, geometry_box, reachable
 from ..categories import CATEGORIES, CATEGORIES_BY_ID
 from ..db import Db
+from ..errors import ApiError
 from ..models import ApiModel
 from ..places import NOT_IMPORTED, PLACES_SQL, Poi, details_from_row
+from ..query import BOX, POINT, parse_box, parse_point
 from ..upstream import Unavailable
 
 router = APIRouter(prefix="/browse", tags=["browse"])
@@ -16,8 +18,6 @@ router = APIRouter(prefix="/browse", tags=["browse"])
 MAX_RESULTS = 200
 # GraphHopper's work grows with the time: a long drive covers much of the road network
 MAX_MINUTES = 60
-NUMBER = r"-?\d+(\.\d+)?"
-POINT = rf"^{NUMBER},{NUMBER}$"
 
 
 class CategoryOut(ApiModel):
@@ -38,13 +38,14 @@ BROWSE_SQL = f"""
 SELECT osm_type, osm_id, category, tags,
        ST_X(geom) AS lng, ST_Y(geom) AS lat,
        ST_Distance(geom::geography, center::geography) AS distance
-FROM ({PLACES_SQL}) AS places, ST_SetSRID(ST_MakePoint(%(lng)s, %(lat)s), 4326) AS center
+FROM ({PLACES_SQL}) AS places,
+     ST_SetSRID(ST_MakePoint(%(lng)s, %(lat)s), 4326) AS center,
+     ST_SetSRID(ST_GeomFromGeoJSON(%(area)s::text), 4326) AS area
 WHERE category = ANY(%(values)s)
   AND geom && ST_MakeEnvelope(%(west)s, %(south)s, %(east)s, %(north)s, 4326)
   AND (%(radius)s::float8 IS NULL
        OR ST_DWithin(geom::geography, center::geography, %(radius)s::float8))
-  AND (%(area)s::text IS NULL
-       OR ST_Intersects(ST_SetSRID(ST_GeomFromGeoJSON(%(area)s::text), 4326), geom))
+  AND (area IS NULL OR ST_Intersects(area, geom))
 ORDER BY geom <-> center
 LIMIT %(limit)s
 """
@@ -62,9 +63,7 @@ async def list_categories() -> list[CategoryOut]:
 async def browse(
     db: Db,
     category: str,
-    bbox: str | None = Query(
-        None, pattern=rf"^{NUMBER}(,{NUMBER}){{3}}$", description="west,south,east,north"
-    ),
+    bbox: str | None = Query(None, pattern=BOX, description="west,south,east,north"),
     near: str | None = Query(
         None,
         pattern=POINT,
@@ -92,28 +91,22 @@ async def browse(
     if reachable_from is not None and mode is None:
         raise HTTPException(422, "reachable_from needs mode.")
 
-    def point(text: str) -> tuple[float, float]:
-        lng, lat = (float(n) for n in text.split(","))
-        return lng, lat
-
     area = None
     if bbox is not None:
-        west, south, east, north = (float(n) for n in bbox.split(","))
-        lng, lat = point(near) if near else ((west + east) / 2, (south + north) / 2)
+        west, south, east, north = parse_box(bbox)
+        lng, lat = parse_point(near) if near else ((west + east) / 2, (south + north) / 2)
     elif radius is not None and near is not None:
-        lng, lat = point(near)
+        lng, lat = parse_point(near)
         west, south, east, north = circle_box(lng, lat, radius)
     else:
         assert reachable_from is not None and mode is not None
-        start = point(reachable_from)
+        start = parse_point(reachable_from)
         try:
             area = await run_in_threadpool(reachable, *start, mode, minutes)
-        except BadRequest as err:
-            raise HTTPException(400, str(err))
         except Unavailable:
-            raise HTTPException(503, "Routing isn't available. Check the graphhopper container.")
+            raise ApiError(503, "Routing isn't available right now.", "routing_unavailable")
         west, south, east, north = geometry_box(area)
-        lng, lat = point(near) if near else start
+        lng, lat = parse_point(near) if near else start
 
     try:
         cursor = await db.execute(
