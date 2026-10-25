@@ -1,6 +1,5 @@
 import type { StateCreator } from 'zustand'
 import { reverseGeocode } from '../api/search'
-import type { CarAvoid } from '../config'
 import type { End, Itinerary, LngLat, TripTime, Waypoint } from '../types'
 import { coordLabel } from '../utils/format'
 import { currentPosition, isLocationAllowed } from '../utils/location'
@@ -14,7 +13,8 @@ const NO_WAYPOINTS = { from: null, to: null }
 export interface DirectionsSlice {
   waypoints: Record<End, Waypoint | null>
   chosenProfile: string | null
-  avoid: CarAvoid[]
+  /** Ids of the car avoid options (/api/capabilities) */
+  avoid: string[]
   avoidSteepHills: boolean
   tripTime: TripTime | null
   excludedModes: string[]
@@ -34,7 +34,7 @@ export interface DirectionsSlice {
   closeDirections: () => void
   swapEnds: () => void
   setChosenProfile: (profile: string) => void
-  setAvoid: (avoid: CarAvoid[]) => void
+  setAvoid: (avoid: string[]) => void
   setAvoidSteepHills: (avoidSteepHills: boolean) => void
   setTripTime: (tripTime: TripTime | null) => void
   setExcludedModes: (excludedModes: string[]) => void

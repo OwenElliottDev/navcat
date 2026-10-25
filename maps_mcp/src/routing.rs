@@ -4,77 +4,18 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
+use crate::capabilities::{self, BackendRouting};
 use crate::geo::Point;
 use crate::stack::Stack;
 use crate::upstream::Error;
 
 pub const MAX_WAYPOINTS: usize = 10;
 
-// CAR_AVOIDS in maps_web/src/config.ts
-/// Kinds of road a drive can avoid
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Avoid {
-    Motorways,
-    Tolls,
-    Ferries,
-    /// Roads at traffic lights and signalised crossings
-    TrafficLights,
-    /// Residential streets, service roads, tracks...
-    SmallRoads,
-}
-
-impl Avoid {
-    pub const ALL: [Avoid; 5] = [
-        Avoid::Motorways,
-        Avoid::Tolls,
-        Avoid::Ferries,
-        Avoid::TrafficLights,
-        Avoid::SmallRoads,
-    ];
-
-    /// The encoded value its rule needs; the app hides options the routing graph lacks
-    pub fn needs(self) -> &'static str {
-        match self {
-            Avoid::Motorways | Avoid::SmallRoads => "road_class",
-            Avoid::Tolls => "toll",
-            Avoid::Ferries => "road_environment",
-            Avoid::TrafficLights => "crossing",
-        }
-    }
-
-    /// Its custom model condition, and how much less likely it makes those roads (not
-    /// forbidden, so a route is still found when there's no other way)
-    fn rule(self) -> (&'static str, f64) {
-        match self {
-            Avoid::Motorways => ("road_class == MOTORWAY", 0.1),
-            Avoid::Tolls => ("toll == ALL", 0.1),
-            Avoid::Ferries => ("road_environment == FERRY", 0.1),
-            Avoid::TrafficLights => ("crossing == TRAFFIC_SIGNALS", 0.4),
-            Avoid::SmallRoads => (
-                "road_class == RESIDENTIAL || road_class == SERVICE || road_class == UNCLASSIFIED || road_class == LIVING_STREET || road_class == TRACK",
-                0.4,
-            ),
-        }
-    }
-}
-
-/// "Avoid steep hills" (STEEP_HILLS in maps_web/src/config.ts), on the `max_slope` encoded value
-pub const STEEP_HILLS_NEEDS: &str = "max_slope";
-
-fn steep_hills() -> [Value; 3] {
-    [
-        json!({ "if": "max_slope >= 12 || max_slope <= -12", "multiply_by": "0.05" }),
-        json!({ "else_if": "max_slope >= 8 || max_slope <= -8", "multiply_by": "0.2" }),
-        json!({ "else_if": "max_slope >= 5 || max_slope <= -5", "multiply_by": "0.6" }),
-    ]
-}
-
 #[derive(Default, Deserialize, JsonSchema)]
 pub struct RouteOptions {
     /// For driving: kinds of road to steer away from
     #[serde(default)]
-    pub avoid: Vec<Avoid>,
+    pub avoid: Vec<String>,
     /// For walking and cycling: steer away from steep hills, e.g. with a wheelchair or pram
     #[serde(default)]
     pub avoid_steep_hills: bool,
@@ -164,30 +105,44 @@ pub fn minutes(seconds: f64) -> u32 {
     }
 }
 
-/// The options as a GraphHopper custom model, None for none
-pub fn custom_model(options: &RouteOptions) -> Option<Value> {
-    let mut priority: Vec<Value> = options
-        .avoid
-        .iter()
-        .map(|avoid| {
-            let (condition, factor) = avoid.rule();
-            json!({ "if": condition, "multiply_by": factor.to_string() })
-        })
-        .collect();
-    if options.avoid_steep_hills {
-        priority.extend(steep_hills());
+/// The options' GraphHopper rules, from the backend (none without options)
+pub async fn rules(stack: &Stack, options: &RouteOptions) -> Result<Vec<Value>, Error> {
+    if options.avoid.is_empty() && !options.avoid_steep_hills {
+        return Ok(Vec::new());
     }
-    (!priority.is_empty()).then(|| json!({ "priority": priority }))
+    let found = capabilities::fetch(stack).await?;
+    let routing = found
+        .routing
+        .ok_or(Error::Unavailable(stack.graphhopper.name))?;
+    pick_rules(routing, options)
+}
+
+fn pick_rules(routing: BackendRouting, options: &RouteOptions) -> Result<Vec<Value>, Error> {
+    let mut rules = Vec::new();
+    for name in &options.avoid {
+        let Some(option) = routing.avoid.iter().find(|a| &a.id == name) else {
+            let offered: Vec<&str> = routing.avoid.iter().map(|a| a.id.as_str()).collect();
+            let message = format!(
+                "Can't avoid {name:?} here; it can avoid: {}",
+                offered.join(", ")
+            );
+            return Err(Error::invalid("bad_avoid", message));
+        };
+        rules.extend(option.priority.iter().cloned());
+    }
+    if options.avoid_steep_hills {
+        let Some(steep) = routing.steep_hills else {
+            let message = "Avoiding steep hills isn't available here (no slope data)";
+            return Err(Error::invalid("bad_avoid", message));
+        };
+        rules.extend(steep.priority);
+    }
+    Ok(rules)
 }
 
 /// GraphHopper's /route request. Without `detail`, only the distance and time: no
 /// directions (or legs), geometry or climbing.
-pub fn request_body(
-    waypoints: &[Point],
-    mode: &str,
-    options: &RouteOptions,
-    detail: bool,
-) -> Value {
+pub fn request_body(waypoints: &[Point], mode: &str, rules: Vec<Value>, detail: bool) -> Value {
     let points: Vec<[f64; 2]> = waypoints.iter().map(|p| [p.lng, p.lat]).collect();
     let mut body = json!({
         "profile": mode,
@@ -198,8 +153,8 @@ pub fn request_body(
         "locale": "en",
     });
     // A custom model can't use the fast (CH) car routing; GraphHopper falls back to LM
-    if let Some(model) = custom_model(options) {
-        body["custom_model"] = model;
+    if !rules.is_empty() {
+        body["custom_model"] = json!({ "priority": rules });
         body["ch.disable"] = json!(true);
     }
     body
@@ -259,7 +214,8 @@ pub async fn route(
             "For public transport use plan_transit",
         ));
     }
-    let body = request_body(waypoints, mode, options, detail);
+    let rules = rules(stack, options).await?;
+    let body = request_body(waypoints, mode, rules, detail);
     let request = stack.graphhopper.post("/route").json(&body);
     let response: RouteResponse = stack.graphhopper.json(request).await?;
     response
@@ -296,35 +252,65 @@ mod tests {
         },
     ];
 
+    fn routing() -> BackendRouting {
+        let fixture = include_str!("../tests/fixtures/capabilities.json");
+        let found: capabilities::Backend = serde_json::from_str(fixture).unwrap();
+        found.routing.unwrap()
+    }
+
     #[test]
     fn asks_like_the_app() {
-        let plain = request_body(&POINTS, "foot", &RouteOptions::default(), true);
+        let plain = request_body(&POINTS, "foot", vec![], true);
         assert_eq!(plain["profile"], "foot");
         assert_eq!(plain["points"], json!([[144.9, -37.8], [145.0, -37.7]]));
         assert!(plain.get("custom_model").is_none());
         assert!(plain.get("ch.disable").is_none());
-        let light = request_body(&POINTS, "foot", &RouteOptions::default(), false);
+        let light = request_body(&POINTS, "foot", vec![], false);
         assert_eq!(light["calc_points"], json!(false));
         assert_eq!(light["instructions"], json!(false));
 
-        let tolls = RouteOptions {
-            avoid: vec![Avoid::Tolls],
-            avoid_steep_hills: false,
-        };
-        let body = request_body(&POINTS, "car", &tolls, true);
         let rule = json!({ "if": "toll == ALL", "multiply_by": "0.1" });
+        let body = request_body(&POINTS, "car", vec![rule.clone()], true);
         assert_eq!(body["custom_model"], json!({ "priority": [rule] }));
         assert_eq!(body["ch.disable"], json!(true));
+    }
+
+    #[test]
+    fn uses_the_backends_rules() {
+        let tolls = RouteOptions {
+            avoid: vec!["tolls".into()],
+            avoid_steep_hills: false,
+        };
+        let rule = json!({ "if": "toll == ALL", "multiply_by": "0.1" });
+        assert_eq!(pick_rules(routing(), &tolls).unwrap(), [rule]);
 
         let hills = RouteOptions {
             avoid: vec![],
             avoid_steep_hills: true,
         };
-        let body = request_body(&POINTS, "bike", &hills, true);
-        assert_eq!(
-            body["custom_model"]["priority"].as_array().unwrap().len(),
-            3
+        assert_eq!(pick_rules(routing(), &hills).unwrap().len(), 3);
+    }
+
+    #[test]
+    fn says_what_it_can_avoid_instead() {
+        let ferries = RouteOptions {
+            avoid: vec!["ferries".into()],
+            avoid_steep_hills: false,
+        };
+        let error = pick_rules(routing(), &ferries).unwrap_err().to_string();
+        assert!(
+            error.contains("motorways, tolls, traffic_lights"),
+            "{error}"
         );
+        assert!(error.contains("bad_avoid"), "{error}");
+
+        let mut flat = routing();
+        flat.steep_hills = None;
+        let hills = RouteOptions {
+            avoid: vec![],
+            avoid_steep_hills: true,
+        };
+        assert!(pick_rules(flat, &hills).is_err());
     }
 
     #[test]

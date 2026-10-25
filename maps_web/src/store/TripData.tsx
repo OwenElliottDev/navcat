@@ -3,9 +3,8 @@ import { shallow } from 'zustand/shallow'
 import { useShallow } from 'zustand/react/shallow'
 import { useBrowse } from '../hooks/useBrowse'
 import { useCategories } from '../hooks/useCategories'
-import { useProfiles } from '../hooks/useProfiles'
+import { useCapabilities } from '../hooks/useCapabilities'
 import { useRoute } from '../hooks/useRoute'
-import { useTransitModes } from '../hooks/useTransitModes'
 import { useTransitPlan } from '../hooks/useTransitPlan'
 import { useMap } from '../map/MapContext'
 import type { DataSlice } from './data'
@@ -29,8 +28,10 @@ function useKeep<K extends keyof DataSlice>(key: K, value: DataSlice[K]) {
  * A component of its own, so its re-renders don't re-render the rest of the app.
  */
 export function TripData() {
-  const routing = useProfiles()
+  const isTransit = useAppStore(selectIsTransit)
+  const { routing, transitModes } = useCapabilities(isTransit)
   useKeep('routing', routing)
+  useKeep('transitModes', transitModes)
   useKeep('categories', useCategories())
 
   // Counts finished map moves (for "Search this area") without re-rendering anything here.
@@ -59,7 +60,6 @@ export function TripData() {
     })),
   )
   const profile = useAppStore(selectProfile)
-  const isTransit = useAppStore(selectIsTransit)
   const isOnFootOrBike = useAppStore(selectIsOnFootOrBike)
   const from = waypoints.from?.position ?? null
   const to = waypoints.to?.position ?? null
@@ -72,14 +72,12 @@ export function TripData() {
       isTransit ? null : to,
       profile,
       profile === 'car'
-        ? { avoid: avoid.filter((name) => routing.carAvoids.includes(name)) }
-        : isOnFootOrBike && routing.steepHills
-          ? { avoidSteepHills }
-          : undefined,
+        ? routing.carAvoids.filter((option) => avoid.includes(option.id)).flatMap((o) => o.priority)
+        : isOnFootOrBike && avoidSteepHills
+          ? (routing.steepHills ?? [])
+          : [],
     ),
   )
-  const transitModes = useTransitModes(isTransit)
-  useKeep('transitModes', transitModes)
   useKeep(
     'transitPlan',
     useTransitPlan(isTransit ? from : null, isTransit ? to : null, {

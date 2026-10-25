@@ -1,23 +1,36 @@
-// GraphHopper: /info and a walk from Flinders Street Station to Queen Victoria Market.
+// The backend's /capabilities (GraphHopper's side), and a walk from Flinders Street Station to
+// Queen Victoria Market.
 
-const ENCODED_VALUES: Record<string, string[]> = {
-  road_class: ['MOTORWAY', 'PRIMARY', 'RESIDENTIAL'],
-  road_environment: ['ROAD', 'FERRY'],
-  toll: ['NO', 'ALL'],
-  crossing: ['MISSING', 'TRAFFIC_SIGNALS'],
-  max_speed: [],
-  max_slope: [],
+const AVOID_RULES: Record<string, string> = {
+  motorways: 'road_class == MOTORWAY',
+  tolls: 'toll == ALL',
+  ferries: 'road_environment == FERRY',
+  traffic_lights: 'crossing == TRAFFIC_SIGNALS',
+  small_roads: 'road_class == RESIDENTIAL || road_class == SERVICE',
 }
 
-export const ALL_PROFILES = ['foot', 'bike', 'bike_paths', 'racingbike', 'car']
-export const ALL_ENCODED_VALUES = Object.keys(ENCODED_VALUES)
+const STEEP_HILLS = [
+  { if: 'max_slope >= 12 || max_slope <= -12', multiply_by: '0.05' },
+  { else_if: 'max_slope >= 8 || max_slope <= -8', multiply_by: '0.2' },
+  { else_if: 'max_slope >= 5 || max_slope <= -5', multiply_by: '0.6' },
+]
 
-export function routingInfo(profiles = ALL_PROFILES, encodedValues = ALL_ENCODED_VALUES) {
+export const ALL_PROFILES = ['foot', 'bike', 'bike_paths', 'racingbike', 'car']
+export const ALL_AVOIDS = Object.keys(AVOID_RULES)
+
+export function routingCapabilities(
+  profiles = ALL_PROFILES,
+  avoid = ALL_AVOIDS,
+  steepHills = true,
+) {
   return {
-    bbox: [112, -44, 154, -10],
-    profiles: profiles.map((name) => ({ name })),
-    version: '11.0',
-    encoded_values: Object.fromEntries(encodedValues.map((name) => [name, ENCODED_VALUES[name]])),
+    area: [112, -44, 154, -10],
+    profiles,
+    avoid: avoid.map((id) => ({
+      id,
+      priority: [{ if: AVOID_RULES[id], multiply_by: id === 'traffic_lights' ? '0.4' : '0.1' }],
+    })),
+    steepHills: steepHills ? { priority: STEEP_HILLS } : null,
   }
 }
 

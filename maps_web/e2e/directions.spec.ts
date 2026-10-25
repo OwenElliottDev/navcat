@@ -91,8 +91,8 @@ test('driving offers what the routing graph can avoid, and sends it', async ({ p
     })
 })
 
-test('avoid options needing values the graph lacks are hidden', async ({ page, stack }) => {
-  stack.encodedValues = ['road_class', 'road_environment']
+test('only the avoid options the backend offers are shown', async ({ page, stack }) => {
+  stack.avoidOptions = ['motorways', 'ferries', 'small_roads']
   await openApp(page)
   await planRoute(page)
   await page
@@ -151,7 +151,7 @@ test('walks and rides can avoid steep hills, under additional options', async ({
 })
 
 test('additional options are hidden when the graph has no slopes', async ({ page, stack }) => {
-  stack.encodedValues = ['road_class']
+  stack.steepHills = false
   await openApp(page)
   await planRoute(page)
   await expect(page.locator('.route-summary')).toBeVisible()
