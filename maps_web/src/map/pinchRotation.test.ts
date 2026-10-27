@@ -54,7 +54,7 @@ it("doesn't start rotating when a fast zoom slows down before the fingers lift",
 })
 
 it("doesn't count twist before the pinch's speed is known", () => {
-  // Moves the browser gave one time, before any later one: no speed yet, so no weight to use
+  // Two moves with the same timestamp: no speed yet, so no weight to apply
   const pinch = new PinchTwist(fingers(60, 0))
   expect(pinch.move(fingers(80, 20), 1000)).toBe(true)
   expect(pinch.move(fingers(100, 40), 1000)).toBe(true)
