@@ -115,13 +115,15 @@ bike-route attributes for map overlays. `/api/capabilities` (`capabilities.py`) 
 stack can plan: GraphHopper's travel modes, the car avoid and steep hills options (GraphHopper
 custom model rules and the travel modes each is for, defined only there; an option is left out
 unless the encoded value it needs, `crossing`, `toll`, ..., is in `/info`), and OTP's transit modes and timetable dates, each part
-null while its service is down. `/api/browse` looks in a box, a `radius` around `near`, or the
+null while its service is down (answers are cached for a minute). `/api/browse` looks in a box, a `radius` around `near`, or the
 area `reachable_from` a point by a travel mode in `minutes` (GraphHopper's isochrone, `areas.py`).
 Requests to the other services go through `upstream.get`/`post_json`.
 Errors are `{"detail", "code"}` (raise `errors.ApiError`): a neutral detail saying what to do,
 and a code to react to. When a service turns a request down (`upstream.Rejected`, a 4xx), map
 the causes you know to an `ApiError`; anything else is our bug, so a 500 (`internal_error`, with
-the service's message in the log).
+the service's message in the log). Routes with a fallback for a failing service (link previews,
+road data) catch `upstream.Failed`, which covers both, and log a `Rejected`. Slow work that the
+public API could flood (isochrones, link previews) runs in its own `pool.Pool`.
 The whole API is public, and some routes are there for other apps and scripts rather than the UI
 (e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not
 a reason to remove them.
@@ -168,7 +170,8 @@ through nginx. It's a thin proxy: every tool calls an API that already exists (P
 public endpoints, e.g. its shortlinks for place links and its capabilities for route options) and
 never reimplements one, so the logic lives and is tested in one place; logic both it and the
 frontend need goes in the backend. Tool schemas list the stack's own travel modes, avoid options
-and transit modes, from `/api/capabilities` when tools are listed. Times are local where the trip is (its zone
+and transit modes, from `/api/capabilities` when tools are listed (as declared while the backend is
+down, as the tools themselves are built in). Times are local where the trip is (its zone
 from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's
 on a stack covering several. It protects itself (Host and
 Origin checks, token, rate limit per address, capped concurrent requests per service, size

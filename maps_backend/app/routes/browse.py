@@ -1,7 +1,6 @@
 import json
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.concurrency import run_in_threadpool
 from psycopg.errors import UndefinedTable
 
 from ..areas import circle_box, geometry_box, reachable
@@ -10,6 +9,7 @@ from ..db import Db
 from ..errors import ApiError
 from ..models import ApiModel
 from ..places import NOT_IMPORTED, PLACES_SQL, Poi, details_from_row
+from ..pool import Busy, Pool
 from ..query import BOX, POINT, parse_box, parse_point
 from ..upstream import Unavailable
 
@@ -17,7 +17,9 @@ router = APIRouter(prefix="/browse", tags=["browse"])
 
 MAX_RESULTS = 200
 # GraphHopper's work grows with the time: a long drive covers much of the road network
-MAX_MINUTES = 60
+MAX_MINUTES = 30
+# Isochrones are slow and the API is public, so only a few run at once
+_isochrones = Pool(2)
 
 
 class CategoryOut(ApiModel):
@@ -102,7 +104,9 @@ async def browse(
         assert reachable_from is not None and mode is not None
         start = parse_point(reachable_from)
         try:
-            area = await run_in_threadpool(reachable, *start, mode, minutes)
+            area = await _isochrones.run(reachable, *start, mode, minutes)
+        except Busy:
+            raise ApiError(503, "Too many reachable-area searches are running.", "busy")
         except Unavailable:
             raise ApiError(503, "Routing isn't available right now.", "routing_unavailable")
         west, south, east, north = geometry_box(area)

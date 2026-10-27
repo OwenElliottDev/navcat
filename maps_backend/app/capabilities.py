@@ -7,6 +7,8 @@ rather than forbidding them, so a route is still found when there's no other way
 """
 
 import json
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -16,6 +18,8 @@ from .config import settings
 from .models import ApiModel
 
 TIMEOUT = 5
+# Short enough to see a new graph or timetables soon after an update
+CACHE_SECONDS = 60
 
 type Rule = dict[str, str]
 
@@ -148,6 +152,22 @@ def transit_from_data(data: dict) -> Transit:
     )
 
 
+def _cached[T](fetch: Callable[[], T]) -> Callable[[], T]:
+    """Keeps a successful answer for CACHE_SECONDS. Failures aren't kept, so a service that was
+    down is asked again next time."""
+    kept: tuple[float, T] | None = None
+
+    def cached() -> T:
+        nonlocal kept
+        now = time.monotonic()
+        if kept is None or now - kept[0] > CACHE_SECONDS:
+            kept = (now, fetch())
+        return kept[1]
+
+    return cached
+
+
+@_cached
 def fetch_routing() -> Routing:
     """Blocking: run it in a thread."""
     body = upstream.get(f"{settings.graphhopper_url}/info", timeout=TIMEOUT)
@@ -157,6 +177,7 @@ def fetch_routing() -> Routing:
         raise upstream.Unavailable(f"GraphHopper's /info didn't make sense: {err}") from err
 
 
+@_cached
 def fetch_transit() -> Transit:
     """Blocking: run it in a thread."""
     url = f"{settings.otp_url}/otp/gtfs/v1"

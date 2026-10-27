@@ -1,9 +1,7 @@
 """Browsing a circle, or the area reachable in a time (with a stand-in GraphHopper)."""
 
 import json
-import threading
-import time
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from typing import ClassVar
 from urllib.parse import parse_qs, urlparse
 
@@ -11,7 +9,7 @@ import pytest
 
 from tests.client import Client
 
-from .conftest import CENTRE, _serve
+from .conftest import CENTRE, _fake_service, _serve, logged
 
 NEAR = f"{CENTRE[0]},{CENTRE[1]}"
 
@@ -63,14 +61,11 @@ class _GraphHopper(BaseHTTPRequestHandler):
 @pytest.fixture(scope="module")
 def routed(base_url, database_url, photos_dir):
     """Another backend on the same database, with a GraphHopper that answers isochrones."""
-    graphhopper = ThreadingHTTPServer(("127.0.0.1", 0), _GraphHopper)
-    threading.Thread(target=graphhopper.serve_forever, daemon=True).start()
-    try:
-        url = f"http://127.0.0.1:{graphhopper.server_address[1]}"
-        with _serve(database_url, photos_dir, GRAPHHOPPER_URL=url) as backend:
-            yield Client(backend)
-    finally:
-        graphhopper.shutdown()
+    with (
+        _fake_service(_GraphHopper) as url,
+        _serve(database_url, photos_dir, GRAPHHOPPER_URL=url) as backend,
+    ):
+        yield Client(backend)
 
 
 def ids(response) -> list[str]:
@@ -140,7 +135,8 @@ def test_reachable_says_what_was_wrong_with_the_request(routed):
     assert (boat.status, boat.json()["code"]) == (422, "unknown_mode")
     at_sea = browse(routed, reachable_from="10,10", mode="foot")
     assert (at_sea.status, at_sea.json()["code"]) == (422, "point_not_found")
-    assert browse(routed, reachable_from=NEAR, mode="foot", minutes=61).status == 422
+    assert browse(routed, reachable_from=NEAR, mode="foot", minutes=30).status == 200
+    assert browse(routed, reachable_from=NEAR, mode="foot", minutes=31).status == 422
 
 
 def test_anything_else_graphhopper_turns_down_is_a_logged_500(routed, photos_dir):
@@ -148,12 +144,7 @@ def test_anything_else_graphhopper_turns_down_is_a_logged_500(routed, photos_dir
     assert response.status == 500
     assert response.json()["code"] == "internal_error"
     assert "bug" not in response.json()["detail"]
-    # The server logs it once the answer has gone
-    log = photos_dir.parent / f"uvicorn-{routed.base_url.rsplit(':', 1)[1]}.log"
-    deadline = time.monotonic() + 5
-    while "Something only a bug" not in log.read_text() and time.monotonic() < deadline:
-        time.sleep(0.1)
-    assert "Something only a bug here could cause" in log.read_text()
+    assert logged(routed, photos_dir, "Something only a bug here could cause")
 
 
 def test_reachable_when_graphhopper_is_down(client):

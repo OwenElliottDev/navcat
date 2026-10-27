@@ -7,7 +7,7 @@ use rmcp::model::{
     CacheScope, CompleteRequestParams, CompleteResult, Implementation, ListResourceTemplatesResult,
     ListResourcesResult, ListToolsResult, PaginatedRequestParams, ProtocolVersion,
     ReadResourceRequestParams, ReadResourceResponse, ResultType, ServerCapabilities, ServerConfig,
-    ToolAnnotations,
+    Tool, ToolAnnotations,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer};
@@ -202,6 +202,25 @@ impl NavCat {
     }
 }
 
+impl NavCat {
+    /// The tools, with the values their fields take from the backend. The tools themselves are
+    /// built in, so they're still listed while it's down, as declared.
+    async fn fitted_tools(&self) -> Vec<Tool> {
+        let found = capabilities::fetch(&self.stack)
+            .await
+            .unwrap_or_else(|err| {
+                tracing::warn!("Listing tools as declared: {err}");
+                capabilities::Backend {
+                    routing: None,
+                    transit: None,
+                }
+            });
+        let mut tools = self.tool_router.list_all();
+        schema::fit(&mut tools, &found);
+        tools
+    }
+}
+
 #[tool_handler(router = self.tool_router)]
 #[prompt_handler(router = self.prompt_router)]
 impl ServerHandler for NavCat {
@@ -223,11 +242,7 @@ impl ServerHandler for NavCat {
         _request: Option<PaginatedRequestParams>,
         context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
-        let found = capabilities::fetch(&self.stack)
-            .await
-            .map_err(|err| ErrorData::internal_error(err.to_string(), None))?;
-        let mut tools = self.tool_router.list_all();
-        schema::fit(&mut tools, &found);
+        let tools = self.fitted_tools().await;
         let cache_hints = context
             .protocol_version()
             .is_some_and(|version| version >= ProtocolVersion::V_2026_07_28);
@@ -274,5 +289,25 @@ impl ServerHandler for NavCat {
         _context: RequestContext<RoleServer>,
     ) -> Result<CompleteResult, ErrorData> {
         Ok(prompts::complete(&self.stack, request).await)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::*;
+    use crate::config::Config;
+    use crate::upstream::Upstream;
+
+    #[tokio::test]
+    async fn lists_every_tool_while_the_backend_is_down() {
+        let mut stack = Stack::new(&Config::from_env().unwrap());
+        // Nothing listens here
+        stack.backend = Upstream::new("Places", "http://127.0.0.1:9", 1, Duration::from_secs(2));
+        let server = NavCat::new(Arc::new(stack));
+        let tools = server.fitted_tools().await;
+        assert_eq!(tools.len(), NavCat::tools().len());
+        assert!(tools.iter().any(|tool| tool.name == "search_places"));
     }
 }
