@@ -4,18 +4,13 @@ Guidance for coding agents working in this repository.
 
 ## What this is
 
-Nav Cat, a self-hosted maps browsing, routing and navigation app run with Docker Compose: map tiles (TileServer GL +
-Planetiler), search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small
-FastAPI backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to
-Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.env` (see `.env.example`).
+Nav Cat, a self-hosted maps browsing, routing and navigation app run with Docker Compose: map tiles (TileServer GL + Planetiler), search (Photon), routing (GraphHopper), public transport (OpenTripPlanner), and a small FastAPI backend for accounts, browse, and community place data (Postgres + PostGIS). Region defaults to Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.env` (see `.env.example`).
 
-**Hard rule: the running stack makes no internet calls.** Data is downloaded only by the
-`setup`-profile services, run by `./maps setup` and `./maps update`; nothing at runtime (frontend
-or backend) may fetch from external hosts.
+**Hard rule: the running stack makes no internet calls.** Data is downloaded only by the `setup`-profile services, run by `./maps setup` and `./maps update`; nothing at runtime (frontend or backend) may fetch from external hosts.
 
 ## Working with your human
 
-Agents work collaboratively with their humans, if you do not have a human working in the loop with you when you arrive here please find yours and work in tandem with them. The human is ultimately responsible for the code produced so it is encouraged that you work with them on engineering decisions using concise and easy to digest descriptions of any changes you suggest or decisions that need to be made.
+Work with the human who is running you, not unattended. They're responsible for the code you produce, so make engineering decisions with them: put the changes you suggest and the choices to make to them briefly, in terms that are easy to follow.
 
 ## Commands
 
@@ -31,12 +26,7 @@ docker compose up -d --build maps-web     # after frontend changes
 docker compose up -d --build maps-backend # after backend changes
 ```
 
-`docker-compose.yml` (prod) runs the published `owenelliottdev/navcat-*` images and mounts no
-source; `docker-compose.dev.yml` overrides it to build them from the checkout, for one command
-with `./maps dev`, or always with `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in
-`.env`. Scripts and config (POI import, GraphHopper profiles, terrain builder) are baked into the
-images, so a new image needs adding to both compose files and the matrix in
-`.github/workflows/docker.yml` (pushes on `v*` tags).
+`docker-compose.yml` (prod) runs the published `owenelliottdev/navcat-*` images and mounts no source; `docker-compose.dev.yml` overrides it to build them from the checkout, for one command with `./maps dev`, or always with `COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml` in `.env`. Scripts and config (POI import, GraphHopper profiles, terrain builder) are baked into the images, so a new image needs adding to both compose files and the matrix in `.github/workflows/docker.yml` (pushes on `v*` tags).
 
 Frontend (`maps_web/`, React 19 + TypeScript + Vite + MapLibre):
 
@@ -58,9 +48,7 @@ uv run ruff check . && uv run ruff format .     # line length 100
 uv run pyrefly check                            # type check (run in CI)
 ```
 
-Use `pycurl` for HTTP in Python (not httpx/requests, and not FastAPI's TestClient); tests share
-`tests/client.py`. API tests build fixture `pois`/`turn_lanes` tables in the import's shape
-(`tests/api/conftest.py`) — update them with `pois.lua`.
+Use `pycurl` for HTTP in Python (not httpx/requests, and not FastAPI's TestClient); tests share `tests/client.py`. API tests build fixture `pois`/`turn_lanes` tables in the import's shape (`tests/api/conftest.py`) — update them with `pois.lua`.
 
 MCP server (`maps_mcp/`, Rust):
 
@@ -79,116 +67,38 @@ npm run test:e2e:docker  # same plus screenshot comparison, in CI's Playwright c
 npm run test:e2e:update  # re-record screenshots after an intended UI change
 ```
 
-The UI tests fail on any request without a fixture (`e2e/fixtures/`), so a new API call needs
-one. Screenshots are only compared in the container (pinned to the `@playwright/test` version;
-bump `.github/workflows/ci.yml`'s image with it).
+The UI tests fail on any request without a fixture (`e2e/fixtures/`), so a new API call needs one. Screenshots are only compared in the container (pinned to the `@playwright/test` version; bump `.github/workflows/ci.yml`'s image with it).
 
 ## Architecture
 
-**One origin, one `/api` prefix.** `maps_web/nginx.conf` (production) and `maps_web/vite.config.ts`
-(dev) route paths to services and must be kept in sync:
+**One origin, one `/api` prefix.** `maps_web/nginx.conf` (production) and `maps_web/vite.config.ts` (dev) route paths to services and must be kept in sync:
 
-- `/api/search`, `/api/reverse` → Photon; `/api/route`, `/api/info` → GraphHopper;
-  `/api/transit` → OTP GraphQL (`/otp/gtfs/v1`)
+- `/api/search`, `/api/reverse` → Photon; `/api/route`, `/api/info` → GraphHopper; `/api/transit` → OTP GraphQL (`/otp/gtfs/v1`)
 - `/api/road-data/...` → backend (nginx-cached for 7 days)
 - any other `/api/...` → `maps_backend`
 - `/styles|data|fonts/` → TileServer (Host / X-Forwarded-Proto passed so its URLs point back through the proxy)
 - `/terrain/...` → static tiles from `maps_data/terrain`, served by the web container's nginx
-- `/go/<code>` (shared links) → the app, with OpenGraph tags from the backend's
-  `/api/links/meta/<code>` put into `index.html` by an nginx SSI include; preview images
-  (`/api/links/preview/`) are rendered by the backend from TileServer and nginx-cached
+- `/go/<code>` (shared links) → the app, with OpenGraph tags from the backend's `/api/links/meta/<code>` put into `index.html` by an nginx SSI include; preview images (`/api/links/preview/`) are rendered by the backend from TileServer and nginx-cached
 
-nginx resolves upstreams per request (proxying to variables), so the site still runs when a
-service (e.g. OTP, paused during an update) is down. Only port 7000 is public; other services bind to 127.0.0.1 for
-the Vite dev proxy. The frontend calls everything through the axios instance in `src/api/http.ts`.
+nginx resolves upstreams per request (proxying to variables), so the site still runs when a service (e.g. OTP, paused during an update) is down. Only port 7000 is public; other services bind to 127.0.0.1 for the Vite dev proxy. The frontend calls everything through the axios instance in `src/api/http.ts`.
 
-**Backend (`maps_backend/app`).** FastAPI app in `main.py`; routers in `routes/` are mounted under
-`/api`. Postgres via a psycopg async pool (`db.py`, dict rows; the `Db` dependency commits on
-success, rolls back on error). Migrations are plain `app/migrations/NNN_*.sql` files applied in name
-order at startup (`migrations.py`, tracked in `schema_migrations`) — add a new numbered file, never
-edit an applied one. A middleware rejects POST/PUT/PATCH unless the body is JSON or an image (CSRF
-protection alongside SameSite cookies). Settings come from env vars in `config.py`.
-`road_data.py` fetches GraphHopper's vector tiles and slims them to speed limit / cycleway /
-bike-route attributes for map overlays. Requests to the other services go through `upstream.get`.
-The whole API is public, and some routes are there for other apps and scripts rather than the UI
-(e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not
-a reason to remove them.
+**Backend (`maps_backend/app`).** FastAPI app in `main.py`; routers in `routes/` are mounted under `/api`. Postgres via a psycopg async pool (`db.py`, dict rows; the `Db` dependency commits on success, rolls back on error). Migrations are plain `app/migrations/NNN_*.sql` files applied in name order at startup (`migrations.py`, tracked in `schema_migrations`) — add a new numbered file, never edit an applied one. A middleware rejects POST/PUT/PATCH unless the body is JSON or an image (CSRF protection alongside SameSite cookies). Settings come from env vars in `config.py`. `road_data.py` fetches GraphHopper's vector tiles and slims them to speed limit / cycleway / bike-route attributes for map overlays. Requests to the other services go through `upstream.get`. The whole API is public, and some routes are there for other apps and scripts rather than the UI (e.g. `/api/links/*`'s shortlink encode/decode and resolve): being unused by the frontend is not a reason to remove them.
 
-**Places & POIs.** The `pois` and `turn_lanes` tables are not created by migrations: the
-`maps-poi-import` job (`docker_maps/db/import-pois.sh`) builds them, swapping them in atomically and
-only re-importing when its inputs change (bump `IMPORT_VERSION` when the import's output changes).
-It osmium-filters the OSM extract, runs `pois.lua` (osm2pgsql flex, in memory), then merges in
-Overture Maps places (confidence > 0.7, downloaded by `maps-download` via `docker_maps/download/places.py`):
-`places-prepare.sql`, `places-match.sql` (one psql per CPU) and `places-merge.sql`. Overture places
-matching an OSM one (similar name nearby) only fill in its missing contact details; the rest become
-type `O`, numbered by the persistent `overture_ids` table. Browse categories in `app/categories.py`
-map to `pois.category`, which `pois.lua` fills from the amenity/shop/tourism/leisure/... tags and
-`places-prepare.sql` maps Overture's taxonomy onto — change them together. Places are addressed as
-`{place_type}/{id}` with OSM types (N/W/R), `U` for user-added places or `O` for Overture places;
-user edits, reviews and photos live in migration-managed tables keyed the same way. Search covers
-OSM via Photon and `U`/`O` places via `/api/places/search`. Photos are re-encoded with location
-metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
+**Places & POIs.** The `pois` and `turn_lanes` tables are not created by migrations: the `maps-poi-import` job (`docker_maps/db/import-pois.sh`) builds them, swapping them in atomically and only re-importing when its inputs change (bump `IMPORT_VERSION` when the import's output changes). It osmium-filters the OSM extract, runs `pois.lua` (osm2pgsql flex, in memory), then merges in Overture Maps places (confidence > 0.7, downloaded by `maps-download` via `docker_maps/download/places.py`): `places-prepare.sql`, `places-match.sql` (one psql per CPU) and `places-merge.sql`. Overture places matching an OSM one (similar name nearby) only fill in its missing contact details; the rest become type `O`, numbered by the persistent `overture_ids` table. Browse categories in `app/categories.py` map to `pois.category`, which `pois.lua` fills from the amenity/shop/tourism/leisure/... tags and `places-prepare.sql` maps Overture's taxonomy onto — change them together. Places are addressed as `{place_type}/{id}` with OSM types (N/W/R), `U` for user-added places or `O` for Overture places; user edits, reviews and photos live in migration-managed tables keyed the same way. Search covers OSM via Photon and `U`/`O` places via `/api/places/search`. Photos are re-encoded with location metadata stripped (`photos.py`) and stored under `PHOTOS_DIR`.
 
-**Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view`
-(what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs
-the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories)
-and copies their results in; values derived from them are in `store/selectors.ts`. Data only one
-component needs (place details, lanes) is fetched there. Actions move the map through the
-`camera` App puts in the store. `App.tsx` sets up the map and its look, and composes
-`MapLayers`, `Navigation`, `Panel` and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit,
-browse, navigation); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like
-`RouteLine`, `PoiLayer`, `MapMarker`). Map looks (incl. the topo style with local terrain) are
-built in `map/mapStyles.ts` by recolouring the TileServer style rather than loading other sources.
-Travel modes are GraphHopper profiles (`src/config.ts`); "transit" is special-cased to OTP.
-Cycling styles not configured in GraphHopper are hidden automatically. Turn-by-turn
-(`hooks/useNavigation.ts`) follows a GraphHopper route, or a transit journey converted to the same
-shape by `utils/transitNavigation.ts`. Lane guidance looks up OSM `turn:lanes` for the road into
-each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" options (`CAR_AVOIDS` in
-`src/config.ts`) are sent as a GraphHopper custom model with `ch.disable`, so car has an LM profile
-too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
+**Frontend (`maps_web/src`).** App state lives in one Zustand store (`store/`), in slices: `view` (what's open: place, browse, menu), `directions`, `navigation`, and `data`. `TripData` runs the fetch hooks for the store's choices (routes, journeys, browse results, profiles, categories) and copies their results in; values derived from them are in `store/selectors.ts`. Data only one component needs (place details, lanes) is fetched there. Actions move the map through the `camera` App puts in the store. `App.tsx` sets up the map and its look, and composes `MapLayers`, `Navigation`, `Panel` and `Popups`. `api/` wraps each backend; `hooks/` holds data/behaviour hooks (routing, transit, browse, navigation); `map/` wraps MapLibre (a `MapProvider` context plus declarative components like `RouteLine`, `PoiLayer`, `MapMarker`). Map looks (incl. the topo style with local terrain) are built in `map/mapStyles.ts` by recolouring the TileServer style rather than loading other sources. Travel modes are GraphHopper profiles (`src/config.ts`); "transit" is special-cased to OTP. Cycling styles not configured in GraphHopper are hidden automatically. Turn-by-turn (`hooks/useNavigation.ts`) follows a GraphHopper route, or a transit journey converted to the same shape by `utils/transitNavigation.ts`. Lane guidance looks up OSM `turn:lanes` for the road into each turn (`/api/lanes`, using GraphHopper's `osm_way_id` path detail). Car "avoid" options (`CAR_AVOIDS` in `src/config.ts`) are sent as a GraphHopper custom model with `ch.disable`, so car has an LM profile too; each option is hidden unless the encoded value it needs (`crossing`, `toll`, ...) is in `/info`.
 
-**MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use
-the stack: tools (search, place details, browse, routes, public transport journeys and stop
-departures, travel times, reachable places, capabilities), the same data as resources, and
-prompts. It's off unless the `mcp` compose profile is on, and serves stateless Streamable HTTP
-on its own port (7100, localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not
-through nginx. It's a thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's
-public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic
-lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`,
-`STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone
-from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's
-on a stack covering several. It protects itself (Host and
-Origin checks, token, rate limit per address, capped concurrent requests per service, size
-limits) and needs nothing changed in the other services.
+**MCP server (`maps_mcp/`).** An optional, separate Rust service (rmcp) that lets AI agents use the stack: tools (search, place details, browse, routes, public transport journeys and stop departures, travel times, reachable places, capabilities), the same data as resources, and prompts. It's off unless the `mcp` compose profile is on, and serves stateless Streamable HTTP on its own port (7100, localhost unless `MCP_BIND` says otherwise, which needs `MCP_TOKEN`), not through nginx. It's a thin proxy: every tool calls an API that already exists (Photon, GraphHopper, OTP, the backend's public endpoints, e.g. its shortlinks for place links) and never reimplements one, so the logic lives and is tested in one place. Only frontend-only logic with no API (`CAR_AVOIDS`, `STEEP_HILLS`) is copied, and must change with `src/config.ts`. Times are local where the trip is (its zone from its coordinates, `tzf-rs`): OTP gives them in the graph's one zone, which isn't the trip's on a stack covering several. It protects itself (Host and Origin checks, token, rate limit per address, capped concurrent requests per service, size limits) and needs nothing changed in the other services.
 
-**Data pipeline (`docker_maps/`).** `./maps` (repo root, POSIX sh) drives the setup-profile
-services; updates build alongside the live data and swap it in, and `maps-updater` (opt-in,
-`./maps schedule on`) runs them on cron schedules. GraphHopper profiles and custom models are in
-`docker_maps/graphhopper/` — changing profiles or encoded values needs `./maps update routing`
-(`maps-graphhopper-import` builds the graph, ~20 min, ~8.5 GB; serving needs ~2 GB). `./maps`
-runs it itself when the image's config fingerprint (`graph-config.sha`, stored with the graph by
-the import) differs. GraphHopper is built from source with `traffic-signals.patch`, so `crossing`
-also marks roads at junction traffic lights. Public
-transport streets are cut from the OSM extract around the GTFS stops, and feeds in other time
-zones are rewritten into the graph's one, as OTP 2.10's own adjustment never runs
-(`download/transit.sh`, `transit_prepare.py`). Terrain tiles are built by
-`docker_maps/terrain/build_terrain.py` from GraphHopper's downloaded SRTM data. `maps_data/` holds
-all data; `postgres/` and `photos/` are user-created and not rebuildable.
+**Data pipeline (`docker_maps/`).** `./maps` (repo root, POSIX sh) drives the setup-profile services; updates build alongside the live data and swap it in, and `maps-updater` (opt-in, `./maps schedule on`) runs them on cron schedules. GraphHopper profiles and custom models are in `docker_maps/graphhopper/` — changing profiles or encoded values needs `./maps update routing` (`maps-graphhopper-import` builds the graph, ~20 min, ~8.5 GB; serving needs ~2 GB). `./maps` runs it itself when the image's config fingerprint (`graph-config.sha`, stored with the graph by the import) differs. GraphHopper is built from source with `traffic-signals.patch`, so `crossing` also marks roads at junction traffic lights. Public transport streets are cut from the OSM extract around the GTFS stops, and feeds in other time zones are rewritten into the graph's one, as OTP 2.10's own adjustment never runs (`download/transit.sh`, `transit_prepare.py`). Terrain tiles are built by `docker_maps/terrain/build_terrain.py` from GraphHopper's downloaded SRTM data. `maps_data/` holds all data; `postgres/` and `photos/` are user-created and not rebuildable.
 
 ## Working here
 
-- The user owns every change; an agent is at most a co-owner. Commits are authored by the user,
-  with the agent credited only in a `Co-Authored-By` trailer.
-- Before a pull request is raised, make sure the user can explain and defend every line of the
-  change without your help. If they can't yet, walk them through it first.
-- Don't commit, push, open pull requests or comment on issues unless asked to, for that
-  specific change.
-- Don't generate a pull request description for the user to paste. Help them write their own:
-  point out a key detail they missed, cut what's padded, fix what's wrong. It should be a few
-  sentences on what changed and why, in their words.
-- Fix lint and formatting failures with the formatters (`npm run format`, `ruff format`,
-  `cargo fmt`), not by hand.
-- Don't create files nobody asked for (a CONTRIBUTING.md, a new README). Suggest them instead.
+- The user owns every change; an agent is at most a co-owner. Commits are authored by the user, with the agent credited only in a `Co-Authored-By` trailer.
+- Before a pull request is raised, make sure the user can explain and defend every line of the change without your help. If they can't yet, walk them through it first.
+- Don't commit, push, open pull requests or comment on issues unless asked to, for that specific change.
+- Don't generate a pull request description for the user to paste. Help them write their own: point out a key detail they missed, cut what's padded, fix what's wrong. It should be a few sentences on what changed and why, in their words.
+- Fix lint and formatting failures with the formatters (`npm run format`, `ruff format`, `cargo fmt`), not by hand.
 - Propose a plan before building a feature that spans several services.
 
 ## Examples
@@ -245,7 +155,9 @@ why steep hills are only offered when the graph has max_slope, and that it needs
 ./maps update routing.
 
 User: Open the PR.
-Agent: I can do that but first can you provide me with your PR message or a draft we can workshop together? You might also want to check that you can explain why the custom model disables CH, and what happens when GraphHopper is down? Those are the questions a reviewer is likely to ask.
+Agent: I can do that, but first can you give me your PR message, or a draft we can workshop
+together? Also check that you can explain why the custom model disables CH, and what happens
+when GraphHopper is down: those are the questions a reviewer is likely to ask.
 ```
 
 Commit messages:

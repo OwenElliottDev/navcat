@@ -1,5 +1,4 @@
-<!-- In your own words: a few sentences on what changed and why. An agent can help you tighten it,
-but don't paste in a generated summary. -->
+<!-- In your own words: a few sentences on what changed and why. An agent can help you tighten it, but don't paste in a generated summary. -->
 
 ## What and why
 
@@ -12,6 +11,5 @@ Closes #
 
 ## After merging
 
-<!-- Anything people need to do when they update, e.g. `./maps update routing` after a GraphHopper
-config change, a new `.env` setting, or a migration. Delete if nothing. -->
+<!-- Anything people need to do when they update, e.g. `./maps update routing` after a GraphHopper config change, a new `.env` setting, or a migration. Delete if nothing. -->
 
