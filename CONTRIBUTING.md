@@ -53,3 +53,4 @@ They go through nginx and check every service returns real data, around Melbourn
 - Write comments only for what the code can't say: why something is done, or a quirk of a service it works around. No banner or divider comments.
 - Python HTTP uses `pycurl`, including in tests (`tests/client.py`), not httpx, requests or FastAPI's `TestClient`.
 - The frontend calls every service through the axios instance in `src/api/http.ts`.
+- Markdown should not be line-wrapped by hand, editors and renderers handle wrapping.
