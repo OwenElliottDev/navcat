@@ -139,8 +139,6 @@ export interface Itinerary {
   legs: TransitLeg[]
 }
 
-// ---------- accounts ----------
-
 /** What this server lets people do */
 export interface Features {
   /** Adding places and correcting their details */
@@ -186,8 +184,6 @@ export interface Recent extends RecentSearch {
   searchedAt: string
 }
 
-// ---------- browse ----------
-
 export interface Category {
   id: string
   label: string
@@ -219,8 +215,6 @@ export interface BrowseResults {
   /** More matched than were returned */
   truncated: boolean
 }
-
-// ---------- what people add ----------
 
 /** Corrections to a place. A tag set to "" removes it. */
 export interface PlaceChanges {

@@ -91,8 +91,8 @@ test('driving offers what the routing graph can avoid, and sends it', async ({ p
     })
 })
 
-test('avoid options needing values the graph lacks are hidden', async ({ page, stack }) => {
-  stack.encodedValues = ['road_class', 'road_environment']
+test('only the avoid options the backend offers are shown', async ({ page, stack }) => {
+  stack.avoidOptions = ['motorways', 'ferries', 'small_roads']
   await openApp(page)
   await planRoute(page)
   await page
@@ -105,6 +105,22 @@ test('avoid options needing values the graph lacks are hidden', async ({ page, s
     'Ferries',
     'Small roads',
   ])
+})
+
+test("route options GraphHopper didn't have ready are asked for again", async ({ page }) => {
+  let graphHopperUp = false
+  await page.route('**/api/capabilities', (route) =>
+    graphHopperUp ? route.fallback() : route.fulfill({ json: { routing: null, transit: null } }),
+  )
+  await openApp(page)
+  await planRoute(page)
+  graphHopperUp = true
+  await page
+    .getByRole('group', { name: 'Travel mode' })
+    .getByRole('button', { name: 'Drive' })
+    .click()
+
+  await expect(page.getByRole('group', { name: 'Avoid' }).getByRole('button')).toHaveCount(5)
 })
 
 test('walks and rides can avoid steep hills, under additional options', async ({ page, stack }) => {
@@ -151,7 +167,7 @@ test('walks and rides can avoid steep hills, under additional options', async ({
 })
 
 test('additional options are hidden when the graph has no slopes', async ({ page, stack }) => {
-  stack.encodedValues = ['road_class']
+  stack.steepHills = false
   await openApp(page)
   await planRoute(page)
   await expect(page.locator('.route-summary')).toBeVisible()
@@ -250,8 +266,6 @@ test('simulated navigation follows the route with lane guidance', async ({ page,
   await expect(page.getByRole('status')).toHaveCount(0)
   await expect(page.locator('.route-summary')).toBeVisible()
 })
-
-/* ---------- "What's here?" and the map menu's directions ---------- */
 
 /** A spot on the map, as fractions of its size: clear of the panel on wide screens and phones */
 async function spot(page: Page, fx: number, fy: number) {

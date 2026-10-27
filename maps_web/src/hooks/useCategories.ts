@@ -10,7 +10,7 @@ export function useCategories(): Category[] {
     getCategories()
       .then(setCategories)
       .catch(() => {
-        // Backend down: search still works, just without categories
+        // Backend down: search still works without categories
       })
   }, [])
 

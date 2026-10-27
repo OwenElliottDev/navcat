@@ -38,13 +38,11 @@ MAX_ZOOM = int(os.environ.get("TERRAIN_MAX_ZOOM", "11"))
 # Warp 4x4 tiles at a time: one 1024px warp beats sixteen small ones
 BLOCK_ZOOM = MAX_ZOOM - 2
 # Bump when the output changes, so existing terrain is rebuilt automatically
-BUILD_VERSION = 3  # 2-3: fill SRTM voids
+BUILD_VERSION = 3
 TILE = 256
 WORLD = 20037508.342789244  # half the width of the Web Mercator world, in metres
 NODATA = -32768
 
-
-# ---------- tile maths ----------
 
 
 def tile_bounds(z, x, y):
@@ -72,8 +70,6 @@ def tile_at(z, lng, lat):
     return min(max(x, 0), n - 1), min(max(y, 0), n - 1)
 
 
-# ---------- encoding ----------
-
 
 def encode_terrarium(elevation):
     """Elevation in metres -> RGB, as (R*256 + G + B/256) - 32768."""
@@ -98,8 +94,6 @@ def halve(elevation):
     h, w = elevation.shape
     return elevation.reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
 
-
-# ---------- warping ----------
 
 
 def warp(vrt, bounds, size, resampling="bilinear"):
@@ -167,8 +161,6 @@ def tiles_with_data(cells, z, west, south, east, north):
         if block_has_data(cells, z, x, y)
     ]
 
-
-# ---------- main ----------
 
 
 def fill_voids(job):

@@ -1,32 +1,12 @@
-# React + TypeScript + Vite
+# Nav Cat web app
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The map, search, directions and turn-by-turn navigation for Nav Cat: React, TypeScript and
+MapLibre, built with Vite. In production the `maps-web` container serves it with nginx, which
+also proxies `/api` and the map tiles to the other services (`nginx.conf`).
 
-Currently, two official plugins are available:
+With the stack running, `npm run dev` starts a Vite dev server that proxies the same paths to
+the containers' localhost ports (`vite.config.ts`, kept in step with `nginx.conf`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`npm run build` type checks and builds, `npm test` runs the unit tests, and `npm run test:e2e`
+runs the UI tests in a browser with every service mocked from `e2e/fixtures`. `npm run lint` and
+`npm run format` run oxlint and prettier.

@@ -10,8 +10,6 @@ import type {
 } from '../types'
 import { http } from './http'
 
-// Place details, people's corrections and additions, reviews and photos (maps_backend)
-
 const placePath = ({ type, id }: PlaceRef) => `/places/${type}/${id}`
 
 /** One place with all its tags, including people's corrections. */

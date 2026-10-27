@@ -16,7 +16,7 @@ fi
 echo "## using java $vers from $JAVA_HOME"
 
 function printBashUsage {
-  echo "$(basename $0): Start a Gpahhopper server."
+  echo "$(basename $0): Start a GraphHopper server."
   echo "Default user access at 0.0.0.0:8989 and API access at 0.0.0.0:8989/route"
   echo ""
   echo "Usage"
@@ -33,7 +33,6 @@ function printBashUsage {
   echo "-h | --help               display this message"
 }
 
-# one character parameters have one minus character'-'. longer parameters have two minus characters '--'
 while [ ! -z $1 ]; do
   case $1 in
     --import) ACTION=import; shift 1;;
@@ -52,7 +51,6 @@ while [ ! -z $1 ]; do
   esac
 done
 
-# Defaults
 : "${ACTION:=server}"
 : "${GRAPH:=/data/default-gh}"
 : "${CONFIG:=config-example.yml}"
@@ -63,7 +61,6 @@ if [ "$URL" != "" ]; then
   wget -S -nv -O "${FILE:=data.pbf}" "$URL"
 fi
 
-# create the directories if needed
 mkdir -p $(dirname "${GRAPH}")
 
 echo "## Executing $ACTION. JAVA_OPTS=$JAVA_OPTS"
@@ -85,7 +82,7 @@ if [ "$ACTION" = import ]; then
   exit 0
 fi
 
-# Serving memory-maps the graph rather to reduce heap usage at run time
+# Serving memory-maps the graph to keep the heap small
 exec "$JAVA" $JAVA_OPTS ${FILE:+-Ddw.graphhopper.datareader.file="$FILE"} -Ddw.graphhopper.graph.location="$GRAPH" \
         -Ddw.graphhopper.graph.dataaccess.default_type=MMAP \
         $GH_WEB_OPTS -jar "$JAR" $ACTION $CONFIG

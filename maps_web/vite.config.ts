@@ -9,7 +9,6 @@ const TILESERVER = 'http://localhost:7080'
 const OTP = 'http://localhost:7088'
 const BACKEND = 'http://localhost:7800'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   // MapLibre loads its worker as an ES module

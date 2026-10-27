@@ -4,9 +4,10 @@ use rmcp::handler::server::router::prompt::PromptRouter;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{
-    CompleteRequestParams, CompleteResult, Implementation, ListResourceTemplatesResult,
-    ListResourcesResult, PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResponse,
-    ServerCapabilities, ServerConfig, ToolAnnotations,
+    CacheScope, CompleteRequestParams, CompleteResult, Implementation, ListResourceTemplatesResult,
+    ListResourcesResult, ListToolsResult, PaginatedRequestParams, ProtocolVersion,
+    ReadResourceRequestParams, ReadResourceResponse, ResultType, ServerCapabilities, ServerConfig,
+    ToolAnnotations,
 };
 use rmcp::service::RequestContext;
 use rmcp::{ErrorData, RoleServer};
@@ -22,6 +23,7 @@ use crate::prompts;
 use crate::reachable::{self, Reachable, ReachableParams};
 use crate::resources;
 use crate::routing::{self, Route, RouteParams};
+use crate::schema;
 use crate::stack::Stack;
 use crate::transit::{self, Journeys, TransitParams};
 
@@ -61,6 +63,12 @@ impl NavCat {
         }
     }
 
+    /// The tools as declared, before fitting their schemas to the stack
+    #[cfg(test)]
+    pub fn tools() -> Vec<rmcp::model::Tool> {
+        Self::tool_router().list_all()
+    }
+
     #[tool(
         title = "Search places",
         description = "Find places by name, address or kind (\"museum\", \"cafe\"), giving their \
@@ -89,8 +97,8 @@ impl NavCat {
         title = "Plan a route",
         description = "A route by road or path through 2 to 10 waypoints in order: its \
         distance, travel time, climbing, and each leg between waypoints. Driving can avoid \
-        motorways, tolls, ferries, traffic lights or small roads; walking and cycling can \
-        avoid steep hills. Times are for normal speeds, without live traffic."
+        kinds of road, and walking and cycling steep hills, where this server has the data \
+        (see capabilities). Times are for normal speeds, without live traffic."
     )]
     async fn plan_route(
         &self,
@@ -207,6 +215,31 @@ impl ServerHandler for NavCat {
         ServerConfig::new(capabilities)
             .with_server_info(Implementation::new("navcat", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
+    }
+
+    /// The tools, with the values their fields take on this stack (from the backend)
+    async fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        context: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, ErrorData> {
+        let found = capabilities::fetch(&self.stack)
+            .await
+            .map_err(|err| ErrorData::internal_error(err.to_string(), None))?;
+        let mut tools = self.tool_router.list_all();
+        schema::fit(&mut tools, &found);
+        let cache_hints = context
+            .protocol_version()
+            .is_some_and(|version| version >= ProtocolVersion::V_2026_07_28);
+        Ok(ListToolsResult {
+            result_type: Some(ResultType::COMPLETE),
+            tools,
+            meta: None,
+            next_cursor: None,
+            // The values change when the stack's data does
+            ttl_ms: cache_hints.then_some(0),
+            cache_scope: cache_hints.then_some(CacheScope::Public),
+        })
     }
 
     async fn list_resources(

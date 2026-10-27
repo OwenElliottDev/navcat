@@ -1,5 +1,3 @@
-/* ---------- design tokens ---------- */
-
 :root {
   --paper: #f7f8f6;
   --surface: #ffffff;
@@ -51,8 +49,6 @@
   }
 }
 
-/* ---------- base ---------- */
-
 * {
   box-sizing: border-box;
 }
@@ -99,8 +95,6 @@ body {
 [hidden] {
   display: none !important;
 }
-
-/* ---------- shared building blocks ---------- */
 
 .glass {
   background: var(--glass);
@@ -252,7 +246,6 @@ body {
   color: var(--accent);
 }
 
-/* Read by screen readers, not shown */
 .sr-only {
   position: absolute;
   width: 1px;

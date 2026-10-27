@@ -1,13 +1,9 @@
 import { useShallow } from 'zustand/react/shallow'
 import { useAccount } from '../account/AccountContext'
+import { routeOptionsFor } from '../hooks/useCapabilities'
 import { matchCategories } from '../hooks/useCategories'
 import { useAppStore } from '../store'
-import {
-  selectBrowsing,
-  selectIsOnFootOrBike,
-  selectIsTransit,
-  selectProfile,
-} from '../store/selectors'
+import { selectBrowsing, selectIsTransit, selectProfile } from '../store/selectors'
 import type { Category, End, PhotonFeature } from '../types'
 import { describePlace, snapshotToWaypoint, toSnapshot, toWaypoint } from '../utils/places'
 import { categoryShortcut, recentShortcut, savedPlaceShortcut } from '../utils/shortcuts'
@@ -52,8 +48,8 @@ export function PanelTop() {
   )
   const actions = useAppStore.getState()
   const profile = useAppStore(selectProfile)
+  const routeOptions = routeOptionsFor(routing, profile)
   const isTransit = useAppStore(selectIsTransit)
-  const isOnFootOrBike = useAppStore(selectIsOnFootOrBike)
   const isBrowsing = browse !== null
 
   function browseCategory(category: Category) {
@@ -75,8 +71,6 @@ export function PanelTop() {
 
   // The search bar shows what's open, and clearing it closes that
   const searchValue = place ? describePlace(place).name : browse ? browse.category.label : ''
-
-  /* ---------- dropdown shortcuts ---------- */
 
   const searchShortcuts = [
     ...account.savedPlaces.map((saved) =>
@@ -156,10 +150,10 @@ export function PanelTop() {
           {locationProblem}
         </p>
       )}
-      {mode === 'directions' && profile === 'car' && (
-        <CarOptions available={routing.carAvoids} avoid={avoid} onChange={actions.setAvoid} />
+      {mode === 'directions' && (
+        <CarOptions available={routeOptions.avoid} avoid={avoid} onChange={actions.setAvoid} />
       )}
-      {mode === 'directions' && isOnFootOrBike && routing.steepHills && (
+      {mode === 'directions' && routeOptions.steepHills && (
         <AdditionalOptions
           avoidSteepHills={avoidSteepHills}
           onAvoidSteepHillsChange={actions.setAvoidSteepHills}

@@ -7,8 +7,6 @@
   font-weight: 550;
 }
 
-/* ---------- round actions ---------- */
-
 .place-actions {
   display: flex;
   gap: 4px;
@@ -73,8 +71,6 @@
   font-weight: 550;
   white-space: nowrap;
 }
-
-/* ---------- details ---------- */
 
 .place-details {
   margin: 16px 0 0;

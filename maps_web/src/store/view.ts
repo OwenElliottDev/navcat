@@ -91,7 +91,7 @@ export const createViewSlice: StateCreator<Store, [], [], ViewSlice> = (set, get
   async showSnapshot(snapshot) {
     set({ browse: null })
     const position = { lng: snapshot.lng, lat: snapshot.lat }
-    // By id where we can (POIs and places people added), else by name near where it was
+    // By id where possible (POIs and places people added), else by name near where it was
     const byId =
       snapshot.osmType && snapshot.osmId
         ? await getPlace({ type: snapshot.osmType, id: snapshot.osmId }).catch(() => null)

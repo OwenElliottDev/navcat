@@ -44,24 +44,20 @@ function angle(a: Vector, b: Vector): number {
 }
 
 /**
- * Follows a two-finger pinch to decide when it should start rotating the map. Twists made while
- * zooming quickly are sloppiness, so plain zooms keep the map steady, even when the fingers slow
- * down before lifting; twists made while zooming slowly, or not at all, or mostly turning, are
- * meant. Twist only counts once the pinch's speed is known, and the fingers must also have turned
- * past the dead-zone from where they started, the same way.
+ * Decides when a two-finger pinch starts rotating the map. Twist made while zooming fast is
+ * discounted as sloppiness; twist made while zooming slowly or mostly turning counts. Nothing
+ * counts until the pinch's speed is known, and the fingers must also have turned past the dead
+ * zone from where they started, in the same direction.
  */
 export class PinchTwist {
-  /** Twist counted towards the dead-zone, by weight */
-  private twist = 0
-  /** How far the fingers have actually turned from where they started */
-  private turned = 0
+  private countedTwist = 0
+  private turnedFromStart = 0
   private zoomSpeed?: number
   private turnSpeed = 0
   private vector: Vector
   private length: number
   private minLength: number
-  /** Of the last move; none before the first, as the start has no event of its own to time it */
-  private time?: number
+  private lastMoveTime?: number
 
   constructor(vector: Vector) {
     this.vector = vector
@@ -73,7 +69,7 @@ export class PinchTwist {
   move(vector: Vector, time: number): boolean {
     const twist = angle(this.vector, vector)
     const length = Math.hypot(vector.x, vector.y)
-    const seconds = this.time === undefined ? 0 : (time - this.time) / 1000
+    const seconds = this.lastMoveTime === undefined ? 0 : (time - this.lastMoveTime) / 1000
     if (seconds > 0) {
       const zoom = Math.abs(Math.log2(length / this.length)) / seconds
       const turn = Math.abs(twist) / seconds
@@ -86,22 +82,22 @@ export class PinchTwist {
       }
     }
     if (this.zoomSpeed !== undefined) {
-      this.twist += twist * twistWeight(this.zoomSpeed, this.turnSpeed)
+      this.countedTwist += twist * twistWeight(this.zoomSpeed, this.turnSpeed)
     }
-    this.turned += twist
+    this.turnedFromStart += twist
     this.vector = vector
     this.length = length
     this.minLength = Math.min(this.minLength, length)
-    this.time = time
+    this.lastMoveTime = time
 
-    if (Math.abs(this.twist) < DEAD_ZONE) return true
+    if (Math.abs(this.countedTwist) < DEAD_ZONE) return true
     // Turned past the dead-zone, and MIN_ARC at the fingers' closest, the way the twist counted
     const arc = (MIN_ARC / (Math.PI * this.minLength)) * 360
-    return this.turned * Math.sign(this.twist) < Math.max(DEAD_ZONE, arc)
+    return this.turnedFromStart * Math.sign(this.countedTwist) < Math.max(DEAD_ZONE, arc)
   }
 }
 
-/** Makes two-finger rotation behave as above. */
+/** Puts PinchTwist in place of MapLibre's two-finger rotation threshold */
 export function steadyPinchRotation(map: Map) {
   const rotate = map.touchZoomRotate._touchRotate
   // These are MapLibre's internals: if an update changes them, keep its own rotation instead
@@ -120,7 +116,7 @@ export function steadyPinchRotation(map: Map) {
     start(points)
     pinch = new PinchTwist(points[0].sub(points[1]))
   }
-  // Touch events' own times, which are when the fingers moved rather than when it was handled
+  // The touch event's timestamp: when the fingers moved, not when the handler ran
   const move = rotate._move.bind(rotate)
   rotate._move = (points, pinchAround, e) => {
     now = e.timeStamp

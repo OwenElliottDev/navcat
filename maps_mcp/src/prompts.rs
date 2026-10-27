@@ -130,9 +130,17 @@ pub async fn complete(stack: &Stack, request: CompleteRequestParams) -> Complete
     };
     let typed = request.argument.value.to_lowercase();
     let options: Vec<String> = match request.argument.name.as_str() {
-        "mode" => capabilities::modes(stack)
+        "mode" => capabilities::fetch(stack)
             .await
-            .map(|modes| modes.into_iter().chain(["transit".into()]).collect())
+            .ok()
+            .and_then(|found| found.routing)
+            .map(|routing| {
+                routing
+                    .profiles
+                    .into_iter()
+                    .chain(["transit".into()])
+                    .collect()
+            })
             .unwrap_or_default(),
         "category" => browse::categories(stack)
             .await

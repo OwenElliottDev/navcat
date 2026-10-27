@@ -6,7 +6,7 @@ import { useFetch } from './useFetch'
 
 /**
  * The lanes to be in for each of a route's instructions (by index), where OSM maps them.
- * Lane guidance is a bonus: without it (or the backend), navigation carries on as before.
+ * Navigation works without it (or the backend).
  */
 export function useLanes(path: RoutePath | null): Map<number, Lane[]> {
   const wanted = useMemo(

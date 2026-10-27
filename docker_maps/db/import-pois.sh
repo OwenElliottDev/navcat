@@ -1,9 +1,6 @@
 #!/bin/sh
-# Imports POIs for browsing and search from the same OSM extract as GraphHopper and the map
-# tiles, merged with the Overture Maps places maps-download fetched for the same area, and
-# turn lanes for navigation. Skips the import when neither file (nor this import) has changed
-# since the last one, so it's safe to run on every `docker compose up`. Set FORCE=1 to import
-# anyway.
+# Imports POIs (OSM merged with Overture places) and turn lanes. Skips the import unless an
+# input file or IMPORT_VERSION changed; FORCE=1 imports anyway.
 set -eu
 
 OSM="/osm/$OSM_FILE"
@@ -14,7 +11,6 @@ log() { echo "$(date +%H:%M:%S) $*"; }
 # Memory for building indexes, for every psql session below
 export PGOPTIONS="-c maintenance_work_mem=512MB -c client_min_messages=warning"
 
-# A file's name, size and modified time
 describe() { echo "$(basename "$1") $(stat -c '%s %Y' "$1")"; }
 # Bump when the import changes what it makes, so existing installs re-import
 IMPORT_VERSION=2

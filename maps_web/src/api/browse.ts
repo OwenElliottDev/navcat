@@ -1,8 +1,6 @@
 import type { Bounds, BrowseResults, Category, LngLat } from '../types'
 import { http } from './http'
 
-// Places by category within an area (maps_backend + PostGIS)
-
 export async function getCategories(): Promise<Category[]> {
   const { data } = await http.get<Category[]>('/browse/categories')
   return data

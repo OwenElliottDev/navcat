@@ -83,7 +83,7 @@ local function category_of(tags)
     return nil
 end
 
--- `make_geom` makes the point, only once we know the object is wanted: working out a point
+-- `make_geom` makes the point, only once the object is known to be wanted: working out a point
 -- inside an area is the slowest part of the import.
 local function add(object, make_geom)
     local category = category_of(object.tags)

@@ -1,8 +1,6 @@
-# Downloads the data everything else is built from: the OSM extract, and Overture Maps places
-# for the same area. Only used for setup and updates; the running stack never goes online.
 FROM python:3.13-slim
 
-# osmium merges extracts and works out their area; curl downloads them
+# osmium merges extracts and works out their area
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl osmium-tool \
     && rm -rf /var/lib/apt/lists/*

@@ -19,7 +19,7 @@ export function storeMuted(muted: boolean) {
   try {
     localStorage.setItem(STORAGE_KEY, muted ? 'off' : 'on')
   } catch {
-    // Storage blocked: the choice just won't be remembered
+    // Storage blocked: the choice isn't remembered
   }
 }
 

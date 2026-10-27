@@ -1,4 +1,4 @@
-"""Ported from openstreetmap-website's test/lib/short_link_test.rb."""
+"""Cases from openstreetmap-website's test/lib/short_link_test.rb."""
 
 import math
 import random

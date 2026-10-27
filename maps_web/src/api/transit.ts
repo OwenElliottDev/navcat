@@ -54,8 +54,6 @@ export class TransitPlanError extends Error {
   }
 }
 
-// ---------- response shapes ----------
-
 interface OtpTime {
   scheduledTime: string
   estimated: { time: string } | null
@@ -107,8 +105,6 @@ interface PlanResponse {
   }
   errors?: { message: string }[]
 }
-
-// ---------- mapping to the app's types ----------
 
 /** Live time when there is one, otherwise the timetable. */
 const timeOf = (t: OtpTime) => t.estimated?.time ?? t.scheduledTime
@@ -184,12 +180,4 @@ export async function planTransit(
     duration: node.duration,
     legs: node.legs.map(toLeg),
   }))
-}
-
-/** The transit modes in the timetables, e.g. ["BUS", "COACH", "RAIL", "TRAM"]. */
-export async function getTransitModes(): Promise<string[]> {
-  const { data } = await http.post<{ data?: { routes: { mode: string }[] } }>('/transit', {
-    query: '{ routes { mode } }',
-  })
-  return [...new Set(data.data?.routes.map((route) => route.mode))]
 }
