@@ -1,10 +1,13 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, Path, Response
 from fastapi.concurrency import run_in_threadpool
 
 from ..road_data import fetch_tile, slim_tile
-from ..upstream import Unavailable
+from ..upstream import Failed, Rejected
 
 router = APIRouter(tags=["road data"])
+log = logging.getLogger(__name__)
 
 # GraphHopper's tiles get very large further out (2 MB at z14 in a city), so only from here in
 MIN_ZOOM = 15
@@ -19,7 +22,9 @@ async def road_data(
         raise HTTPException(404, "No such tile.")
     try:
         raw = await run_in_threadpool(fetch_tile, z, x, y)
-    except Unavailable:
+    except Failed as err:
+        if isinstance(err, Rejected):
+            log.error("%s", err)
         raise HTTPException(
             503, "Routing data isn't available yet. Check the graphhopper container."
         )

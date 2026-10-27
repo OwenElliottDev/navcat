@@ -57,3 +57,7 @@ def test_road_data_when_graphhopper_is_down(client):
     assert c.get("/api/road-data/15/29400/20100.mvt").status == 503
     assert c.get("/api/road-data/15/40000/0.mvt").status == 404  # past the edge of the world
     assert c.get("/api/road-data/14/0/0.mvt").status == 422  # too far out
+
+
+def test_road_data_is_unavailable_when_graphhopper_turns_it_down(rejecting):
+    assert rejecting.get("/api/road-data/15/29581/20096.mvt").status == 503

@@ -1,10 +1,12 @@
 import { encodePolyline } from './polyline'
 
-// OpenTripPlanner's GTFS GraphQL API: the modes in the timetables, and journeys from
-// Flinders Street to Queen Victoria Market by tram or by train.
+// The backend's /capabilities (OpenTripPlanner's side), and journeys from Flinders Street to
+// Queen Victoria Market by tram or by train from OpenTripPlanner's GTFS GraphQL API.
 
-export const TRANSIT_MODES = {
-  data: { routes: ['TRAM', 'BUS', 'RAIL', 'TRAM'].map((mode) => ({ mode })) },
+export const TRANSIT_CAPABILITIES = {
+  modes: ['BUS', 'RAIL', 'TRAM'],
+  timetablesFrom: '2026-10-01',
+  timetablesUntil: '2026-12-31',
 }
 
 const time = (clock: string) => ({ scheduledTime: `2026-10-12T${clock}:00+11:00`, estimated: null })

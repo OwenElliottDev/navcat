@@ -2,11 +2,8 @@
 
 import io
 import json
-import math
-import threading
 from pathlib import Path
 
-import anyio
 import pytest
 from PIL import Image
 
@@ -20,7 +17,6 @@ from app.link_preview import (
     render_image,
     search_radius,
 )
-from app.routes import links
 from app.short_link import encode_osm_shortlink
 from tests.images import phone_photo
 
@@ -125,42 +121,3 @@ def test_unmarked_image_is_tileservers(monkeypatch):
     monkeypatch.setattr(upstream, "get", lambda url, timeout: jpeg)
     assert render_image(view(16, marked=False)) == jpeg
     assert Image.open(io.BytesIO(render_image(view(16)))).format == "JPEG"
-
-
-def test_unlimited_previews_are_never_turned_away():
-    pool = links._Pool(math.inf)
-    release = threading.Event()
-
-    async def main():
-        async with anyio.create_task_group() as tasks:
-            try:
-                for _ in range(20):
-                    tasks.start_soon(pool.run, lambda _: release.wait(5), view(16))
-                await anyio.wait_all_tasks_blocked()
-                assert pool.pending == 20
-                assert pool.limiter.borrowed_tokens == 20  # all running, none queued
-            finally:
-                release.set()
-
-    anyio.run(main)
-
-
-def test_previews_past_the_queue_are_turned_away():
-    pool = links._Pool(1)
-    release = threading.Event()
-
-    def busy(_: LinkedView) -> None:
-        release.wait(5)
-
-    async def main():
-        async with anyio.create_task_group() as tasks:
-            try:
-                for _ in range(5):  # one running, four waiting
-                    tasks.start_soon(pool.run, busy, view(16))
-                await anyio.wait_all_tasks_blocked()
-                with pytest.raises(upstream.Unavailable):
-                    await pool.run(busy, view(16))
-            finally:
-                release.set()
-
-    anyio.run(main)

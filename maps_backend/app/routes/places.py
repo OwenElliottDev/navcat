@@ -29,6 +29,7 @@ from ..places import (
     PoiDetails,
     details_from_row,
 )
+from ..query import POINT, parse_point
 
 router = APIRouter(tags=["places"])
 
@@ -117,11 +118,11 @@ LIMIT 5
 async def search_added_places(
     db: Db,
     q: str = Query(min_length=2, max_length=100),
-    near: str | None = Query(None, pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?$", description="lng,lat"),
+    near: str | None = Query(None, pattern=POINT, description="lng,lat"),
 ) -> list[PoiDetails]:
     """Places people added and places from Overture Maps, by name, nearest first.
     (Photon covers everything from OSM.)"""
-    lng, lat = (float(n) for n in near.split(",")) if near else (0.0, 0.0)
+    lng, lat = parse_point(near) if near else (0.0, 0.0)
     escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     try:
         cursor = await db.execute(

@@ -105,9 +105,10 @@ def test_reverse_geocoding_names_a_point():
 
 
 def test_routing_offers_the_apps_travel_modes():
-    info = fetch_json("/api/info")
-    profiles = {p["name"] for p in info["profiles"]}
-    assert {"foot", "bike", "car"} <= profiles
+    routing = fetch_json("/api/capabilities")["routing"]
+    assert routing, "GraphHopper isn't answering the backend"
+    assert {"foot", "bike", "car"} <= set(routing["profiles"])
+    assert routing["avoid"], "no car avoid options (the routing graph lacks their road data)"
 
 
 @pytest.mark.parametrize("profile", ["foot", "bike", "car"])
@@ -151,6 +152,8 @@ def test_public_transport_has_timetables_and_plans():
         pytest.skip("OpenTripPlanner isn't running (public transport may not be set up)")
     routes = json.loads(body)["data"]["routes"]
     assert routes, "no public transport routes loaded"
+    transit = fetch_json("/api/capabilities")["transit"]
+    assert transit and transit["modes"], "the backend can't see OpenTripPlanner's timetables"
 
     plan = fetch_json(
         "/api/transit",

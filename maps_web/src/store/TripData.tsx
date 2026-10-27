@@ -1,21 +1,26 @@
 import { useEffect } from 'react'
+import type { RouteRule } from '../api/capabilities'
 import { shallow } from 'zustand/shallow'
 import { useShallow } from 'zustand/react/shallow'
 import { useBrowse } from '../hooks/useBrowse'
 import { useCategories } from '../hooks/useCategories'
-import { useProfiles } from '../hooks/useProfiles'
+import { routeOptionsFor, useCapabilities } from '../hooks/useCapabilities'
 import { useRoute } from '../hooks/useRoute'
-import { useTransitModes } from '../hooks/useTransitModes'
 import { useTransitPlan } from '../hooks/useTransitPlan'
 import { useMap } from '../map/MapContext'
 import type { DataSlice } from './data'
-import {
-  selectIsNavigating,
-  selectIsOnFootOrBike,
-  selectIsTransit,
-  selectProfile,
-} from './selectors'
+import { selectIsNavigating, selectIsTransit, selectProfile } from './selectors'
 import { useAppStore } from '.'
+
+/** The rules for the chosen options a travel mode has */
+function routeRules(
+  options: ReturnType<typeof routeOptionsFor>,
+  avoid: string[],
+  avoidSteepHills: boolean,
+): RouteRule[] {
+  const rules = options.avoid.filter((o) => avoid.includes(o.id)).flatMap((o) => o.priority)
+  return avoidSteepHills && options.steepHills ? [...rules, ...options.steepHills] : rules
+}
 
 /** Copies a value into the store when it changes (fetch states are rebuilt on every render). */
 function useKeep<K extends keyof DataSlice>(key: K, value: DataSlice[K]) {
@@ -29,8 +34,11 @@ function useKeep<K extends keyof DataSlice>(key: K, value: DataSlice[K]) {
  * A component of its own, so its re-renders don't re-render the rest of the app.
  */
 export function TripData() {
-  const routing = useProfiles()
+  const profile = useAppStore(selectProfile)
+  const isTransit = useAppStore(selectIsTransit)
+  const { routing, transitModes } = useCapabilities(profile)
   useKeep('routing', routing)
+  useKeep('transitModes', transitModes)
   useKeep('categories', useCategories())
 
   // Counts finished map moves (for "Search this area") without re-rendering anything here.
@@ -58,9 +66,6 @@ export function TripData() {
       browse: s.browse,
     })),
   )
-  const profile = useAppStore(selectProfile)
-  const isTransit = useAppStore(selectIsTransit)
-  const isOnFootOrBike = useAppStore(selectIsOnFootOrBike)
   const from = waypoints.from?.position ?? null
   const to = waypoints.to?.position ?? null
 
@@ -71,15 +76,9 @@ export function TripData() {
       isTransit ? null : from,
       isTransit ? null : to,
       profile,
-      profile === 'car'
-        ? { avoid: avoid.filter((name) => routing.carAvoids.includes(name)) }
-        : isOnFootOrBike && routing.steepHills
-          ? { avoidSteepHills }
-          : undefined,
+      routeRules(routeOptionsFor(routing, profile), avoid, avoidSteepHills),
     ),
   )
-  const transitModes = useTransitModes(isTransit)
-  useKeep('transitModes', transitModes)
   useKeep(
     'transitPlan',
     useTransitPlan(isTransit ? from : null, isTransit ? to : null, {

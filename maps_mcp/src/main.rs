@@ -12,6 +12,7 @@ mod prompts;
 mod reachable;
 mod resources;
 mod routing;
+mod schema;
 mod server;
 mod stack;
 mod time;
