@@ -15,6 +15,7 @@ An agent can help with the PR description, but it has to read as yours: a few se
 
 ## Core tenets
 
+- Nav Cat treats active and public transport as first class citizens, fully featured walking and bike routing is core functionality, as is public transport routing. Any PR which creates an asymmetry between the routing options where it would be unreasonable to do so (e.g. only supporting re-routing for one mode or being like Apple Maps and only allowing you to add stops when routing for cars) will be be considered incomplete.
 - The running stack makes no internet calls. Data is downloaded only by `./maps setup` and `./maps update`. Nothing in the frontend or backend may fetch from an external host at runtime, including map styles, fonts, tiles and voices.
 - A feature that needs a service can fail when that service is down, with a clear error. Don't add fallbacks or copies of another service's logic to keep it working. Features that don't need the service must keep working without it.
 - Logic lives in one place. If both the frontend and the MCP server need it, it goes in the backend.
