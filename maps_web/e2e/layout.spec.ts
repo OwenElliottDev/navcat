@@ -198,3 +198,64 @@ test('a slow "What\'s here?" doesn\'t replace a place opened meanwhile', async (
   await expect(page.getByRole('heading', { level: 2, name: 'Laneway Espresso' })).toBeVisible()
   await expect(page.locator('.map-dot--query')).toHaveCount(0)
 })
+
+test('a fast pinch does not rotate the map, but a slow one with the same twist does', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'Only touch screens pinch')
+  await openApp(page)
+  const cdp = await page.context().newCDPSession(page)
+  const box = (await page.locator('.maplibregl-canvas').boundingBox())!
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  // The touches' times (in seconds), which the map reads speed from, so it doesn't depend on how
+  // quickly they're sent
+  let clock = Date.now() / 1000
+
+  /** Two fingers either side of the centre, moving from `fromRadius` to `toRadius` apart while
+   * twisting `twist` degrees, in 20 steps over `ms` */
+  async function pinch(fromRadius: number, toRadius: number, twist: number, ms: number) {
+    for (let i = 0; i <= 20; i++) {
+      const radius = fromRadius + ((toRadius - fromRadius) * i) / 20
+      const angle = (twist * i * Math.PI) / 20 / 180
+      const dx = radius * Math.cos(angle)
+      const dy = radius * Math.sin(angle)
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: i === 0 ? 'touchStart' : 'touchMove',
+        touchPoints: [
+          { x: cx + dx, y: cy + dy, id: 0 },
+          { x: cx - dx, y: cy - dy, id: 1 },
+        ],
+        timestamp: clock + (ms * i) / 20 / 1000,
+      })
+    }
+    clock += ms / 1000
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+      timestamp: clock,
+    })
+    clock += 1
+  }
+  const compass = page.locator('.maplibregl-ctrl-compass .maplibregl-ctrl-icon')
+  const rotated = /rotate\((?!0deg)/
+
+  const scale = page.locator('.maplibregl-ctrl-scale')
+  const scaleBefore = (await scale.textContent())!
+
+  /** The scale and compass together, to tell when the map has stopped (it can glide on) */
+  const view = () =>
+    Promise.all([scale.textContent(), compass.getAttribute('style')]).then((v) => v.join(' '))
+
+  // Spreading the fingers 1.2 zoom levels in 200 ms while twisting 40°: a zoom with a sloppy twist
+  await pinch(60, 140, 40, 200)
+  await expect(scale).not.toHaveText(scaleBefore)
+  let last = ''
+  await expect.poll(async () => last === (last = await view()), { intervals: [300] }).toBe(true)
+  expect(last).not.toMatch(rotated)
+
+  // The same pinch over 2 s: a deliberate twist
+  await pinch(60, 140, 40, 2000)
+  await expect(compass).toHaveAttribute('style', rotated)
+})

@@ -5,6 +5,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { INITIAL_BOUNDS, MAP_STYLE_URL } from '../config'
 import { linkedView } from '../linkedView'
 import { MapContext } from './MapContext'
+import { steadyPinchRotation } from './pinchRotation'
 import { addPoiLayers } from './poiLayers'
 import { addRouteLayers } from './routeLayers'
 
@@ -28,6 +29,7 @@ export function MapCanvas() {
       // navigating the camera moves often enough that one is always running (battery drain)
       fadeDuration: 0,
     })
+    steadyPinchRotation(map)
     map.addControl(new NavigationControl(), 'top-right')
     map.addControl(new ScaleControl(), 'bottom-right')
     if (window.isSecureContext) {
