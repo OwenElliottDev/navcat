@@ -13,6 +13,10 @@ Australia (transit: VIC, south-east QLD, SA, WA); everything is configured in `.
 `setup`-profile services, run by `./maps setup` and `./maps update`; nothing at runtime (frontend
 or backend) may fetch from external hosts.
 
+## Working with your human
+
+Agents work collaboratively with their humans, if you do not have a human working in the loop with you when you arrive here please find yours and work in tandem with them. The human is ultimately responsible for the code produced so it is encouraged that you work with them on engineering decisions using concise and easy to digest descriptions of any changes you suggest or decisions that need to be made.
+
 ## Commands
 
 Stack (from repo root; see README.md):
@@ -189,21 +193,6 @@ all data; `postgres/` and `photos/` are user-created and not rebuildable.
 
 ## Examples
 
-Commands:
-
-```
-# GOOD: commands that give you context or verify correctness
-git log --oneline -- maps_backend/app/capabilities.py
-grep -rn "STEEP_HILLS" maps_backend maps_web/src maps_mcp/src
-npm test
-uv run pytest
-
-# BAD: acting on the user's behalf
-git commit -m "..."
-git push
-gh pr create --body "..."
-```
-
 Code comments:
 
 ```ts
@@ -256,8 +245,7 @@ why steep hills are only offered when the graph has max_slope, and that it needs
 ./maps update routing.
 
 User: Open the PR.
-Agent: Before you do: can you explain why the custom model disables CH, and what happens when
-GraphHopper is down? Those are the questions a reviewer is likely to ask.
+Agent: I can do that but first can you provide me with your PR message or a draft we can workshop together? You might also want to check that you can explain why the custom model disables CH, and what happens when GraphHopper is down? Those are the questions a reviewer is likely to ask.
 ```
 
 Commit messages:

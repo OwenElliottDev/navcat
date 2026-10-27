@@ -6,17 +6,17 @@
   request template, and fill in the pull request template when you open a PR.
 - For a new feature, open an issue to discuss it before writing code.
 - For a bug fix, describe how to reproduce the bug and add a test that fails without the fix.
-- Keep each pull request to one change. Refactors and features go in separate PRs.
+- Keep each pull request to one change. Refactors and features go in separate PRs in almost all cases.
 
 ## AI usage
 
-AI agents are welcome, but you are responsible for every line you submit, however it was
+AI usage is welcome, but you are responsible for every line you submit, however it was
 written. Before opening a PR, make sure you can explain and defend the change without help.
-Disclose AI use with a `Co-Authored-By` trailer on the commits or a note in the PR.
+Disclosure is not required by it is encouraged that you do so by using a `Co-Authored-By` trailer on the commits or a note in the PR.
 
 An agent can help with the PR description, but it has to read as yours: a few sentences on what
 changed and why, that you've checked are true. No generated summaries of every file, headings
-for a three-line change, or claims you couldn't back up in review.
+for a three-line change, or claims you couldn't back up in review. [A template is available](./.github/pull_request_template.md).
 
 ## Core tenets
 
