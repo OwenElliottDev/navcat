@@ -6,6 +6,7 @@ from app.models import PlaceSnapshot
 from app.road_data import bike_route, cycleway, max_speed
 from app.routes.lanes import LanesQuery
 from app.routes.me import RecentIn
+from app.upstream import _reason
 
 
 def test_category_ids_are_unique():
@@ -73,3 +74,12 @@ def test_lanes_query_reads_camel_case_approaches():
     )
     assert query.approaches[0].way_id == 42
     assert query.approaches[0].end == (145.001, -37.8)
+
+
+def test_upstream_rejections_give_the_services_reason():
+    assert _reason(b'{"message": "The requested profile \'boat\' does not exist"}') == (
+        "The requested profile 'boat' does not exist"
+    )  # GraphHopper
+    assert _reason(b'{"detail": "Unknown category."}') == "Unknown category."  # FastAPI
+    assert _reason(b'["not", "an", "object"]') == '["not", "an", "object"]'
+    assert _reason(b"<html>Not Found</html>") == "<html>Not Found</html>"

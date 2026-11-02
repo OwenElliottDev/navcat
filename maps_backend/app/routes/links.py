@@ -1,8 +1,7 @@
-from collections.abc import Callable
+import logging
 from dataclasses import asdict
 from typing import Annotated
 
-from anyio import CapacityLimiter, to_thread
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, Response
 from pydantic import Field
 
@@ -10,10 +9,12 @@ from .. import link_preview
 from ..config import settings
 from ..link_preview import LinkedView
 from ..models import ApiModel
+from ..pool import Pool
 from ..short_link import decode_osm_shortlink, encode_osm_shortlink
-from ..upstream import Unavailable
+from ..upstream import Failed, Rejected
 
 router = APIRouter(prefix="/links", tags=["links"])
+log = logging.getLogger(__name__)
 
 # "@" is the legacy spelling of "~"
 SHORTLINK = r"^[A-Za-z0-9_~@]{1,10}-{0,2}$"
@@ -52,29 +53,9 @@ async def decode_shortlink(body: OSMShortlinkDecode) -> OSMShortlinkEncode:
 # the spot, as in OSM's links.
 
 
-class _Pool:
-    """A few threads of its own, turning work away past a short queue."""
-
-    def __init__(self, size: float):
-        self.limiter = CapacityLimiter(size)
-        # Counted here rather than from the limiter, which only sees a task once it's waiting
-        self.pending = 0
-
-    async def run[T](self, fn: Callable[[LinkedView], T], view: LinkedView) -> T:
-        if self.pending >= 5 * self.limiter.total_tokens:
-            raise Unavailable("Too many link previews at once")
-        self.pending += 1
-        try:
-            return await to_thread.run_sync(fn, view, limiter=self.limiter)
-        finally:
-            self.pending -= 1
-
-
-# Previews' Photon lookups and TileServer renders each get their own, so a flood of uncached
-# links can't take the threads photo uploads and road data use, and slow renders don't hold up
-# naming a page as it opens
-_lookups = _Pool(settings.link_preview_concurrency)
-_renders = _Pool(settings.link_preview_concurrency)
+# Lookups and renders each get their own, so slow renders don't hold up naming a page as it opens
+_lookups = Pool(settings.link_preview_concurrency)
+_renders = Pool(settings.link_preview_concurrency)
 
 
 async def _view(request: Request, code: Annotated[str, Path(pattern=SHORTLINK)]) -> LinkedView:
@@ -98,7 +79,9 @@ async def _describe(view: LinkedView) -> tuple[link_preview.Description, bool]:
     """The view's description, and whether Photon answered (if not, it's by coordinates)."""
     try:
         place = await _lookups.run(link_preview.reverse_geocode, view)
-    except Unavailable:
+    except Failed as err:
+        if isinstance(err, Rejected):
+            log.error("%s", err)
         return link_preview.describe(view, None), False
     return link_preview.describe(view, place), True
 
@@ -134,7 +117,9 @@ async def preview(view: LinkView) -> Response:
     """A picture of the map at /go/<code>, pinned for ?m, for link previews."""
     try:
         image = await _renders.run(link_preview.render_image, view)
-    except Unavailable:
+    except Failed as err:
+        if isinstance(err, Rejected):
+            log.error("%s", err)
         raise HTTPException(503, "The preview isn't available.")
     return Response(
         image, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"}

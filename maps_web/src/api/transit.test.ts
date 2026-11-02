@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { http } from './http'
-import { getTransitModes, planTransit, TransitPlanError } from './transit'
+import { planTransit, TransitPlanError } from './transit'
 
 vi.mock('./http', () => ({ http: { post: vi.fn() } }))
 const post = vi.mocked(http.post)
@@ -121,12 +121,5 @@ describe('planTransit', () => {
 
     answer({ errors: [{ message: 'Bad query' }] })
     await expect(planTransit(FROM, TO, { time: null, modes: null })).rejects.toThrow('Bad query')
-  })
-})
-
-describe('getTransitModes', () => {
-  it('lists each mode once', async () => {
-    answer({ data: { routes: [{ mode: 'BUS' }, { mode: 'TRAM' }, { mode: 'BUS' }] } })
-    expect(await getTransitModes()).toEqual(['BUS', 'TRAM'])
   })
 })

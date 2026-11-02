@@ -27,58 +27,13 @@ export const CYCLING_STYLES: Record<string, string> = {
   mtb: 'Mountain bike',
 }
 
-/**
- * What a drive can avoid, each a GraphHopper custom model rule that makes those roads less
- * likely (not forbidden, so a route is still found when there's no other way). `needs` is the
- * encoded value a rule uses; options whose value isn't in the routing graph are hidden.
- */
-export const CAR_AVOIDS = {
-  motorways: {
-    label: 'Motorways',
-    needs: 'road_class',
-    condition: 'road_class == MOTORWAY',
-    factor: 0.1,
-  },
-  tolls: { label: 'Tolls', needs: 'toll', condition: 'toll == ALL', factor: 0.1 },
-  ferries: {
-    label: 'Ferries',
-    needs: 'road_environment',
-    condition: 'road_environment == FERRY',
-    factor: 0.1,
-  },
-  // Roads touching a highway=traffic_signals node or a signalised crossing (GraphHopper here is
-  // patched for the former: docker_maps/graphhopper/traffic-signals.patch)
-  trafficLights: {
-    label: 'Traffic lights',
-    needs: 'crossing',
-    condition: 'crossing == TRAFFIC_SIGNALS',
-    factor: 0.4,
-  },
-  smallRoads: {
-    label: 'Small roads',
-    needs: 'road_class',
-    condition:
-      'road_class == RESIDENTIAL || road_class == SERVICE || road_class == UNCLASSIFIED || road_class == LIVING_STREET || road_class == TRACK',
-    factor: 0.4,
-  },
-} as const
-
-export type CarAvoid = keyof typeof CAR_AVOIDS
-
-/**
- * "Avoid steep hills" for walks and rides, e.g. with a wheelchair or pram: custom model rules on
- * `max_slope`, a road's steepest stretch in % (signed by the direction of travel, so steep
- * descents count too). 5% (1:20) is about the most an accessible path should have and 8% (1:12)
- * the steepest ramp allowed. Steeper roads are made much less likely, not forbidden, so a route
- * is still found when there's no other way. Hidden unless the routing graph has `max_slope`.
- */
-export const STEEP_HILLS = {
-  needs: 'max_slope',
-  priority: [
-    { if: 'max_slope >= 12 || max_slope <= -12', multiply_by: '0.05' },
-    { else_if: 'max_slope >= 8 || max_slope <= -8', multiply_by: '0.2' },
-    { else_if: 'max_slope >= 5 || max_slope <= -5', multiply_by: '0.6' },
-  ],
+/** Labels for what a drive can avoid; the options and their rules come from /api/capabilities. */
+export const CAR_AVOID_LABELS: Record<string, string> = {
+  motorways: 'Motorways',
+  tolls: 'Tolls',
+  ferries: 'Ferries',
+  traffic_lights: 'Traffic lights',
+  small_roads: 'Small roads',
 }
 
 /** Travel modes in the order they're offered; the first is the default. */

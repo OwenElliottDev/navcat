@@ -2,6 +2,8 @@
 
 import pytest
 
+from .conftest import logged
+
 
 def test_shortlinks_round_trip(client):
     view = {"long": 144.9631, "lat": -37.8136, "zoom": 15}
@@ -91,3 +93,13 @@ def test_unmarked_meta_tags(client):
 
 def test_preview_image_needs_tileserver(client):
     assert client().get(f"/api/links/preview/{CODE}.jpg?m").status == 503
+
+
+def test_link_previews_fall_back_when_a_service_turns_them_down(rejecting, photos_dir):
+    meta = rejecting.get(f"/api/links/meta/{CODE}?m")
+    assert meta.status == 200, meta.body
+    assert '<meta property="og:description" content="Shared location" />' in meta.body.decode()
+    assert meta.header("cache-control") == "no-store"
+    assert rejecting.get(f"/api/links/preview/{CODE}.jpg?m").status == 503
+    # Logged, as a 4xx means this app sent a request it shouldn't have
+    assert logged(rejecting, photos_dir, "A request only a bug here could make")

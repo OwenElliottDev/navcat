@@ -53,24 +53,6 @@ const PLAN_QUERY: &str = "
   }
 ";
 
-/// A kind of public transport
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TransitMode {
-    Airplane,
-    Bus,
-    CableCar,
-    Coach,
-    Ferry,
-    Funicular,
-    Gondola,
-    Monorail,
-    Rail,
-    Subway,
-    Tram,
-    Trolleybus,
-}
-
 #[derive(Deserialize, JsonSchema)]
 pub struct TransitParams {
     pub from: Point,
@@ -80,8 +62,8 @@ pub struct TransitParams {
     pub depart_at: Option<String>,
     /// Arrive by this local time instead
     pub arrive_by: Option<String>,
-    /// Only these kinds of transport; any by default
-    pub modes: Option<Vec<TransitMode>>,
+    /// Only these kinds of transport (capabilities' transit modes, e.g. "TRAM"); any by default
+    pub modes: Option<Vec<String>>,
     /// How many journeys to give (1 to 5, default 3)
     pub max_options: Option<u8>,
     /// Leave out walking the whole way, which OTP otherwise offers first when it's quicker
@@ -368,7 +350,7 @@ mod tests {
 
         let by = TransitParams {
             arrive_by: Some("2026-10-12T08:00".into()),
-            modes: Some(vec![TransitMode::Tram, TransitMode::CableCar]),
+            modes: Some(vec!["TRAM".into(), "CABLE_CAR".into()]),
             ..params()
         };
         let vars = variables(&by).unwrap();
@@ -382,7 +364,7 @@ mod tests {
     fn can_leave_out_walking_the_whole_way() {
         let only = TransitParams {
             transit_only: true,
-            modes: Some(vec![TransitMode::Tram]),
+            modes: Some(vec!["TRAM".into()]),
             ..params()
         };
         let modes = &variables(&only).unwrap()["modes"];
