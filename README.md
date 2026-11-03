@@ -133,63 +133,7 @@ The places import (`maps-poi-import`) only re-runs when its inputs change. To fo
 re-import, run `docker compose run --rm -e FORCE=1 maps-poi-import`. The topo terrain build
 (`maps-terrain-build`) works the same way.
 
-## Testing
-
-Run the tests relevant to your change before opening a pull request. CI runs the full suite on every pull request. Frontend commands are run from `maps_web/` and backend commands from `maps_backend/`.
-
-### Frontend unit tests
-
-Located in `maps_web/src/**/*.test.ts`. These cover navigation, opening hours, lane guidance, transit, and map styles. They also verify that the nginx and Vite proxy configurations stay in sync.
-
-    npm test
-
-### End-to-end tests
-
-Located in `maps_web/e2e/`. These run the app in a browser with all backend services mocked.
-
-    npm run test:e2e
-
-Responses are served from fixtures in `e2e/fixtures` (see `e2e/mockStack.ts`). A test fails if the app makes a request that has no matching fixture or that targets an external host. Tests can assert on outgoing requests using `stack.requestsTo(...)`. When adding a new API call, add a corresponding fixture.
-
-For interactive debugging, use `npx playwright test --ui`.
-
-### Screenshot tests
-
-Baselines are stored in `maps_web/e2e/__screenshots__/`. Running these requires Docker.
-
-    npm run test:e2e:docker
-
-Screenshot comparisons cover the UI panels only; the map canvas is hidden. Because font rendering differs between systems, screenshots are compared only inside the pinned Playwright Docker container used by CI. After an intentional UI change, regenerate the baselines and review the updated images in the diff:
-
-    npm run test:e2e:update
-
-### Backend unit tests
-
-Located in `maps_backend/tests/test_*.py`.
-
-    uv run pytest
-
-### Backend API tests
-
-Located in `maps_backend/tests/api/`. Running these requires Docker.
-
-    sh tests/api/run.sh
-
-The API tests start the real backend against a fresh PostGIS database, so migrations are exercised from an empty schema. The `pois` and `turn_lanes` tables are fixtures that mirror the structure produced by the import (defined in `tests/api/conftest.py`). Keep them consistent with `pois.lua` when changing the import. To run against an existing Postgres instance instead, set `TEST_DATABASE_URL`.
-
-### MCP server tests
-
-Located alongside the code in `maps_mcp/src`, run from `maps_mcp/`. Running these requires Rust.
-
-    cargo test
-
-### Smoke tests
-
-Located in `maps_backend/tests/smoke/`. Running these requires a running stack.
-
-    MAPS_URL=http://localhost:7000 uv run pytest tests/smoke
-
-The smoke tests send requests through nginx and verify that every service returns real data. Run them after a data update, or after changes to the import pipeline or `nginx.conf`. They target Melbourne by default; to test another region, set `SMOKE_FROM`, `SMOKE_TO`, and `SMOKE_QUERY` (see `tests/smoke/` for details).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for running the tests.
 
 ## Data sources and attribution
 

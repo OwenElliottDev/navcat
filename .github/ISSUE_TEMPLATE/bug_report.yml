@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in Nav Cat doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A place, route or link that shows it is the most useful thing you can give.
+      placeholder: |
+        1. Search for "Queen Victoria Market"
+        2. Open directions from Flinders Street Station by bike
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Your `MAPS_TAG` (e.g. `1.2.0` or `edge`), or the commit if you build from a checkout.
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Region and setup
+      description: >
+        Your `OSM_URL` and `TRANSIT_GTFS_URLS` if you changed them, the device and browser for
+        problems in the app, and anything in front of it (reverse proxy, HTTPS).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Output from `./maps status`, or `docker compose logs <service>` for the service involved
+        (e.g. `maps-backend`, `maps-graphhopper`).
+      render: text
