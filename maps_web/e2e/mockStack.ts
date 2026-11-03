@@ -2,14 +2,14 @@ import { test as base, expect, type Page, type Route } from '@playwright/test'
 import { browseResults, CATEGORIES } from './fixtures/browse'
 import { initialReviews, PHOTON_FEATURES, POI_DETAILS, type ReviewFixture } from './fixtures/places'
 import {
-  ALL_ENCODED_VALUES,
+  ALL_AVOIDS,
   ALL_PROFILES,
   routeResponse,
-  routingInfo,
+  routingCapabilities,
   TURN_LANES,
 } from './fixtures/routing'
 import { style } from './fixtures/style'
-import { TRANSIT_MODES, transitPlan } from './fixtures/transit'
+import { TRANSIT_CAPABILITIES, transitPlan } from './fixtures/transit'
 
 // Every service the app talks to, answered in the browser from e2e/fixtures: Photon,
 // GraphHopper, OpenTripPlanner, TileServer and maps_backend (with a little in-memory state
@@ -70,8 +70,10 @@ export class MockStack {
   features = { allowPlaceEdits: true, allowReviews: true, allowPhotos: true }
   /** Profiles GraphHopper says it has */
   profiles = ALL_PROFILES
-  /** What GraphHopper's graph knows about roads (decides which car avoid options show) */
-  encodedValues = ALL_ENCODED_VALUES
+  /** The car avoid options the backend offers (it hides any the routing graph can't use) */
+  avoidOptions = ALL_AVOIDS
+  /** Whether the backend offers avoiding steep hills (the routing graph knows slopes) */
+  steepHills = true
   private nextId = 100
 
   private readonly origin: string
@@ -158,20 +160,24 @@ export class MockStack {
     }
 
     // ---------- routing (GraphHopper) ----------
-    if (route === 'GET /api/info') return json(routingInfo(this.profiles, this.encodedValues))
     if (route === 'POST /api/route') {
       return json(routeResponse((body as { profile: string }).profile))
     }
 
     // ---------- public transport (OpenTripPlanner) ----------
     if (route === 'POST /api/transit') {
-      const { query, variables } = body as { query: string; variables?: TransitVariables }
-      if (!query.includes('planConnection')) return json(TRANSIT_MODES)
+      const { variables } = body as { variables?: TransitVariables }
       const allowed = variables?.modes?.transit.transit.map((m) => m.mode) ?? null
       return json(transitPlan(allowed))
     }
 
     // ---------- maps_backend ----------
+    if (route === 'GET /api/capabilities') {
+      return json({
+        routing: routingCapabilities(this.profiles, this.avoidOptions, this.steepHills),
+        transit: TRANSIT_CAPABILITIES,
+      })
+    }
     if (route === 'GET /api/browse/categories') return json(CATEGORIES)
     if (route === 'GET /api/browse') return json(browseResults(params.get('category') ?? ''))
     if (route === 'GET /api/places/search') return json([])

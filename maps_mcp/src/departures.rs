@@ -12,7 +12,6 @@ use crate::links::links;
 use crate::otp;
 use crate::stack::Stack;
 use crate::time;
-use crate::transit::TransitMode;
 use crate::upstream::Error;
 
 const MAX_STOPS: usize = 6;
@@ -30,7 +29,7 @@ pub struct DeparturesParams {
     /// How far from `near` to look, in metres (up to 1000, default 300)
     pub radius_m: Option<u32>,
     /// Only stops served by these kinds of transport
-    pub modes: Option<Vec<TransitMode>>,
+    pub modes: Option<Vec<String>>,
     /// Departures at or after this local time, e.g. "2026-10-24T08:30"; now by default
     pub after: Option<String>,
     /// Departures per stop (1 to 5, default 3)
@@ -173,11 +172,8 @@ async fn find_stops(
         .as_deref()
         .map(str::trim)
         .filter(|n| !n.is_empty());
-    let modes: Option<Vec<String>> = params.modes.as_ref().map(|modes| {
-        let name = |m: &TransitMode| serde_json::to_value(m).ok()?.as_str().map(String::from);
-        modes.iter().filter_map(name).collect()
-    });
-    let served = |stop: &OtpStop| match (&modes, &stop.vehicle_mode) {
+    let modes = &params.modes;
+    let served = |stop: &OtpStop| match (modes, &stop.vehicle_mode) {
         (Some(modes), Some(mode)) => modes.contains(mode),
         _ => true,
     };

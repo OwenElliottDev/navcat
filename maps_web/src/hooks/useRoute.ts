@@ -1,5 +1,6 @@
 import axios from 'axios'
-import { getRoute, type RouteOptions } from '../api/routing'
+import type { RouteRule } from '../api/capabilities'
+import { getRoute } from '../api/routing'
 import type { LngLat, RoutePath } from '../types'
 import { isUnreachable, useFetch, type FetchState } from './useFetch'
 
@@ -20,14 +21,14 @@ function errorMessage(err: unknown): string {
 
 /**
  * A walking, cycling or driving route between two points (null ends skip the request), steered by
- * the options (things to avoid, steep hills) if they're given.
+ * the rules (things to avoid, steep hills) if there are any.
  */
 export function useRoute(
   from: LngLat | null,
   to: LngLat | null,
   profile: string,
-  options: RouteOptions = {},
+  priority: RouteRule[] = [],
 ): RouteState {
-  const key = from && to ? JSON.stringify([profile, from, to, options]) : null
-  return useFetch(key, (signal) => getRoute(from!, to!, profile, options, signal), errorMessage)
+  const key = from && to ? JSON.stringify([profile, from, to, priority]) : null
+  return useFetch(key, (signal) => getRoute(from!, to!, profile, priority, signal), errorMessage)
 }
