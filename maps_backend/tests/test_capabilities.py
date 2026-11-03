@@ -1,5 +1,8 @@
 """Reading what GraphHopper and OpenTripPlanner can do into /api/capabilities."""
 
+import pytest
+
+from app import capabilities, upstream
 from app.capabilities import AVOIDS, routing_from_info, transit_from_data
 
 INFO = {
@@ -68,3 +71,25 @@ def test_timetables_without_dates():
     transit = transit_from_data({"routes": [], "agencies": [], "serviceTimeRange": None})
     assert transit.modes == []
     assert transit.timetables_from is None
+
+
+def test_answers_are_kept_for_a_minute_but_failures_are_not(monkeypatch):
+    now = 1000.0
+    asked = 0
+
+    def fetch() -> int:
+        nonlocal asked
+        asked += 1
+        if asked == 1:
+            raise upstream.Unavailable("still starting")
+        return asked
+
+    monkeypatch.setattr(capabilities.time, "monotonic", lambda: now)
+    cached = capabilities._cached(fetch)
+    with pytest.raises(upstream.Unavailable):
+        cached()
+    assert cached() == 2
+    now += capabilities.CACHE_SECONDS
+    assert cached() == 2
+    now += 1
+    assert cached() == 3

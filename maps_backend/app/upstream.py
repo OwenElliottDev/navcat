@@ -6,13 +6,18 @@ import json
 import pycurl
 
 
-class Unavailable(Exception):
+class Failed(Exception):
+    """No usable answer, for callers that fall back the same way whatever the cause."""
+
+
+class Unavailable(Failed):
     """The service isn't answering, e.g. still starting or importing."""
 
 
-class Rejected(Exception):
+class Rejected(Failed):
     """The service turned the request down (a 4xx). Callers turn the causes they know into an
-    ApiError; any other is a request this app shouldn't have sent, so a 500."""
+    ApiError; any other is a request this app shouldn't have sent, so a 500, or logged where the
+    caller falls back."""
 
     def __init__(self, url: str, status: int, reason: str):
         super().__init__(f"{url} answered {status}: {reason}")

@@ -10,7 +10,9 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import psycopg
@@ -80,6 +82,36 @@ def photos_and_place_edits_off_url(base_url, database_url, photos_dir):
 
 
 @contextlib.contextmanager
+def _fake_service(handler: type[BaseHTTPRequestHandler]):
+    """A stand-in for one of the stack's services, answered by `handler`; yields its URL."""
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        yield f"http://127.0.0.1:{server.server_address[1]}"
+    finally:
+        server.shutdown()
+
+
+class _TurnsEverythingDown(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        pass
+
+    def do_GET(self):
+        self.send_response(400)
+        self.end_headers()
+        self.wfile.write(b'{"message": "A request only a bug here could make"}')
+
+
+@pytest.fixture(scope="session")
+def rejecting(base_url, database_url, photos_dir):
+    """Another backend whose Photon, TileServer and GraphHopper answer everything with a 400."""
+    with _fake_service(_TurnsEverythingDown) as url:
+        services = {"PHOTON_URL": url, "TILESERVER_URL": url, "GRAPHHOPPER_URL": url}
+        with _serve(database_url, photos_dir, **services) as backend:
+            yield Client(backend)
+
+
+@contextlib.contextmanager
 def _serve(database_url: str, photos_dir: Path, **settings: str):
     port = _free_port()
     env = {
@@ -115,6 +147,15 @@ def _serve(database_url: str, photos_dir: Path, **settings: str):
     finally:
         server.terminate()
         server.wait(10)
+
+
+def logged(backend: Client, photos_dir: Path, text: str) -> bool:
+    """Whether the backend's log has `text` within a few seconds (it can log after answering)."""
+    log = photos_dir.parent / f"uvicorn-{backend.base_url.rsplit(':', 1)[1]}.log"
+    deadline = time.monotonic() + 5
+    while text not in log.read_text() and time.monotonic() < deadline:
+        time.sleep(0.1)
+    return text in log.read_text()
 
 
 def _wait_until_up(server: subprocess.Popen, url: str, log_path: Path) -> None:
