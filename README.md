@@ -145,37 +145,7 @@ The places import (`maps-poi-import`) only re-runs when its inputs change. To fo
 re-import, run `docker compose run --rm -e FORCE=1 maps-poi-import`. The topo terrain build
 (`maps-terrain-build`) works the same way.
 
-## Testing
-
-Frontend commands run from `maps_web/`, backend ones from `maps_backend/` and `cargo test` from
-`maps_mcp/`.
-
-```
-npm test                  # frontend unit tests
-npm run test:e2e          # the app in a browser, with every service mocked
-npm run test:e2e:docker   # the same plus screenshot comparison (needs Docker)
-npm run test:e2e:update   # re-record screenshots after an intended UI change
-uv run pytest             # backend unit tests
-sh tests/api/run.sh       # backend API tests (needs Docker)
-cargo test                # MCP server
-MAPS_URL=http://localhost:7000 uv run pytest tests/smoke   # against a running stack
-```
-
-The browser tests answer every request from `e2e/fixtures` (see `e2e/mockStack.ts`) and fail on
-any request with no fixture or to an external host, so a new API call needs a fixture. Tests can
-check outgoing requests with `stack.requestsTo(...)`, and `npx playwright test --ui` runs them
-interactively. Screenshots cover the UI panels only, with the map canvas hidden, and are only
-compared inside the pinned Playwright container, since font rendering differs between systems;
-after re-recording them, review the changed images in the diff.
-
-The API tests start the real backend against a fresh PostGIS database, so migrations run from an
-empty schema. The `pois` and `turn_lanes` tables are fixtures in the shape the import makes
-(`tests/api/conftest.py`); keep them in step with `pois.lua`. Set `TEST_DATABASE_URL` to use an
-existing Postgres instead.
-
-The smoke tests go through nginx and check that every service returns real data. Run them after
-a data update, or after changing the import or `nginx.conf`. They target Melbourne; set
-`SMOKE_FROM`, `SMOKE_TO` and `SMOKE_QUERY` for another region (see `tests/smoke/`).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for running the tests.
 
 ## Data sources and attribution
 
