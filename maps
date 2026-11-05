@@ -34,7 +34,7 @@ get_images() {
       compose config --services
     } | sort -u)
   fi
-  compose --profile setup --profile updates --ignore-buildable "$@"
+  compose --profile setup --profile updates pull -q --ignore-buildable "$@"
   compose --profile setup --profile updates build "$@"
 }
 
