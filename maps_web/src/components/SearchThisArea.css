@@ -1,6 +1,6 @@
 .search-this-area {
   position: absolute;
-  top: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
   /* Centred over the map to the right of the side panel (412px wide with its margin) */
   left: calc(50% + 206px);
   z-index: 2;
@@ -26,7 +26,7 @@
   .search-this-area {
     top: auto;
     left: 50%;
-    bottom: calc(var(--sheet-visible) + 16px);
+    bottom: calc(var(--clear-bottom) + 16px);
     transition: bottom 0.32s var(--ease-out);
   }
 }
