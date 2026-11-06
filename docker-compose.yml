@@ -247,6 +247,8 @@ services:
       - --polygon=/osm/${OSM_FILE:-australia.osm.pbf}.poly
       # ./maps update builds into another file, then swaps it in
       - --output=/data/${TILES_BUILD_FILE:-${TILES_FILE:-australia.mbtiles}}
+      # Optionally use a mirror or other source for water polygons
+      - --water_polygons_url=${WATER_POLYGONS_URL:-https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip}
       - --force
 
   maps-transit-download:
