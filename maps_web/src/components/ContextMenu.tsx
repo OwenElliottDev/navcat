@@ -5,6 +5,7 @@ import { useShare } from '../hooks/useShare'
 import { useMap } from '../map/MapContext'
 import type { Features, LngLat } from '../types'
 import { coordLabel } from '../utils/format'
+import { viewportHeight } from '../utils/viewport'
 import { Icon, type IconName } from './icons'
 import './ContextMenu.css'
 
@@ -44,7 +45,7 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
   useLayoutEffect(() => {
     const menu = ref.current!
     menu.style.left = `${Math.min(x, window.innerWidth - menu.offsetWidth - EDGE_GAP)}px`
-    menu.style.top = `${Math.min(y, window.innerHeight - menu.offsetHeight - EDGE_GAP)}px`
+    menu.style.top = `${Math.min(y, viewportHeight() - menu.offsetHeight - EDGE_GAP)}px`
   }, [x, y, items.length])
 
   useLayoutEffect(() => {
