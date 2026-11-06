@@ -49,8 +49,6 @@ export const OVERLAYS: { id: Overlay; label: string; hint?: string }[] = [
 const ROAD_DATA_OVERLAYS: Overlay[] = ['bikePaths', 'speedLimits']
 const ROAD_DATA_MINZOOM = 15
 
-// ---------- recolouring ----------
-
 /** What each layer in the style draws, so a palette can colour it */
 type Role =
   | 'background'
@@ -139,8 +137,6 @@ function recolour(layer: LayerSpecification, palette: Palette): LayerSpecificati
   }
 }
 
-// ---------- topo ----------
-
 /** Where the topo map's elevation comes from (set up in terrain.ts) */
 export interface TerrainUrls {
   /** Elevation tiles, for hillshading */
@@ -223,8 +219,6 @@ const CONTOURS: LayerSpecification[] = [
     },
   },
 ]
-
-// ---------- overlays ----------
 
 const zoomWidth = (low: number, high: number): ExpressionSpecification => [
   'interpolate',
@@ -415,8 +409,6 @@ function overlayLayers(overlay: Overlay): LayerSpecification[] {
   }
 }
 
-// ---------- road labels ----------
-
 /** A layer's own label as an expression; token strings like "{name:latin}" become one. */
 export function labelExpression(textField: unknown): ExpressionSpecification {
   if (Array.isArray(textField)) return textField as ExpressionSpecification
@@ -462,8 +454,6 @@ function hideHouseNumbers(layer: LayerSpecification): LayerSpecification {
   if (!('source-layer' in layer) || layer['source-layer'] !== 'housenumber') return layer
   return { ...layer, layout: { ...layer.layout, visibility: 'none' } } as LayerSpecification
 }
-
-// ---------- putting it together ----------
 
 export function buildStyle(
   base: StyleSpecification,

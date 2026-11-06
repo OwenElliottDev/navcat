@@ -41,7 +41,6 @@ COPY --from=build /graphhopper/web/target/graphhopper*.jar ./
 # GraphHopper is Apache-2.0: ship its licence and notices, and a list of the changes made to it
 COPY --from=build /graphhopper/LICENSE.txt /graphhopper/NOTICE.md ./
 COPY MODIFICATIONS.md ./
-# Profiles: changing them or their encoded values needs the graph rebuilt (./maps update routing)
 COPY graphhopper.sh config.yml traffic-signals.patch ./
 COPY custom_models ./custom_models
 # A graph only works with the config it was built with: the import stores this next to it, and

@@ -79,8 +79,6 @@ pub struct Departure {
     pub live: bool,
 }
 
-// ---------- OTP's answers ----------
-
 const BY_NAME: &str = "query($name: String!) {
   stops(name: $name) { gtfsId name code lat lon vehicleMode }
 }";

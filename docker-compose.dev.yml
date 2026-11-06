@@ -1,10 +1,9 @@
-# Builds the app's images from this checkout instead of pulling the published ones. `./maps dev`
-# uses it for one command; to use it always, put this in .env (./maps follows it too):
+# Builds the images from this checkout. `./maps dev` uses it for one command; to use it always,
+# put this in .env:
 #
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml
 #
-# Then `docker compose up -d --build maps-web` (or any service) rebuilds after a change.
-# Services sharing an image each name its build too, so nothing tries to pull a :dev image.
+# Services that share an image each declare the build, so compose never pulls a :dev tag.
 
 services:
   maps-web:

@@ -77,7 +77,6 @@ pub async fn travel_times(stack: &Stack, params: TravelTimesParams) -> Result<Tr
     }
     let mut points = params.origins.iter().chain(&params.destinations);
     points.try_for_each(Point::check)?;
-    // Once for every pair
     let rules = if by_transit {
         Vec::new()
     } else {
@@ -192,8 +191,7 @@ mod tests {
         assert!(error(avoiding).await.contains("bad_option"));
     }
 
-    // The route options are looked up once for every pair, so when that fails the whole call
-    // does, rather than each pair saying the same thing
+    // One error for the call, not the same one for each pair
     #[tokio::test]
     async fn fails_as_a_whole_when_its_options_cant_be_looked_up() {
         let mut stack = Stack::new(&Config::from_env().unwrap());

@@ -72,8 +72,6 @@ export function PanelTop() {
   // The search bar shows what's open, and clearing it closes that
   const searchValue = place ? describePlace(place).name : browse ? browse.category.label : ''
 
-  /* ---------- dropdown shortcuts ---------- */
-
   const searchShortcuts = [
     ...account.savedPlaces.map((saved) =>
       savedPlaceShortcut(saved, () => actions.showSnapshot(saved)),

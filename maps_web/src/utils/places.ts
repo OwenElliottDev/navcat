@@ -39,7 +39,7 @@ export function pointPlace(at: LngLat, name: string, kind?: string): PhotonFeatu
   }
 }
 
-/** What we store about a place in saved places and recent searches. */
+/** What's stored about a place in saved places and recent searches. */
 export function toSnapshot(feature: PhotonFeature): PlaceSnapshot {
   const { name, address } = describePlace(feature)
   const { lng, lat } = placePosition(feature)

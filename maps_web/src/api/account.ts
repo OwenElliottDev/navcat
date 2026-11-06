@@ -1,8 +1,6 @@
 import type { NewSavedPlace, Recent, RecentSearch, SavedPlace, User } from '../types'
 import { http } from './http'
 
-// Accounts, saved places and recent searches (maps_backend)
-
 export async function getMe(): Promise<User | null> {
   const { data } = await http.get<{ user: User | null }>('/me')
   return data.user

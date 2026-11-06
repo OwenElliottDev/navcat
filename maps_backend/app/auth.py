@@ -15,8 +15,6 @@ from .models import User
 SESSION_COOKIE = "session"
 COOKIE_PATH = "/api"
 
-# ---------- passwords ----------
-
 _hasher = PasswordHasher()
 # Checked when the username doesn't exist, so a wrong username takes as long as a wrong password
 _DUMMY_HASH = _hasher.hash("not a real password")
@@ -32,9 +30,6 @@ def verify_password(password_hash: str | None, password: str) -> bool:
     except VerifyMismatchError:
         return False
     return password_hash is not None
-
-
-# ---------- sessions ----------
 
 
 def _token_hash(token: str) -> bytes:
@@ -88,9 +83,6 @@ async def require_user(user: Annotated[User | None, Depends(optional_user)]) -> 
 
 OptionalUser = Annotated[User | None, Depends(optional_user)]
 CurrentUser = Annotated[User, Depends(require_user)]
-
-
-# ---------- brute-force protection ----------
 
 
 class LoginThrottle:

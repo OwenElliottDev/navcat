@@ -12,7 +12,7 @@ import type { DataSlice } from './data'
 import { selectIsNavigating, selectIsTransit, selectProfile } from './selectors'
 import { useAppStore } from '.'
 
-/** The rules for the chosen options a travel mode has */
+/** The rules for the chosen options that apply to the travel mode */
 function routeRules(
   options: ReturnType<typeof routeOptionsFor>,
   avoid: string[],
@@ -69,7 +69,6 @@ export function TripData() {
   const from = waypoints.from?.position ?? null
   const to = waypoints.to?.position ?? null
 
-  // Walking, cycling and driving come from GraphHopper; public transport from OpenTripPlanner
   useKeep(
     'route',
     useRoute(

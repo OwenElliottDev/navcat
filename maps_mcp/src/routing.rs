@@ -358,7 +358,6 @@ mod tests {
         assert!(error.contains("bad_avoid"), "{error}");
     }
 
-    // Bad input is turned down before the backend is asked for the options' rules
     #[tokio::test]
     async fn checks_the_trip_before_looking_up_options() {
         let mut stack = Stack::new(&crate::config::Config::from_env().unwrap());

@@ -1,4 +1,3 @@
-# Builds the app, then serves it with nginx (which also proxies /api to the backends)
 # The built files are the same on every platform, so build them natively (no emulation)
 FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app

@@ -50,7 +50,7 @@ export function useFollowCamera(
   // the mouse is down: else a drag would be lost before it got far enough to count
   const isTouched = useRef(false)
 
-  // A drag or rotate by the user (not by us) stops following
+  // A drag or rotate by the user (not by the camera) stops following
   useEffect(() => {
     if (!map || !active) return
     const stop = (e: MapLibreEvent & { originalEvent?: Event }) => {

@@ -1,6 +1,6 @@
 import type { Recent, RecentSearch } from '../types'
 
-// Recent searches for signed-out users. They never leave this browser.
+// Recent searches for signed-out users
 
 const STORAGE_KEY = 'maps.recents'
 export const MAX_RECENTS = 20
@@ -19,7 +19,7 @@ export function saveLocalRecents(recents: Recent[]) {
     if (recents.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(recents))
     else localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // Storage blocked (private mode): history just won't persist
+    // Storage blocked (private mode): history isn't kept
   }
 }
 
