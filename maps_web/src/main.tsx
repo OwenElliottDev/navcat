@@ -8,6 +8,9 @@ import { FeaturesProvider } from './features/FeaturesProvider.tsx'
 import { linkedView } from './linkedView'
 import { MapProvider } from './map/MapProvider.tsx'
 import { useAppStore } from './store'
+import { isIosApp } from './utils/viewport'
+
+if (isIosApp) document.documentElement.classList.add('ios-app')
 
 // Opened from a link to a spot: say what's there, leaving the map where the link put it
 if (linkedView?.marker) useAppStore.getState().showWhatsHere(linkedView.marker, false)
