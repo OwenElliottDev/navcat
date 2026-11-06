@@ -34,7 +34,7 @@ export function useRecentsStore(user: User | null, ready: boolean) {
         setServer({ userId, recents: list })
       })
       .catch(() => {
-        // Keep whatever we were showing
+        // Keep showing the last list
       })
     return () => {
       cancelled = true

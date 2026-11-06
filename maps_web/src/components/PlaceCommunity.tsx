@@ -30,8 +30,6 @@ export function PlaceCommunity({ place, photos, reviews, rating, onChanged }: Pl
   )
 }
 
-// ---------- photos ----------
-
 function Photos({
   place,
   photos,
@@ -72,7 +70,6 @@ function Photos({
     onChanged()
   }
 
-  // Nothing to show or add
   if (!allowPhotos && photos.length === 0) return null
 
   return (
@@ -114,8 +111,8 @@ function Photos({
         <Dialog title="Photo not accepted" onClose={() => setIsUnsafe(false)}>
           <div className="form">
             <p>
-              This image has been classified as containing NSFW or NSFL content which cannot be
-              accepted for submission. Please try a different photo.
+              This photo looks like it shows explicit or graphic content, so it can't be added. Try
+              a different photo.
             </p>
             <div className="form__actions">
               <button
@@ -142,8 +139,6 @@ function Photos({
     </section>
   )
 }
-
-// ---------- reviews ----------
 
 interface ReviewsProps {
   place: PlaceRef

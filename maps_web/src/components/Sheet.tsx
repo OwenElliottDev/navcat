@@ -67,7 +67,6 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
   const contentEl = useRef<HTMLDivElement | null>(null)
   const innerEl = useRef<HTMLDivElement | null>(null)
 
-  // New content opens at low height
   const [lastKey, setLastKey] = useState(contentKey)
   if (contentKey !== lastKey) {
     setLastKey(contentKey)

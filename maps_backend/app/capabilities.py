@@ -36,7 +36,6 @@ class Avoid:
 DRIVING = ("car",)
 WALKING_AND_CYCLING = ("foot", "bike", "bike_paths", "racingbike", "gravel", "mtb")
 
-# What a drive can avoid
 AVOIDS = {
     "motorways": Avoid("road_class", "road_class == MOTORWAY", 0.1),
     "tolls": Avoid("toll", "toll == ALL", 0.1),
@@ -90,7 +89,7 @@ class Routing(ApiModel):
     avoid: list[AvoidOption]
     """What a drive can avoid here"""
     steep_hills: SteepHills | None
-    """For walks and rides, when the routing graph knows how steep roads are and has one of them"""
+    """For walks and rides, when the routing graph knows how steep roads are and has either"""
 
 
 class Transit(ApiModel):

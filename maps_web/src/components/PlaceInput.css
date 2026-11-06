@@ -4,8 +4,6 @@
   min-width: 0;
 }
 
-/* ---------- the box ---------- */
-
 .field {
   position: relative;
   display: flex;
@@ -82,8 +80,6 @@
 .field--to {
   --dot: var(--accent);
 }
-
-/* ---------- the dropdown ---------- */
 
 .suggestions {
   list-style: none;

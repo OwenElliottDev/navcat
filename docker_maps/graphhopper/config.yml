@@ -1,13 +1,10 @@
-# GraphHopper config, built into the maps-graphhopper image.
-# Changing profiles, encoded values or CH/LM settings needs the graph rebuilt:
-# ./maps update routing
+# Changing profiles, encoded values or CH/LM settings needs ./maps update routing
 
 graphhopper:
   datareader.file: ""
   graph.location: graph-cache
 
-  # Built-in models (car.json, bike.json, mtb.json, ...) are found by name;
-  # the additional ones are in graphhopper/custom_models
+  # Built-in models (car.json, bike.json, mtb.json, ...) are also found by name
   custom_models.directory: custom_models
 
   profiles:

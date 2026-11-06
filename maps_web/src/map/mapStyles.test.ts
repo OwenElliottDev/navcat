@@ -137,7 +137,7 @@ describe('buildStyle', () => {
     expect(order.indexOf('topo-hillshade')).toBe(order.indexOf('building') - 1)
     expect(order.indexOf('topo-contours')).toBeLessThan(order.indexOf('road_minor'))
 
-    // Without terrain built, topo is just the standard map
+    // Without terrain built, topo is the standard map
     expect(buildStyle(BASE, look('topo'))).toEqual(BASE)
   })
 

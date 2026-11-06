@@ -267,8 +267,6 @@ test('simulated navigation follows the route with lane guidance', async ({ page,
   await expect(page.locator('.route-summary')).toBeVisible()
 })
 
-/* ---------- "What's here?" and the map menu's directions ---------- */
-
 /** A spot on the map, as fractions of its size: clear of the panel on wide screens and phones */
 async function spot(page: Page, fx: number, fy: number) {
   const box = (await page.locator('.maplibregl-canvas').boundingBox())!

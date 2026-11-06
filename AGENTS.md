@@ -99,6 +99,7 @@ nginx resolves upstreams per request (proxying to variables), so the site still 
 - Don't commit, push, open pull requests or comment on issues unless asked to, for that specific change.
 - Don't generate a pull request description for the user to paste. Help them write their own: point out a key detail they missed, cut what's padded, fix what's wrong. It should be a few sentences on what changed and why, in their words.
 - Fix lint and formatting failures with the formatters (`npm run format`, `ruff format`, `cargo fmt`), not by hand.
+- Don't wrap markdown by hand, whatever the line length in code: one line per paragraph or list item, and editors and renderers do the wrapping.
 - Propose a plan before building a feature that spans several services.
 
 ## Examples

@@ -27,7 +27,7 @@ export const KNOWN_ROUTING: Routing = {
   steepHills: null,
 }
 
-/** The route options for a travel mode, as the backend says which modes each is for */
+/** The route options the backend offers for a travel mode */
 export function routeOptionsFor(routing: Routing, profile: string) {
   return {
     avoid: routing.carAvoids.filter((option) => option.profiles.includes(profile)),
@@ -43,7 +43,7 @@ export interface CapabilitiesState {
 
 /**
  * Travel modes and their options, and the transit modes in the timetables. Fetched again when
- * a travel mode is picked whose part didn't come (GraphHopper or OTP wasn't answering, e.g. still
+ * a travel mode is picked whose part is missing (GraphHopper or OTP wasn't answering, e.g. still
  * starting, or the backend was down).
  */
 export function useCapabilities(profile: string): CapabilitiesState {
@@ -72,7 +72,7 @@ export function useCapabilities(profile: string): CapabilitiesState {
         }))
       },
       () => {
-        // Backend down: keep what we have
+        // Backend down: keep the last answer
       },
     )
   }, [profile, missing])

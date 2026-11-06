@@ -9,7 +9,7 @@ import { steadyPinchRotation } from './pinchRotation'
 import { addPoiLayers } from './poiLayers'
 import { addRouteLayers } from './routeLayers'
 
-// MapLibre finds its worker at runtime, which Vite can't see, so bundle it ourselves
+// MapLibre finds its worker at runtime, which Vite can't see, so bundle it here
 setWorkerUrl(workerUrl)
 
 export function MapCanvas() {

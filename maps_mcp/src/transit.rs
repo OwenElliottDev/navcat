@@ -109,8 +109,6 @@ pub struct TransitLeg {
     pub distance_km: f64,
 }
 
-// ---------- OTP's answer ----------
-
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct PlanData {

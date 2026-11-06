@@ -1,11 +1,8 @@
 #!/bin/sh
-# Downloads the GTFS timetables OpenTripPlanner builds its graph from, and gives it the streets
-# around them (for walking to and from stops): cut from the OSM extract maps-download already
-# fetched, or downloaded from TRANSIT_OSM_URL if that's set. transit_prepare.py works out the
-# area to cut, moves feeds into one time zone and writes OTP's build-config.json.
-#
-# Everything goes into download/ first and only replaces the current files once it's all
-# there, so a failed download leaves the last good set in place.
+# Downloads the GTFS feeds and the streets around their stops, cut from the OSM extract or
+# downloaded from TRANSIT_OSM_URL. transit_prepare.py works out the area, moves feeds into one
+# time zone and writes OTP's build-config.json. Files land in download/ and replace the current
+# ones only once complete, so a failed download keeps the last good set.
 set -eu
 . /fetch.sh
 cd /data

@@ -93,7 +93,7 @@ test('closing the share sheet without sharing copies nothing', async ({ page }) 
   await page.getByRole('menuitem', { name: 'Share' }).click()
   await expect.poll(() => sharedLinks(page)).toHaveLength(1)
 
-  // Copied after, so a copy of the link would come first
+  // Copied after Share, so a link copied by Share would come first
   const coords = page.getByRole('menuitem', { name: /^Copy coordinates/ })
   const text = await coords.textContent()
   await coords.click()

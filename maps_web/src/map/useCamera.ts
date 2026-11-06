@@ -17,7 +17,6 @@ export interface Overlays {
 const MARGIN = 40
 const NO_PADDING: Padding = { top: 0, right: 0, bottom: 0, left: 0 }
 
-/** Padding that keeps whatever we zoom to clear of the panel (or top bar and sheet on phones). */
 /** Shrinks padding so at least `room` pixels of map are left each way to fit things into. */
 function leaveRoom(padding: Padding, room = 120): Padding {
   const shrink = (a: number, b: number, size: number): [number, number] => {
@@ -31,6 +30,7 @@ function leaveRoom(padding: Padding, room = 120): Padding {
   return { top, right, bottom, left }
 }
 
+/** Padding that keeps what the map zooms to clear of the panel (or top bar and sheet on phones). */
 function paddingAround({ panel, top, sheet }: Overlays): Padding {
   const height = window.innerHeight
   if (window.innerWidth > 640) {

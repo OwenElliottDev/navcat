@@ -95,8 +95,6 @@ async def _load(db: Db, place_type: PlaceType, place_id: int) -> PoiDetails:
     return PoiDetails(**details_from_row(row))
 
 
-# ---------- places ----------
-
 # Names that start with what was typed come first, then the nearest. Overture places are
 # found with the trigram index the POI import makes on their names, nearest 20 first.
 SEARCH_SQL = f"""
@@ -214,9 +212,6 @@ async def delete_added_place(place_id: int, user: CurrentUser, db: Db) -> None:
         (place_id,),
     )
     delete_photo_files([row["id"] for row in await cursor.fetchall()])
-
-
-# ---------- reviews and photos ----------
 
 
 class Review(ApiModel):

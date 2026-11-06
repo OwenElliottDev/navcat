@@ -24,9 +24,6 @@ def browse(c, category="cafe", **params):
     return c.get("/api/browse", params={"category": category, "bbox": BBOX, "near": NEAR, **params})
 
 
-# ---------- browse ----------
-
-
 def test_browse_finds_a_category_in_the_box_nearest_first(client):
     response = browse(client())
     assert response.status == 200
@@ -80,9 +77,6 @@ def test_before_the_poi_import(client, no_places):
     assert c.get("/api/health").json()["pois"] is None
 
 
-# ---------- search ----------
-
-
 def search(c, q, near=NEAR):
     response = c.get("/api/places/search", params={"q": q, "near": near})
     assert response.status == 200, response.body
@@ -110,9 +104,6 @@ def test_search_puts_names_starting_with_the_text_first(user):
 
 def test_search_needs_two_characters(client):
     assert client().get("/api/places/search", params={"q": "c"}).status == 422
-
-
-# ---------- place details and corrections ----------
 
 
 def test_get_a_place(client):
@@ -177,8 +168,6 @@ def test_correcting_needs_a_known_place(user):
     assert c.patch("/api/places/U/999999", {"name": "Nope"}).status == 404
 
 
-# ---------- places people add ----------
-
 NEW_PLACE = {
     "name": "Pop-up Cafe",
     "category": "cafe",
@@ -234,9 +223,6 @@ def test_only_whoever_added_a_place_can_remove_it(user, client, db):
     assert reviews.fetchone()["n"] == 0
 
 
-# ---------- reviews ----------
-
-
 def test_reviews_and_rating(user, client):
     alice, bob = user(), user()
     path = "/api/places/N/5"
@@ -277,9 +263,6 @@ def test_no_reviews_yet(client):
 )
 def test_reviews_are_checked(user, review):
     assert user().put("/api/places/N/5/review", review).status == 422
-
-
-# ---------- photos ----------
 
 
 def upload(c, data: bytes, content_type="image/jpeg", place="N/3"):
@@ -340,9 +323,6 @@ def test_only_the_uploader_removes_a_photo(user, client, photos_dir: Path):
 
 def test_missing_photo(client):
     assert client().get("/api/photos/987654").status == 404
-
-
-# ---------- turning contributions off ----------
 
 
 def test_features_say_contributions_are_on(client):

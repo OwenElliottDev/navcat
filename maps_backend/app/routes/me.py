@@ -38,9 +38,6 @@ async def delete_me(user: CurrentUser, request: Request, response: Response, db:
     delete_photo_files(photo_ids)
 
 
-# ---------- saved places ----------
-
-
 class SavedPlaceIn(PlaceSnapshot):
     kind: Literal["home", "work", "favourite"]
     label: str = Field(min_length=1, max_length=80)
@@ -104,9 +101,6 @@ async def rename_place(
 @router.delete("/places/{place_id}", status_code=204)
 async def delete_place(place_id: int, user: CurrentUser, db: Db) -> None:
     await db.execute("DELETE FROM saved_places WHERE id = %s AND user_id = %s", (place_id, user.id))
-
-
-# ---------- recent searches ----------
 
 
 class RecentIn(ApiModel):
