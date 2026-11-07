@@ -9,7 +9,8 @@ import { defineConfig, devices } from '@playwright/test'
 //
 // Screenshots only match when fonts and rendering are identical, so they're compared only in
 // the pinned Playwright container (CI and the docker scripts set E2E_SCREENSHOTS).
-const PORT = 7100
+// Not 7100: that's the MCP server's, and reuseExistingServer would run the tests against it
+const PORT = Number(process.env.E2E_PORT ?? 7400)
 const screenshots = Boolean(process.env.E2E_SCREENSHOTS)
 
 export default defineConfig({
