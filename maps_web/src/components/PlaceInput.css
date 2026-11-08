@@ -38,6 +38,10 @@
   appearance: none;
 }
 
+.field input.place-input__picked {
+  caret-color: transparent;
+}
+
 .field input::placeholder {
   color: var(--muted);
 }
