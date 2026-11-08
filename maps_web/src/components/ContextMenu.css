@@ -28,6 +28,20 @@
   outline: none;
 }
 
+.context-menu__label {
+  text-align: start;
+}
+
+/* Takes the width of the item's widest label, but no height */
+.context-menu__label[data-fits]::after {
+  content: attr(data-fits);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre;
+}
+
 .context-menu__item > .icon {
   color: var(--muted);
 }

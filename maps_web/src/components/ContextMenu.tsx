@@ -71,6 +71,7 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
           icon={sharing.icon}
           title={sharing.title}
           onClick={() => sharing.share(position, map?.getZoom())}
+          fits={['Share', 'Link copied']}
         >
           {sharing.copied ? 'Link copied' : 'Share'}
         </MenuItem>
@@ -79,6 +80,7 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
           aria-label={copied ? undefined : `Copy coordinates ${coords}`}
           title={title}
           onClick={() => copy(coords)}
+          fits={[coords, 'Coordinates copied']}
         >
           {copied ? 'Coordinates copied' : coords}
         </MenuItem>
@@ -94,12 +96,20 @@ export function ContextMenu({ x, y, position, onSelect, onClose }: ContextMenuPr
   )
 }
 
-function MenuItem({ icon, children, ...props }: { icon: IconName } & ComponentProps<'button'>) {
+interface MenuItemProps extends ComponentProps<'button'> {
+  icon: IconName
+  /** Every label the item can show, so the menu keeps its width when the label changes */
+  fits?: string[]
+}
+
+function MenuItem({ icon, fits, children, ...props }: MenuItemProps) {
   return (
     <li role="none">
       <button type="button" role="menuitem" className="row context-menu__item" {...props}>
         <Icon name={icon} />
-        {children}
+        <span className="context-menu__label" data-fits={fits?.join('\n')}>
+          {children}
+        </span>
       </button>
     </li>
   )

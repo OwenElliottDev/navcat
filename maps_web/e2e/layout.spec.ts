@@ -126,6 +126,24 @@ test('the map menu gives each item an icon, with an ellipsis where it opens more
   await expect(items.filter({ hasNot: page.locator('svg.icon') })).toHaveCount(0)
 })
 
+test('the map menu keeps its width when an item says it copied', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  // No share sheet, so "Share" copies the link too
+  await page.addInitScript(() => Object.defineProperty(navigator, 'share', { value: undefined }))
+  await openApp(page)
+  await page.locator('.maplibregl-canvas').click({ button: 'right', position: { x: 200, y: 300 } })
+  const menu = page.getByRole('menu')
+  const width = (await menu.boundingBox())!.width
+
+  await page.getByRole('menuitem', { name: /^Copy coordinates/ }).click()
+  await expect(page.getByRole('menuitem', { name: 'Coordinates copied' })).toBeVisible()
+  expect((await menu.boundingBox())!.width).toBe(width)
+
+  await page.getByRole('menuitem', { name: 'Share' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Link copied' })).toBeVisible()
+  expect((await menu.boundingBox())!.width).toBe(width)
+})
+
 test('the map menu shows where it was opened, and copies it', async ({ page, context, stack }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await openApp(page)
