@@ -5,6 +5,8 @@ const COORDS = /^-?\d+\.\d{5}, -?\d+\.\d{5}$/
 
 test('on phones the place card is a bottom sheet with four heights', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'The sheet is phone-only; wider screens show a side panel')
+  // No sliding, so the sheet and map controls are measured where they stop, not partway there
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await openApp(page)
   await openPlace(page, 'laneway', 'Laneway Espresso')
 
