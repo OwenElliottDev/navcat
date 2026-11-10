@@ -1,4 +1,4 @@
-import { useId, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { usePlaceSuggestions } from '../hooks/usePlaceSuggestions'
 import type { PhotonFeature } from '../types'
 import { describePlace } from '../utils/places'
@@ -47,6 +47,8 @@ interface Option {
   select: () => void
 }
 
+const isTouch = () => matchMedia('(pointer: coarse)').matches
+
 /** A search box with a dropdown of places and shortcuts. */
 export function PlaceInput({
   label,
@@ -63,9 +65,11 @@ export function PlaceInput({
   onClear,
 }: PlaceInputProps) {
   const listId = useId()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [text, setText] = useState(value)
   const [isOpen, setIsOpen] = useState(false)
   const [active, setActive] = useState(-1)
+  const [picked, setPicked] = useState(false)
 
   // Follow the parent's value when it changes
   const [lastValue, setLastValue] = useState(value)
@@ -102,6 +106,10 @@ export function PlaceInput({
     setText(option.label)
     setIsOpen(false)
     setActive(-1)
+    // On touch screens, puts the keyboard away so it doesn't cover what was picked. Elsewhere
+    // focus stays, so Tab carries on from the box, with the caret hidden until it's used again.
+    if (isTouch()) inputRef.current?.blur()
+    else setPicked(true)
     option.select()
   }
 
@@ -113,6 +121,9 @@ export function PlaceInput({
   }
 
   function handleKeyDown(e: KeyboardEvent) {
+    setPicked(false)
+    // Go on a touch keyboard puts it away, even with nothing to pick
+    if (e.key === 'Enter' && isTouch()) inputRef.current?.blur()
     if (e.key === 'Escape') {
       if (!options.length && onClear && text) clear()
       setIsOpen(false)
@@ -141,6 +152,8 @@ export function PlaceInput({
       >
         {leading}
         <input
+          ref={inputRef}
+          className={picked ? 'place-input__picked' : undefined}
           type="search"
           aria-label={label}
           placeholder={placeholder}
@@ -158,7 +171,11 @@ export function PlaceInput({
           }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          onBlur={() => setIsOpen(false)}
+          onMouseDown={() => setPicked(false)}
+          onBlur={() => {
+            setIsOpen(false)
+            setPicked(false)
+          }}
         />
         {onClear && text && (
           <button
@@ -193,7 +210,7 @@ export function PlaceInput({
               className="suggestion"
               role="option"
               aria-selected={i === active}
-              // mousedown + preventDefault keeps focus in the input, so blur doesn't close the list first
+              // mousedown + preventDefault stops the input blurring, which would close the list before the pick
               onMouseDown={(e) => {
                 e.preventDefault()
                 choose(option)

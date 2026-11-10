@@ -1,5 +1,6 @@
+import type { Locator, Page } from '@playwright/test'
 import { CAFE_ID } from './fixtures/places'
-import { openApp, openPlace } from './helpers'
+import { directionsToMarket, openApp, openPlace } from './helpers'
 import { expect, test } from './mockStack'
 
 test.beforeEach(async ({ page }) => {
@@ -37,6 +38,63 @@ test('a picked place opens its card with full details', async ({ page }) => {
   const reviews = card.getByRole('region', { name: 'Reviews' })
   await expect(reviews.getByText('Best flat white in the lane.')).toBeVisible()
   await expect(reviews.getByText('20 Sept 2026')).toBeVisible()
+})
+
+/** Types into a place box and takes the top suggestion with Enter. */
+async function enterSuggestion(page: Page, box: string, text: string, option: RegExp) {
+  const input = page.getByRole('combobox', { name: box })
+  await input.fill(text)
+  await expect(page.getByRole('option', { name: option })).toBeVisible()
+  await input.press('Enter')
+}
+
+const caretHidden = (input: Locator) =>
+  input.evaluate((el) => getComputedStyle(el).caretColor === 'rgba(0, 0, 0, 0)')
+
+test('picking a place on a touch screen puts the keyboard away', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'touch screens only')
+  await openApp(page)
+  const input = page.getByRole('combobox', { name: 'Search places' })
+
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+  await expect(input).not.toBeFocused()
+
+  await enterSuggestion(page, 'Search places', 'station', /Flinders Street Station/)
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Flinders Street Station' }),
+  ).toBeVisible()
+  await expect(input).not.toBeFocused()
+})
+
+test('picking a place with a keyboard keeps focus without the caret', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(isMobile, 'keyboard and mouse only')
+  await openApp(page)
+  const input = page.getByRole('combobox', { name: 'Search places' })
+
+  await enterSuggestion(page, 'Search places', 'station', /Flinders Street Station/)
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'Flinders Street Station' }),
+  ).toBeVisible()
+  await expect(input).toBeFocused()
+  expect(await caretHidden(input)).toBe(true)
+
+  // Using the box again brings the caret back
+  await input.press('ArrowLeft')
+  expect(await caretHidden(input)).toBe(false)
+})
+
+test('Tab goes from a picked start to the destination', async ({ page, isMobile }) => {
+  test.skip(isMobile, 'keyboard and mouse only')
+  await openApp(page)
+  await directionsToMarket(page)
+
+  await enterSuggestion(page, 'Start', 'Flinders', /Flinders Street Station/)
+  await expect(page.getByRole('combobox', { name: 'Start' })).toHaveValue('Flinders Street Station')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('combobox', { name: 'Destination' })).toBeFocused()
 })
 
 test('the week of opening hours expands', async ({ page }) => {
