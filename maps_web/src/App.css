@@ -1,15 +1,21 @@
 .map {
   position: absolute;
   inset: 0;
+  bottom: calc(-1 * var(--under-toolbar));
+}
+
+.maplibregl-ctrl-bottom-right,
+.maplibregl-ctrl-bottom-left {
+  bottom: var(--map-controls-bottom);
 }
 
 /* Panel: a floating column on desktop */
 
 .panel {
   position: absolute;
-  top: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   left: 12px;
-  bottom: 12px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   z-index: 2;
   width: 400px;
   display: flex;
@@ -52,6 +58,10 @@
   display: none;
 }
 
+.maplibregl-ctrl-top-right {
+  top: env(safe-area-inset-top, 0px);
+}
+
 /* Phones: a floating top bar plus the bottom sheet */
 
 @media (max-width: 640px) {
@@ -70,14 +80,13 @@
   /* Map controls ride above the sheet instead of hiding behind it */
   .maplibregl-ctrl-bottom-right,
   .maplibregl-ctrl-bottom-left {
-    bottom: var(--sheet-visible);
     transition: bottom 0.32s var(--ease-out);
   }
 
   /* Above the bottom-right corner, where the attribution button sits */
   .maplibregl-ctrl-top-right {
     top: auto;
-    bottom: calc(var(--sheet-visible) + 44px);
+    bottom: calc(var(--map-controls-bottom) + 44px);
     transition: bottom 0.32s var(--ease-out);
   }
 
@@ -97,7 +106,7 @@
 
 .is-navigating .maplibregl-ctrl-bottom-right,
 .is-navigating .maplibregl-ctrl-bottom-left {
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--under-toolbar) + 84px);
 }
 
 /* Map controls: one size for MapLibre's and the app's (the layers button), bigger on phones */
