@@ -6,6 +6,8 @@
   --line: #d9dedc;
   --accent: #1a5fc8;
   --start: #0f7a66;
+  /* Behind the map, and what iOS tints the status bar with */
+  --backdrop: #ffffff;
 
   /* Translucent surfaces floating over the map */
   --glass: rgba(247, 248, 246, 0.82);
@@ -22,6 +24,13 @@
   /* Set by the bottom sheet on phones, so map controls can sit above it */
   --sheet-visible: 0px;
 
+  /* Below the page, behind Safari's toolbar, where the map carries on */
+  --under-toolbar: 0px;
+
+  /* What's covered at the bottom of the page: the sheet, else the home indicator */
+  --clear-bottom: max(var(--sheet-visible), env(safe-area-inset-bottom, 0px));
+  --map-controls-bottom: calc(var(--clear-bottom) + var(--under-toolbar));
+
   --font:
     -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
@@ -37,6 +46,7 @@
     --line: #35413f;
     --accent: #4d8ef0;
     --start: #2bb596;
+    --backdrop: #1a2122;
     --glass: rgba(26, 33, 34, 0.8);
     --shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 10px 36px rgba(0, 0, 0, 0.6);
@@ -46,6 +56,14 @@
 @media (max-width: 640px) {
   :root {
     --control: 44px;
+  }
+}
+
+/* iOS Safari shows the page under its toolbar (lvh - svh) and around the home indicator, by an
+   amount no CSS value gives (58px on a 393x852 iPhone); the map's middle should stay the screen's */
+@supports (-webkit-touch-callout: none) and (height: 1lvh) {
+  :root:not(.ios-app) {
+    --under-toolbar: calc(100lvh - 100svh + 60px);
   }
 }
 
@@ -62,6 +80,17 @@ body,
   overflow: hidden;
 }
 
+/* iOS home-screen apps draw under the status bar but size the window without it, leaving its
+   height empty at the bottom; 100vh is the whole screen */
+.ios-app {
+  height: 100vh;
+}
+
+/* So fixed elements (the top bar, the sheet) position against the whole screen too */
+.ios-app #root {
+  transform: translateZ(0);
+}
+
 /* Phones zoom the page in when a field with text under 16px is focused, which leaves it
    too wide for the screen; 16px avoids that without turning off pinch-zoom */
 @media (max-width: 640px) {
@@ -75,7 +104,7 @@ body,
 body {
   font: 15px/1.45 var(--font);
   color: var(--ink);
-  background: #e9ecea;
+  background: var(--backdrop);
   /* No pull-to-refresh or rubber-banding fighting with map gestures */
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;

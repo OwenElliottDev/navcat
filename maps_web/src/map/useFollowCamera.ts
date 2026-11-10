@@ -4,6 +4,7 @@ import { useAppStore } from '../store'
 import type { LngLat } from '../types'
 import { along, glide, turn } from './glide'
 import { useMap } from './MapContext'
+import { viewportHeight } from '../utils/viewport'
 
 const ZOOM = { walk: 17.5, ride: 17, drive: 16.5, transit: 16.5 }
 
@@ -84,13 +85,19 @@ export function useFollowCamera(
       zoom: map.getZoom(),
       padding: { top: 0, bottom: 0, left: 0, right: 0, ...map.getPadding() },
     }
+    const visible = viewportHeight()
     const to: View = {
       center: [at.lng, at.lat],
       bearing: heading,
       pitch: is3d ? 55 : 0,
       zoom: ZOOM[travel],
       // Room for the instruction banner above and the trip bar below; you sit low on screen
-      padding: { top: window.innerHeight * 0.4, bottom: 110, left: 20, right: 20 },
+      padding: {
+        top: visible * 0.4,
+        bottom: map.getContainer().clientHeight - visible + 110,
+        left: 20,
+        right: 20,
+      },
     }
     return glide((t) => {
       if (!isTouched.current) map.jumpTo(between(from, to, t))
