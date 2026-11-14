@@ -39,7 +39,8 @@ export interface DirectionsSlice {
   setAvoidSteepHills: (avoidSteepHills: boolean) => void
   setTripTime: (tripTime: TripTime | null) => void
   setOnlyModes: (onlyModes: string[]) => void
-  chooseItinerary: (itinerary: Itinerary) => void
+  /** null goes back to the list of options */
+  chooseItinerary: (itinerary: Itinerary | null) => void
   setElevationAt: (elevationAt: LngLat | null) => void
 }
 

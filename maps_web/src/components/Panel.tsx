@@ -30,7 +30,17 @@ interface PanelProps {
 /** The side panel on desktop, or the top bar and bottom sheet on phones. */
 export function Panel({ panelRef, topRef, layers }: PanelProps) {
   const isPhone = useMediaQuery(PHONE_QUERY)
-  const { mode, place, browse, waypoints, route, transitPlan, browseResults, camera } = useAppStore(
+  const {
+    mode,
+    place,
+    browse,
+    waypoints,
+    route,
+    transitPlan,
+    browseResults,
+    camera,
+    isJourneyOpen,
+  } = useAppStore(
     useShallow((s) => ({
       mode: s.mode,
       place: s.place,
@@ -40,6 +50,8 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
       transitPlan: s.transitPlan,
       browseResults: s.browseResults,
       camera: s.camera,
+      // The first journey is on the map until one is opened
+      isJourneyOpen: s.chosenItinerary !== null && s.chosenItinerary === selectItinerary(s),
     })),
   )
   const actions = useAppStore.getState()
@@ -82,8 +94,8 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
         content: isTransit ? (
           <TransitCard
             plan={transitPlan}
-            selected={itinerary}
-            onSelect={actions.chooseItinerary}
+            opened={isJourneyOpen ? itinerary : null}
+            onOpen={actions.chooseItinerary}
             onLegClick={(at) => camera?.flyTo(at, 16)}
             onStart={actions.startNavigation}
           />
@@ -98,6 +110,7 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
           />
         ),
         key: `directions:${profile}`,
+        scrollKey: String(isJourneyOpen),
         onClose: actions.closeDirections,
       }
     }
@@ -147,7 +160,12 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
       {isPhone && <div className="panel__layers">{layers}</div>}
       {body && (
         // The sheet re-opens to its low height whenever it starts showing something new
-        <Sheet contentKey={body.key} topRef={topRef} onClose={body.onClose}>
+        <Sheet
+          contentKey={body.key}
+          scrollKey={body.scrollKey}
+          topRef={topRef}
+          onClose={body.onClose}
+        >
           {body.content}
         </Sheet>
       )}

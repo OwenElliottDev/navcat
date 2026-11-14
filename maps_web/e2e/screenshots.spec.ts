@@ -68,7 +68,7 @@ test('transit card @screenshot', async ({ page, isMobile }) => {
     .getByRole('group', { name: 'Travel mode' })
     .getByRole('button', { name: 'Transit' })
     .click()
-  await expect(page.locator('.legs > li')).toHaveCount(3)
+  await expect(page.locator('.itinerary')).toHaveCount(2)
   await shoot(panel(page, isMobile), 'directions-transit.png')
 })
 

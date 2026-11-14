@@ -224,6 +224,15 @@ body {
   text-underline-offset: 2px;
 }
 
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  text-decoration: none;
+  font-weight: 550;
+}
+
 /* Small rounded toggle, e.g. categories, cycling styles and things to avoid */
 .chip {
   height: 32px;

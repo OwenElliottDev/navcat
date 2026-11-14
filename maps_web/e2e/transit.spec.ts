@@ -27,7 +27,9 @@ test('journey options list times, duration and the lines they use', async ({ pag
   await expect(options.nth(0).locator('.route-badge')).toHaveText('19')
   // A train line with no number goes by its name
   await expect(options.nth(1).locator('.route-badge')).toHaveText('Craigieburn')
-  await expect(options.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  // Each leg in order: the walk to the stop, the tram, the walk from it
+  await expect(options.nth(0).locator('.itinerary__legs > *')).toHaveCount(3)
+  await expect(options.nth(0).locator('.itinerary__walk')).toHaveCount(2)
 
   // Leaving now: no time or mode filter sent
   expect(planRequests(stack).at(-1)!.variables).toEqual({
@@ -36,8 +38,18 @@ test('journey options list times, duration and the lines they use', async ({ pag
   })
 })
 
-test('the selected journey is broken into walks and rides', async ({ page }) => {
+test('an opened journey is broken into walks and rides', async ({ page, isMobile }) => {
   await planJourney(page)
+  // Nothing to start until a journey is opened
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toHaveCount(0)
+  // On phones the sheet stays where it is
+  const sheet = page.locator('.sheet')
+  const sheetAt = isMobile ? (await sheet.boundingBox())!.y : 0
+  await page.locator('.itinerary').nth(0).click()
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeInViewport({
+    ratio: 1,
+  })
+  if (isMobile) expect((await sheet.boundingBox())!.y).toBe(sheetAt)
 
   const legs = page.locator('.legs > li')
   await expect(legs).toHaveCount(3)
@@ -46,8 +58,8 @@ test('the selected journey is broken into walks and rides', async ({ page }) => 
   await expect(legs.nth(1)).toContainText('8:10 am Flinders St/Elizabeth St #1')
   await expect(legs.nth(1)).toContainText('8:20 am Queen Victoria Market/Elizabeth St #7')
 
+  await page.getByRole('button', { name: 'Options' }).click()
   await page.locator('.itinerary').nth(1).click()
-  await expect(page.locator('.itinerary').nth(1)).toHaveAttribute('aria-pressed', 'true')
   await expect(legs.nth(1)).toContainText('Train towards Craigieburn')
   await expect(legs.nth(2)).toContainText('Walk 600 m to Destination')
 })

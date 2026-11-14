@@ -26,6 +26,8 @@ interface SheetProps {
   children: ReactNode
   /** When this changes (new content), the sheet opens to its low height again. */
   contentKey: string
+  /** When this changes (another view of the same content), only the scrolling starts again */
+  scrollKey?: string
   /** The bar a full-height sheet stops under, leaving the same gap as above it */
   topRef: RefObject<HTMLElement | null>
   onClose: () => void
@@ -55,7 +57,7 @@ interface Marks {
  * Content marks what shows at peek height with `data-sheet-peek` (e.g. a place's name and
  * type) and at low height with `data-sheet-low` (e.g. its buttons).
  */
-export function Sheet({ children, contentKey, topRef, onClose }: SheetProps) {
+export function Sheet({ children, contentKey, scrollKey, topRef, onClose }: SheetProps) {
   const isPhone = useMediaQuery(PHONE_QUERY)
   const viewportHeight = useViewportHeight()
   const [snap, setSnap] = useState<Snap>('low')
@@ -75,7 +77,7 @@ export function Sheet({ children, contentKey, topRef, onClose }: SheetProps) {
   // New content starts at its top, which the lower heights are sized for
   useLayoutEffect(() => {
     contentEl.current?.scrollTo({ top: 0 })
-  }, [contentKey])
+  }, [contentKey, scrollKey])
 
   // Re-measure as the content (e.g. a place's details loading) or the top bar changes size
   useLayoutEffect(() => {
@@ -152,7 +154,11 @@ export function Sheet({ children, contentKey, topRef, onClose }: SheetProps) {
   }, [isPhone, raised])
 
   if (!isPhone) {
-    return <div className="panel__body">{children}</div>
+    return (
+      <div ref={contentEl} className="panel__body">
+        {children}
+      </div>
+    )
   }
 
   function settle(next: Snap) {

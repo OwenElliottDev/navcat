@@ -1,3 +1,8 @@
+/* Fills the sheet to half height, so it stays put between the options and an opened journey */
+.sheet .transit-card {
+  min-height: 50vh;
+}
+
 .itineraries,
 .legs {
   list-style: none;
@@ -27,11 +32,6 @@
   background: var(--surface);
 }
 
-.itinerary[aria-pressed='true'] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
-
 .itinerary__times {
   font-size: 17px;
   font-weight: 700;
@@ -46,7 +46,32 @@
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
+}
+
+/* An arrow between one leg and the next */
+.itinerary__leg + .itinerary__leg::before {
+  content: '›';
+  margin: 0 6px 0 2px;
+  color: var(--muted);
+}
+
+.itinerary__leg,
+.itinerary__walk {
+  display: inline-flex;
+  align-items: center;
+}
+
+.itinerary__walk {
+  gap: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.itinerary__walk .icon {
+  width: 16px;
+  height: 16px;
 }
 
 .route-badge {
@@ -105,8 +130,6 @@
   font-size: 13px;
 }
 
-.transit-start {
-  margin-bottom: 12px;
-  border-radius: 22px;
-  padding: 0 22px;
+.route-actions + .legs {
+  margin-top: 12px;
 }
