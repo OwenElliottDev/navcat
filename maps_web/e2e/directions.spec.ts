@@ -123,15 +123,14 @@ test("route options GraphHopper didn't have ready are asked for again", async ({
   await expect(page.getByRole('group', { name: 'Avoid' }).getByRole('button')).toHaveCount(5)
 })
 
-test('walks and rides can avoid steep hills, under additional options', async ({ page, stack }) => {
+test('walks and rides can avoid steep hills', async ({ page, stack }) => {
   await openApp(page)
   await planRoute(page)
 
-  // Folded away until wanted
-  const steep = page.getByRole('switch', { name: 'Avoid steep hills' })
-  await expect(steep).toBeHidden()
-  await page.getByText('Additional options').click()
-  await expect(steep).toHaveAttribute('aria-checked', 'false')
+  const steep = page
+    .getByRole('group', { name: 'Avoid' })
+    .getByRole('button', { name: 'Steep hills' })
+  await expect(steep).toHaveAttribute('aria-pressed', 'false')
 
   await steep.click()
   await expect
@@ -152,7 +151,7 @@ test('walks and rides can avoid steep hills, under additional options', async ({
     .getByRole('group', { name: 'Travel mode' })
     .getByRole('button', { name: 'Cycle' })
     .click()
-  await expect(steep).toHaveAttribute('aria-checked', 'true')
+  await expect(steep).toHaveAttribute('aria-pressed', 'true')
   await steep.click()
   await expect
     .poll(() => stack.requestsTo('/api/route').at(-1)!.body)
@@ -163,15 +162,16 @@ test('walks and rides can avoid steep hills, under additional options', async ({
     .getByRole('group', { name: 'Travel mode' })
     .getByRole('button', { name: 'Drive' })
     .click()
-  await expect(page.getByText('Additional options')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Avoid' })).toBeVisible()
+  await expect(steep).toHaveCount(0)
 })
 
-test('additional options are hidden when the graph has no slopes', async ({ page, stack }) => {
+test('steep hills are not offered when the graph has no slopes', async ({ page, stack }) => {
   stack.steepHills = false
   await openApp(page)
   await planRoute(page)
   await expect(page.locator('.route-summary')).toBeVisible()
-  await expect(page.getByText('Additional options')).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Avoid' })).toHaveCount(0)
 })
 
 test('cycling styles are the ones GraphHopper has', async ({ page, stack }) => {

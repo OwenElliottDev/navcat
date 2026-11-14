@@ -25,7 +25,9 @@
 }
 
 /* The panel lets taps through to the map; its parts take them */
-.panel__top,
+.panel__top > *,
+.panel__top--card,
+.panel__layers,
 .panel__body {
   pointer-events: auto;
 }
@@ -34,14 +36,27 @@
   font-size: 14px;
 }
 
+/* The search bar and chips float over the map on their own */
 .panel__top {
   flex: none;
-  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 4px;
+}
+
+/* The directions form is a card */
+.panel__top--card {
+  padding: 8px;
+  gap: 6px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
+}
+
+/* Smaller chips for the directions options */
+.panel__top--card .chip {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .panel__body {
@@ -75,6 +90,14 @@
     left: 8px;
     right: 8px;
     z-index: 3;
+  }
+
+  /* Under the right of the top bar, and under the sheet when that's at full height */
+  .panel__layers {
+    position: fixed;
+    top: calc(var(--top-bar-bottom, 0px) + 8px);
+    right: 8px;
+    z-index: 1;
   }
 
   /* Map controls ride above the sheet instead of hiding behind it */
@@ -111,12 +134,12 @@
 
 /* Map controls: one size for MapLibre's and the app's (the layers button), bigger on phones */
 :root {
-  --map-control: 36px;
+  --map-control: 32px;
 }
 
 @media (max-width: 640px) {
   :root {
-    --map-control: 42px;
+    --map-control: 36px;
   }
 }
 

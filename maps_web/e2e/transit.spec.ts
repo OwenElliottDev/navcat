@@ -52,24 +52,26 @@ test('the selected journey is broken into walks and rides', async ({ page }) => 
   await expect(legs.nth(2)).toContainText('Walk 600 m to Destination')
 })
 
-test('turning a mode off plans with the rest', async ({ page, stack }) => {
+test('any transport is used until some kinds are picked', async ({ page, stack }) => {
   await planJourney(page)
-  const modes = page.getByRole('group', { name: 'Use these kinds of transport' })
-  await expect(modes.getByRole('button')).toHaveText(['Train', 'Tram', 'Bus'])
+  await page.getByRole('button', { name: 'Any transport' }).click()
+  const modes = page.getByRole('group', { name: 'Use only these kinds of transport' })
+  await expect(modes.getByRole('checkbox')).toHaveCount(3)
+  await expect(modes.getByRole('checkbox', { checked: true })).toHaveCount(0)
 
-  await modes.getByRole('button', { name: 'Tram' }).click()
+  await modes.getByRole('checkbox', { name: 'Train' }).check()
+  await modes.getByRole('checkbox', { name: 'Bus' }).check()
+  await expect(page.getByRole('button', { name: 'Train, Bus' })).toBeVisible()
   await expect(page.locator('.itinerary')).toHaveCount(1)
   expect(planRequests(stack).at(-1)!.variables!.modes).toEqual({
     transit: { transit: [{ mode: 'RAIL' }, { mode: 'BUS' }] },
   })
-})
 
-test('the last mode left on cannot be turned off', async ({ page }) => {
-  await planJourney(page)
-  const modes = page.getByRole('group', { name: 'Use these kinds of transport' })
-  await modes.getByRole('button', { name: 'Tram' }).click()
-  await modes.getByRole('button', { name: 'Bus' }).click()
-  await expect(modes.getByRole('button', { name: 'Train' })).toBeDisabled()
+  // With none picked it's any again
+  await modes.getByRole('checkbox', { name: 'Train' }).uncheck()
+  await modes.getByRole('checkbox', { name: 'Bus' }).uncheck()
+  await expect(page.locator('.itinerary')).toHaveCount(2)
+  expect(planRequests(stack).at(-1)!.variables).not.toHaveProperty('modes')
 })
 
 test('a departure time is sent as earliestDeparture', async ({ page, stack }) => {

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useLayoutEffect, type ReactNode, type RefObject } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
 import { useAppStore } from '../store'
@@ -23,11 +23,12 @@ import { TransitCard } from './TransitCard'
 interface PanelProps {
   panelRef: RefObject<HTMLElement | null>
   topRef: RefObject<HTMLDivElement | null>
-  sheetRef: RefObject<HTMLDivElement | null>
+  /** The layers button, on phones, where it sits under the top bar */
+  layers: ReactNode
 }
 
 /** The side panel on desktop, or the top bar and bottom sheet on phones. */
-export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
+export function Panel({ panelRef, topRef, layers }: PanelProps) {
   const isPhone = useMediaQuery(PHONE_QUERY)
   const { mode, place, browse, waypoints, route, transitPlan, browseResults, camera } = useAppStore(
     useShallow((s) => ({
@@ -120,14 +121,34 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
 
   const body = panelBody()
 
+  // The layers button is outside the top bar, to go under the sheet, so CSS can't place it below
+  const hasLayers = layers !== null
+  useLayoutEffect(() => {
+    const top = topRef.current
+    if (!top || !hasLayers) return
+    const update = () =>
+      document.documentElement.style.setProperty(
+        '--top-bar-bottom',
+        `${top.getBoundingClientRect().bottom}px`,
+      )
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(top)
+    return () => observer.disconnect()
+  }, [topRef, hasLayers])
+
   return (
     <aside ref={panelRef} className="panel" hidden={isNavigating}>
-      <div ref={topRef} className="panel__top glass">
+      <div
+        ref={topRef}
+        className={mode === 'search' ? 'panel__top' : 'panel__top panel__top--card glass'}
+      >
         <PanelTop />
       </div>
+      {layers && <div className="panel__layers">{layers}</div>}
       {body && (
         // The sheet re-opens to its low height whenever it starts showing something new
-        <Sheet ref={sheetRef} contentKey={body.key} topRef={topRef} onClose={body.onClose}>
+        <Sheet contentKey={body.key} topRef={topRef} onClose={body.onClose}>
           {body.content}
         </Sheet>
       )}

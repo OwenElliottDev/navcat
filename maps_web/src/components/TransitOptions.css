@@ -1,18 +1,18 @@
 .transit-options {
-  margin-top: 8px;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .transit-options__control {
-  height: 34px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 6px;
   font: inherit;
+  font-size: 13px;
   color: var(--ink);
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 14px;
 }
 
 .transit-options__control:focus {
@@ -25,13 +25,44 @@
   min-width: 0;
 }
 
-.transit-options__modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.mode-menu {
+  position: relative;
 }
 
-/* Off modes are struck through, so it's clear they're excluded rather than just unselected */
-.mode-chip[aria-pressed='false'] {
-  text-decoration: line-through;
+/* A small chevron, like the opening hours' */
+.mode-menu__button::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin: 0 2px 3px 2px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.mode-menu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 4;
+  min-width: 160px;
+  padding: 4px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.mode-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.mode-menu__item input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
 }

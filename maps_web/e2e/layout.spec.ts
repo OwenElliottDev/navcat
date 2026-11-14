@@ -97,6 +97,31 @@ test('on phones directions from a place card centre it in the open map', async (
   expect(Math.abs(last - middle)).toBeLessThan(30)
 })
 
+test('on phones a route is fitted between the directions and its sheet', async ({
+  page,
+  isMobile,
+}) => {
+  test.skip(!isMobile, 'The sheet is phone-only; wider screens show a side panel')
+  await openApp(page)
+  await planRoute(page)
+  await expect(page.locator('.route-summary')).toBeVisible()
+  // The chart is further down, for when the sheet is pulled up
+  await expect(page.locator('.sheet .route-actions')).toBeInViewport({ ratio: 1 })
+  await expect(page.locator('.sheet .elevation')).not.toBeInViewport({ ratio: 1 })
+
+  const bar = (await page.locator('.panel__top').boundingBox())!
+  const pins = page.locator('.maplibregl-marker:not(.map-dot)')
+  await expect(pins).toHaveCount(2)
+  await expect(async () => {
+    const sheet = (await page.locator('.sheet').boundingBox())!
+    for (const pin of await pins.all()) {
+      const box = (await pin.boundingBox())!
+      expect(box.y + box.height).toBeGreaterThan(bar.y + bar.height)
+      expect(box.y + box.height).toBeLessThan(sheet.y)
+    }
+  }).toPass()
+})
+
 test('the map type is remembered, and topo needs terrain', async ({ page }) => {
   await openApp(page)
   await page.getByRole('button', { name: 'Map type and overlays' }).click()
@@ -108,6 +133,42 @@ test('the map type is remembered, and topo needs terrain', async ({ page }) => {
   await page.reload()
   await page.getByRole('button', { name: 'Map type and overlays' }).click()
   await expect(page.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true')
+})
+
+test('on phones the map layers open in a sheet over the place card', async ({ page, isMobile }) => {
+  test.skip(!isMobile, 'Wider screens open them beside the button')
+  await openApp(page)
+  await openPlace(page, 'laneway', 'Laneway Espresso')
+
+  const button = page.getByRole('button', { name: 'Map type and overlays' })
+  const chips = (await page.locator('.category-chips').boundingBox())!
+  expect((await button.boundingBox())!.y).toBeGreaterThan(chips.y + chips.height)
+
+  await button.click()
+  const layers = page.getByRole('dialog', { name: 'Map type and overlays' })
+  await expect(layers).toBeVisible()
+  // Once it has slid up
+  const bottom = async () => {
+    const box = (await layers.boundingBox())!
+    return Math.round(box.y + box.height)
+  }
+  await expect.poll(bottom).toBe(page.viewportSize()!.height)
+
+  // Dragged a little it springs back; dragged further down it closes
+  const grip = (await layers.locator('.dialog__grip').boundingBox())!
+  const x = grip.x + grip.width / 2
+  const y = grip.y + grip.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x, y + 30, { steps: 5 })
+  await page.mouse.up()
+  await expect(layers).toBeVisible()
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x, y + 150, { steps: 5 })
+  await page.mouse.up()
+  await expect(layers).toHaveCount(0)
+  await expect(page.locator('.sheet .place-card')).toBeVisible()
 })
 
 test('the map menu gives each item an icon, with an ellipsis where it opens more', async ({

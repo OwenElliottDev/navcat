@@ -12,8 +12,6 @@ export interface Overlays {
   panel: RefObject<HTMLElement | null>
   /** The floating search/directions bar on phones */
   top: RefObject<HTMLElement | null>
-  /** The bottom sheet on phones */
-  sheet: RefObject<HTMLElement | null>
 }
 
 const MARGIN = 40
@@ -33,7 +31,7 @@ function leaveRoom(padding: Padding, height: number, room = 120): Padding {
 }
 
 /** Padding that keeps what the map zooms to clear of the panel (or top bar and sheet on phones). */
-function paddingAround({ panel, top, sheet }: Overlays, map: Map): Padding {
+function paddingAround({ panel, top }: Overlays, map: Map): Padding {
   const height = map.getContainer().clientHeight
   if (window.innerWidth > 640) {
     const right = panel.current?.getBoundingClientRect().right ?? 0
@@ -42,11 +40,12 @@ function paddingAround({ panel, top, sheet }: Overlays, map: Map): Padding {
   }
 
   const topBar = top.current?.getBoundingClientRect().bottom ?? 0
-  const sheetTop = sheet.current?.getBoundingClientRect().top ?? viewportHeight()
-  return leaveRoom(
-    { top: topBar + 20, right: MARGIN, bottom: height - sheetTop + 20, left: MARGIN },
-    height,
+  // The height the sheet is opening to, which it may not have reached yet
+  const sheet = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--sheet-visible'),
   )
+  const bottom = height - viewportHeight() + (sheet || 0) + 20
+  return leaveRoom({ top: topBar + 20, right: MARGIN, bottom, left: MARGIN }, height)
 }
 
 export type Camera = ReturnType<typeof useCamera>
@@ -59,29 +58,36 @@ export function useCamera(overlays: Overlays) {
       flyTo(at: LngLat, minZoom: number) {
         // Measures the overlays a frame later, once a sheet opened or closed by the same change
         // is on screen
-        requestAnimationFrame(() =>
-          map?.flyTo({
+        requestAnimationFrame(() => {
+          if (!map) return
+          const { top, right, bottom, left } = paddingAround(overlays, map)
+          map.flyTo({
             center: [at.lng, at.lat],
             zoom: Math.max(map.getZoom(), minZoom),
-            padding: paddingAround(overlays, map),
-          }),
-        )
+            // Not `padding`, which stays on the map and is added to the padding of later fits
+            offset: [(left - right) / 2, (top - bottom) / 2],
+          })
+        })
       },
       /** `flat` also turns the map back to top-down and north-up, after navigating */
       fitBounds([west, south, east, north]: Bounds, flat = false) {
-        // The fit is made inside the map's own padding, which navigation leaves set
-        if (flat) map?.setPadding(NO_PADDING)
-        map?.fitBounds(
-          [
-            [west, south],
-            [east, north],
-          ],
-          {
-            padding: paddingAround(overlays, map),
-            maxZoom: 16,
-            ...(flat && { pitch: 0, bearing: 0 }),
-          },
-        )
+        // A frame later, as in flyTo
+        requestAnimationFrame(() => {
+          if (!map) return
+          // The fit is made inside the map's own padding, which navigation leaves set
+          if (flat) map.setPadding(NO_PADDING)
+          map.fitBounds(
+            [
+              [west, south],
+              [east, north],
+            ],
+            {
+              padding: paddingAround(overlays, map),
+              maxZoom: 16,
+              ...(flat && { pitch: 0, bearing: 0 }),
+            },
+          )
+        })
       },
       /** Turns the map back to top-down and north-up, after navigating. */
       flatten() {

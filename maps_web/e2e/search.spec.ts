@@ -10,10 +10,14 @@ test.beforeEach(async ({ page }) => {
 
 test('search shows suggestions with their kind and address', async ({ page, stack }) => {
   await openApp(page)
+  const chips = page.locator('.category-chips')
+  const chipsAt = (await chips.boundingBox())!.y
   await page.getByRole('combobox', { name: 'Search places' }).fill('station')
 
   const option = page.getByRole('option', { name: /Flinders Street Station/ })
   await expect(option).toContainText('Station, Flinders Street, Melbourne, Victoria, 3000')
+  // The list covers the category chips rather than pushing them down
+  expect((await chips.boundingBox())!.y).toBe(chipsAt)
   expect(stack.requestsTo('/api/search').at(-1)?.params.get('q')).toBe('station')
 })
 

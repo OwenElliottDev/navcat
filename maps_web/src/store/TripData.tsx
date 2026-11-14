@@ -56,13 +56,13 @@ export function TripData() {
     }
   }, [map])
 
-  const { waypoints, avoid, avoidSteepHills, tripTime, excludedModes, browse } = useAppStore(
+  const { waypoints, avoid, avoidSteepHills, tripTime, onlyModes, browse } = useAppStore(
     useShallow((s) => ({
       waypoints: s.waypoints,
       avoid: s.avoid,
       avoidSteepHills: s.avoidSteepHills,
       tripTime: s.tripTime,
-      excludedModes: s.excludedModes,
+      onlyModes: s.onlyModes,
       browse: s.browse,
     })),
   )
@@ -82,10 +82,7 @@ export function TripData() {
     'transitPlan',
     useTransitPlan(isTransit ? from : null, isTransit ? to : null, {
       time: tripTime,
-      // Only send a mode list when something's been turned off
-      modes: excludedModes.length
-        ? transitModes.filter((mode) => !excludedModes.includes(mode))
-        : null,
+      modes: onlyModes.length ? transitModes.filter((mode) => onlyModes.includes(mode)) : null,
     }),
   )
   useKeep('browseResults', useBrowse(browse))

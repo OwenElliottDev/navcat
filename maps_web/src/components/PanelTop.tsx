@@ -2,13 +2,13 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAccount } from '../account/AccountContext'
 import { routeOptionsFor } from '../hooks/useCapabilities'
 import { matchCategories } from '../hooks/useCategories'
+import { CAR_AVOID_LABELS } from '../config'
 import { useAppStore } from '../store'
 import { selectBrowsing, selectIsTransit, selectProfile } from '../store/selectors'
 import type { Category, End, PhotonFeature } from '../types'
 import { describePlace, snapshotToWaypoint, toSnapshot, toWaypoint } from '../utils/places'
 import { categoryShortcut, recentShortcut, savedPlaceShortcut } from '../utils/shortcuts'
-import { AdditionalOptions } from './AdditionalOptions'
-import { CarOptions } from './CarOptions'
+import { AvoidOptions } from './AvoidOptions'
 import { CategoryChips } from './CategoryChips'
 import { DirectionsForm } from './DirectionsForm'
 import { SearchBar } from './SearchBar'
@@ -29,7 +29,7 @@ export function PanelTop() {
     avoidSteepHills,
     tripTime,
     transitModes,
-    excludedModes,
+    onlyModes,
   } = useAppStore(
     useShallow((s) => ({
       mode: s.mode,
@@ -43,7 +43,7 @@ export function PanelTop() {
       avoidSteepHills: s.avoidSteepHills,
       tripTime: s.tripTime,
       transitModes: s.transitModes,
-      excludedModes: s.excludedModes,
+      onlyModes: s.onlyModes,
     })),
   )
   const actions = useAppStore.getState()
@@ -114,6 +114,27 @@ export function PanelTop() {
       ),
   ]
 
+  // What a drive can avoid, or steep hills for a walk or ride
+  const avoidOptions = [
+    ...routeOptions.avoid.map(({ id }) => ({
+      id,
+      label: CAR_AVOID_LABELS[id] ?? id,
+      isOn: avoid.includes(id),
+      onToggle: () =>
+        actions.setAvoid(avoid.includes(id) ? avoid.filter((a) => a !== id) : [...avoid, id]),
+    })),
+    ...(routeOptions.steepHills
+      ? [
+          {
+            id: 'steepHills',
+            label: 'Steep hills',
+            isOn: avoidSteepHills,
+            onToggle: () => actions.setAvoidSteepHills(!avoidSteepHills),
+          },
+        ]
+      : []),
+  ]
+
   return (
     <>
       {mode === 'search' ? (
@@ -150,22 +171,14 @@ export function PanelTop() {
           {locationProblem}
         </p>
       )}
-      {mode === 'directions' && (
-        <CarOptions available={routeOptions.avoid} avoid={avoid} onChange={actions.setAvoid} />
-      )}
-      {mode === 'directions' && routeOptions.steepHills && (
-        <AdditionalOptions
-          avoidSteepHills={avoidSteepHills}
-          onAvoidSteepHillsChange={actions.setAvoidSteepHills}
-        />
-      )}
+      {mode === 'directions' && <AvoidOptions options={avoidOptions} />}
       {mode === 'directions' && isTransit && (
         <TransitOptions
           time={tripTime}
           onTimeChange={actions.setTripTime}
           modes={transitModes}
-          excluded={excludedModes}
-          onExcludedChange={actions.setExcludedModes}
+          only={onlyModes}
+          onOnlyChange={actions.setOnlyModes}
         />
       )}
     </>

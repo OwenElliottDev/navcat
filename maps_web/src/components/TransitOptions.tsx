@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react'
+import { useClickOutside } from '../hooks/useClickOutside'
 import type { TripTime } from '../types'
 import { transitModeLabel } from '../utils/transitModes'
 import './TransitOptions.css'
@@ -8,9 +10,9 @@ interface TransitOptionsProps {
   onTimeChange: (time: TripTime | null) => void
   /** Every mode in the timetables */
   modes: string[]
-  /** Modes the user has turned off */
-  excluded: string[]
-  onExcludedChange: (excluded: string[]) => void
+  /** The modes to keep to; any when empty */
+  only: string[]
+  onOnlyChange: (only: string[]) => void
 }
 
 type When = 'now' | TripTime['type']
@@ -26,9 +28,13 @@ export function TransitOptions({
   time,
   onTimeChange,
   modes,
-  excluded,
-  onExcludedChange,
+  only,
+  onOnlyChange,
 }: TransitOptionsProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  useClickOutside(menuRef, isMenuOpen, () => setIsMenuOpen(false))
+
   function changeWhen(when: When) {
     if (when === 'now') onTimeChange(null)
     // Keep the chosen time when switching between "depart at" and "arrive by"
@@ -36,61 +42,59 @@ export function TransitOptions({
   }
 
   function toggleMode(mode: string) {
-    onExcludedChange(
-      excluded.includes(mode) ? excluded.filter((m) => m !== mode) : [...excluded, mode],
-    )
+    onOnlyChange(modes.filter((m) => (m === mode) !== only.includes(m)))
   }
-
-  const allowedCount = modes.filter((mode) => !excluded.includes(mode)).length
 
   return (
     <div className="transit-options">
-      <div className="row">
-        <select
-          className="transit-options__control"
-          aria-label="When"
-          value={time?.type ?? 'now'}
-          onChange={(e) => changeWhen(e.target.value as When)}
-        >
-          <option value="now">Leave now</option>
-          <option value="departAt">Depart at</option>
-          <option value="arriveBy">Arrive by</option>
-        </select>
-        {time && (
-          <input
-            type="datetime-local"
-            className="transit-options__control transit-options__time"
-            aria-label={time.type === 'arriveBy' ? 'Arrival time' : 'Departure time'}
-            value={time.time}
-            onChange={(e) =>
-              onTimeChange(e.target.value ? { ...time, time: e.target.value } : null)
-            }
-          />
-        )}
-      </div>
+      <select
+        className="transit-options__control"
+        aria-label="When"
+        value={time?.type ?? 'now'}
+        onChange={(e) => changeWhen(e.target.value as When)}
+      >
+        <option value="now">Leave now</option>
+        <option value="departAt">Depart at</option>
+        <option value="arriveBy">Arrive by</option>
+      </select>
+      {time && (
+        <input
+          type="datetime-local"
+          className="transit-options__control transit-options__time"
+          aria-label={time.type === 'arriveBy' ? 'Arrival time' : 'Departure time'}
+          value={time.time}
+          onChange={(e) => onTimeChange(e.target.value ? { ...time, time: e.target.value } : null)}
+        />
+      )}
 
       {modes.length > 1 && (
-        <div
-          className="transit-options__modes"
-          role="group"
-          aria-label="Use these kinds of transport"
-        >
-          {modes.map((mode) => {
-            const isOn = !excluded.includes(mode)
-            return (
-              <button
-                key={mode}
-                type="button"
-                className="chip mode-chip"
-                aria-pressed={isOn}
-                // At least one mode has to stay on
-                disabled={isOn && allowedCount === 1}
-                onClick={() => toggleMode(mode)}
-              >
-                {transitModeLabel(mode)}
-              </button>
-            )
-          })}
+        <div ref={menuRef} className="mode-menu">
+          <button
+            type="button"
+            className="chip mode-menu__button"
+            aria-expanded={isMenuOpen}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {only.length ? only.map(transitModeLabel).join(', ') : 'Any transport'}
+          </button>
+          {isMenuOpen && (
+            <div
+              className="mode-menu__list"
+              role="group"
+              aria-label="Use only these kinds of transport"
+            >
+              {modes.map((mode) => (
+                <label key={mode} className="mode-menu__item">
+                  <input
+                    type="checkbox"
+                    checked={only.includes(mode)}
+                    onChange={() => toggleMode(mode)}
+                  />
+                  {transitModeLabel(mode)}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
