@@ -174,10 +174,12 @@ export async function planTransit(
   const { edges, routingErrors } = data.data.planConnection
   if (!edges.length) throw new TransitPlanError(routingErrors[0]?.code ?? 'NO_TRANSIT_CONNECTION')
 
-  return edges.map(({ node }) => ({
-    start: node.start,
-    end: node.end,
-    duration: node.duration,
-    legs: node.legs.map(toLeg),
-  }))
+  return edges
+    .map(({ node }) => ({
+      start: node.start,
+      end: node.end,
+      duration: node.duration,
+      legs: node.legs.map(toLeg),
+    }))
+    .toSorted((a, b) => a.duration - b.duration)
 }
