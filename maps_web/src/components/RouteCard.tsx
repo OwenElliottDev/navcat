@@ -33,7 +33,7 @@ export function RouteCard({
   const path = route.data
   return (
     <section className="card">
-      <div className="route-summary" data-sheet-peek>
+      <div className="route-summary">
         <span className="route-summary__time">{formatDuration(path.time)}</span>
         <span className="route-summary__distance">{formatDistance(path.distance)}</span>
         {path.ascend !== undefined && path.descend !== undefined && (

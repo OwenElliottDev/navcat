@@ -7,7 +7,7 @@ interface DialogProps {
   onClose: () => void
   children: ReactNode
   className?: string
-  /** A bottom sheet on phones: slides in and out, with a grip to drag it down and away */
+  /** Shown as a bottom sheet: slides in and out, with a grip to drag it down and away */
   asSheet?: boolean
 }
 
@@ -33,6 +33,7 @@ export function Dialog({ title, onClose, children, className, asSheet }: DialogP
       onClose()
       return
     }
+    if (dialog.style.translate === '0 100%') return // already on its way
     dialog.style.translate = '0 100%'
     dialog.addEventListener('transitionend', (e) => e.target === dialog && onClose())
   }

@@ -55,12 +55,14 @@ test('the selected journey is broken into walks and rides', async ({ page }) => 
 test('any transport is used until some kinds are picked', async ({ page, stack }) => {
   await planJourney(page)
   await page.getByRole('button', { name: 'Any transport' }).click()
-  const modes = page.getByRole('group', { name: 'Use only these kinds of transport' })
-  await expect(modes.getByRole('checkbox')).toHaveCount(3)
-  await expect(modes.getByRole('checkbox', { checked: true })).toHaveCount(0)
+  const modes = page.getByRole('menu', { name: 'Use only these kinds of transport' })
+  const mode = (name: string) => modes.getByRole('menuitemcheckbox', { name })
+  await expect(modes.getByRole('menuitemcheckbox')).toHaveText(['Train', 'Tram', 'Bus'])
+  await expect(modes.getByRole('menuitemcheckbox', { checked: true })).toHaveCount(0)
 
-  await modes.getByRole('checkbox', { name: 'Train' }).check()
-  await modes.getByRole('checkbox', { name: 'Bus' }).check()
+  await mode('Train').click()
+  await mode('Bus').click()
+  await expect(mode('Train')).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('button', { name: 'Train, Bus' })).toBeVisible()
   await expect(page.locator('.itinerary')).toHaveCount(1)
   expect(planRequests(stack).at(-1)!.variables!.modes).toEqual({
@@ -68,16 +70,18 @@ test('any transport is used until some kinds are picked', async ({ page, stack }
   })
 
   // With none picked it's any again
-  await modes.getByRole('checkbox', { name: 'Train' }).uncheck()
-  await modes.getByRole('checkbox', { name: 'Bus' }).uncheck()
+  await mode('Train').click()
+  await mode('Bus').click()
   await expect(page.locator('.itinerary')).toHaveCount(2)
   expect(planRequests(stack).at(-1)!.variables).not.toHaveProperty('modes')
 })
 
 test('a departure time is sent as earliestDeparture', async ({ page, stack }) => {
   await planJourney(page)
-  await page.getByRole('combobox', { name: 'When' }).selectOption('departAt')
+  await page.getByRole('button', { name: 'Leave now' }).click()
+  await page.getByRole('menuitemradio', { name: 'Depart at' }).click()
   await page.getByLabel('Departure time').fill('2026-10-12T08:00')
+  await expect(page.getByRole('button', { name: /12 Oct, 8:00/ })).toBeVisible()
 
   await expect
     .poll(() => planRequests(stack).at(-1)!.variables!.dateTime)

@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import type { TripTime } from '../types'
+import { formatDateTime } from '../utils/format'
 import { transitModeLabel } from '../utils/transitModes'
+import { Icon } from './icons'
 import './TransitOptions.css'
 
 interface TransitOptionsProps {
@@ -23,6 +25,72 @@ function localNow(): string {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
 }
 
+const WHEN_LABELS: Record<When, string> = {
+  now: 'Leave now',
+  departAt: 'Depart at',
+  arriveBy: 'Arrive by',
+}
+
+/** A chip that opens a small menu of choices under it. */
+function OptionMenu({
+  label,
+  menuLabel,
+  children,
+}: {
+  label: string
+  menuLabel: string
+  children: (close: () => void) => ReactNode
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useClickOutside(ref, isOpen, () => setIsOpen(false))
+
+  return (
+    <div ref={ref} className="option-menu">
+      <button
+        type="button"
+        className="chip option-menu__button"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {label}
+      </button>
+      {isOpen && (
+        <div className="option-menu__list" role="menu" aria-label={menuLabel}>
+          {children(() => setIsOpen(false))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A choice in an OptionMenu, ticked when it's on. */
+function OptionItem({
+  role,
+  isOn,
+  onClick,
+  children,
+}: {
+  role: 'menuitemradio' | 'menuitemcheckbox'
+  isOn: boolean
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role={role}
+      aria-checked={isOn}
+      className="option-menu__item"
+      onClick={onClick}
+    >
+      <Icon name="check" />
+      {children}
+    </button>
+  )
+}
+
 /** When to travel, and which kinds of transport to use. */
 export function TransitOptions({
   time,
@@ -31,9 +99,8 @@ export function TransitOptions({
   only,
   onOnlyChange,
 }: TransitOptionsProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-  useClickOutside(menuRef, isMenuOpen, () => setIsMenuOpen(false))
+  const timeInput = useRef<HTMLInputElement>(null)
+  const when: When = time?.type ?? 'now'
 
   function changeWhen(when: When) {
     if (when === 'now') onTimeChange(null)
@@ -47,55 +114,61 @@ export function TransitOptions({
 
   return (
     <div className="transit-options">
-      <select
-        className="transit-options__control"
-        aria-label="When"
-        value={time?.type ?? 'now'}
-        onChange={(e) => changeWhen(e.target.value as When)}
-      >
-        <option value="now">Leave now</option>
-        <option value="departAt">Depart at</option>
-        <option value="arriveBy">Arrive by</option>
-      </select>
+      <OptionMenu label={WHEN_LABELS[when]} menuLabel="When">
+        {(close) =>
+          (Object.keys(WHEN_LABELS) as When[]).map((option) => (
+            <OptionItem
+              key={option}
+              role="menuitemradio"
+              isOn={option === when}
+              onClick={() => {
+                changeWhen(option)
+                close()
+              }}
+            >
+              {WHEN_LABELS[option]}
+            </OptionItem>
+          ))
+        }
+      </OptionMenu>
       {time && (
-        <input
-          type="datetime-local"
-          className="transit-options__control transit-options__time"
-          aria-label={time.type === 'arriveBy' ? 'Arrival time' : 'Departure time'}
-          value={time.time}
-          onChange={(e) => onTimeChange(e.target.value ? { ...time, time: e.target.value } : null)}
-        />
+        // A chip like the others, over the browser's own picker (whose text can't match them:
+        // phones need 16px in fields)
+        <span className="transit-options__time">
+          <button type="button" className="chip" onClick={() => timeInput.current?.showPicker()}>
+            {formatDateTime(time.time)}
+          </button>
+          <input
+            ref={timeInput}
+            type="datetime-local"
+            tabIndex={-1}
+            aria-label={time.type === 'arriveBy' ? 'Arrival time' : 'Departure time'}
+            value={time.time}
+            onChange={(e) =>
+              onTimeChange(e.target.value ? { ...time, time: e.target.value } : null)
+            }
+          />
+        </span>
       )}
 
       {modes.length > 1 && (
-        <div ref={menuRef} className="mode-menu">
-          <button
-            type="button"
-            className="chip mode-menu__button"
-            aria-expanded={isMenuOpen}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {only.length ? only.map(transitModeLabel).join(', ') : 'Any transport'}
-          </button>
-          {isMenuOpen && (
-            <div
-              className="mode-menu__list"
-              role="group"
-              aria-label="Use only these kinds of transport"
-            >
-              {modes.map((mode) => (
-                <label key={mode} className="mode-menu__item">
-                  <input
-                    type="checkbox"
-                    checked={only.includes(mode)}
-                    onChange={() => toggleMode(mode)}
-                  />
-                  {transitModeLabel(mode)}
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+        <OptionMenu
+          label={only.length ? only.map(transitModeLabel).join(', ') : 'Any transport'}
+          menuLabel="Use only these kinds of transport"
+        >
+          {() =>
+            modes.map((mode) => (
+              <OptionItem
+                key={mode}
+                role="menuitemcheckbox"
+                isOn={only.includes(mode)}
+                onClick={() => toggleMode(mode)}
+              >
+                {transitModeLabel(mode)}
+              </OptionItem>
+            ))
+          }
+        </OptionMenu>
       )}
     </div>
   )

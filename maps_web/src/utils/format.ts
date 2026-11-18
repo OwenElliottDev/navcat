@@ -17,6 +17,16 @@ export function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
+/** "4 Oct, 8:30 am" */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 /** "4 Oct 2026" */
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, {
