@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use chrono_tz::Tz;
+use jiff::tz::TimeZone;
 
 use crate::geo::Point;
 use crate::otp;
@@ -191,11 +191,11 @@ fn variables(params: &TransitParams) -> Result<Value, Error> {
             return Err(Error::invalid("bad_time", message));
         }
         (Some(at), None) => {
-            let at = time::parse(at, params.from)?.to_rfc3339();
+            let at = time::rfc3339(&time::parse(at, params.from)?);
             variables["dateTime"] = json!({ "earliestDeparture": at });
         }
         (None, Some(by)) => {
-            let by = time::parse(by, params.from)?.to_rfc3339();
+            let by = time::rfc3339(&time::parse(by, params.from)?);
             variables["dateTime"] = json!({ "latestArrival": by });
         }
         (None, None) => {}
@@ -233,21 +233,21 @@ fn journeys(data: PlanData, origin: Point) -> Result<Journeys, Error> {
         let walks = node.legs.iter().filter(|leg| leg.mode == "WALK");
         let walked: f64 = walks.map(|leg| leg.distance).sum();
         Journey {
-            depart: time::local_otp(&node.start, zone),
-            arrive: time::local_otp(&node.end, zone),
+            depart: time::local_otp(&node.start, &zone),
+            arrive: time::local_otp(&node.end, &zone),
             duration_min: minutes(node.duration),
             transfers: rides.saturating_sub(1),
             walk_km: km(walked),
-            legs: node.legs.into_iter().map(|l| leg(l, zone)).collect(),
+            legs: node.legs.into_iter().map(|l| leg(l, &zone)).collect(),
         }
     };
     Ok(Journeys {
-        now: time::now(zone),
+        now: time::now(&zone),
         journeys: edges.into_iter().map(journey).collect(),
     })
 }
 
-fn leg(leg: OtpLeg, zone: Tz) -> TransitLeg {
+fn leg(leg: OtpLeg, zone: &TimeZone) -> TransitLeg {
     TransitLeg {
         route: leg.route.and_then(|r| r.label()),
         mode: leg.mode,

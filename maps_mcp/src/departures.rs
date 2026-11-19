@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use chrono_tz::Tz;
+use jiff::tz::TimeZone;
 
 use crate::geo::Point;
 use crate::links::links;
@@ -225,7 +225,7 @@ fn departures_query(starts: &[Option<i64>], count: u8) -> String {
     format!("query({}) {{ {} }}", variables.join(", "), fields.join(" "))
 }
 
-fn departure(time: StopTime, zone: Tz) -> Departure {
+fn departure(time: StopTime, zone: &TimeZone) -> Departure {
     let route = time.trip.map(|t| t.route);
     let seconds = time.service_day + time.realtime_departure;
     Departure {
@@ -246,7 +246,7 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
     let starts = found
         .iter()
         .map(|(stop, _)| match &params.after {
-            Some(after) => time::parse(after, stop.at()).map(|t| Some(t.timestamp())),
+            Some(after) => time::parse(after, stop.at()).map(|t| Some(t.timestamp().as_second())),
             None => Ok(None),
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -277,8 +277,8 @@ pub async fn departures(stack: &Stack, params: DeparturesParams) -> Result<Depar
                 lng: stop.lon,
                 distance_m: distance.map(|d| d.round() as u32),
                 link,
-                now: time::now(zone),
-                departures: times.into_iter().map(|t| departure(t, zone)).collect(),
+                now: time::now(&zone),
+                departures: times.into_iter().map(|t| departure(t, &zone)).collect(),
             }
         })
         .collect();
@@ -314,7 +314,7 @@ mod tests {
             lat: -37.8096665,
             lng: 144.9729262,
         };
-        let departure = departure(time, time::zone(at));
+        let departure = departure(time, &time::zone(at));
         assert_eq!(departure.time, "2026-10-22T15:00");
         assert_eq!(departure.route.as_deref(), Some("86"));
         assert!(!departure.live);
