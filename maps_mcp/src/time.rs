@@ -4,8 +4,9 @@
 
 use std::sync::LazyLock;
 
-use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone, Utc};
-use chrono_tz::Tz;
+use jiff::fmt::temporal::Pieces;
+use jiff::tz::TimeZone;
+use jiff::{Timestamp, ZonedDateTime};
 
 use crate::geo::Point;
 use crate::upstream::Error;
@@ -19,62 +20,58 @@ pub fn load() {
 }
 
 /// The time zone at a point (UTC out at sea)
-pub fn zone(at: Point) -> Tz {
-    FINDER
-        .get_tz_name(at.lng, at.lat)
-        .parse()
-        .unwrap_or(Tz::UTC)
+pub fn zone(at: Point) -> TimeZone {
+    TimeZone::get(FINDER.get_tz_name(at.lng, at.lat)).unwrap_or(TimeZone::UTC)
 }
 
-/// A time an agent gave: local where `at` is (e.g. "2026-10-24T08:30"), or with an offset
-pub fn parse(text: &str, at: Point) -> Result<DateTime<FixedOffset>, Error> {
+/// A time an agent gave (ISO 8601): local where `at` is (e.g. "2026-10-24T08:30"), or with an
+/// offset or zone
+pub fn parse(text: &str, at: Point) -> Result<ZonedDateTime, Error> {
     let text = text.trim();
-    if let Ok(time) = DateTime::parse_from_rfc3339(text) {
-        return Ok(time);
-    }
-    let formats = [
-        "%Y-%m-%dT%H:%M:%S",
-        LOCAL,
-        "%Y-%m-%d %H:%M:%S",
-        "%Y-%m-%d %H:%M",
-    ];
-    let Some(naive) = formats
-        .iter()
-        .find_map(|f| NaiveDateTime::parse_from_str(text, f).ok())
-    else {
-        let message = format!("{text:?} isn't a time like 2026-10-24T08:30");
-        return Err(Error::invalid("bad_time", message));
+    let bad = || {
+        Error::invalid(
+            "bad_time",
+            format!("{text:?} isn't a time like 2026-10-24T08:30"),
+        )
     };
-    // A time skipped when the clocks go forward is taken as the hour after
-    let zone = zone(at);
-    let later = naive + chrono::Duration::hours(1);
-    let time = zone.from_local_datetime(&naive).earliest();
-    let time = time.or_else(|| zone.from_local_datetime(&later).earliest());
-    time.map(|t| t.fixed_offset())
-        .ok_or_else(|| Error::invalid("bad_time", format!("{text} doesn't exist there")))
+    let pieces = Pieces::parse(text).map_err(|_| bad())?;
+    let time = pieces.date().to_datetime(pieces.time().ok_or_else(bad)?);
+    let zone = match pieces.to_numeric_offset() {
+        Some(offset) => TimeZone::fixed(offset),
+        None => pieces
+            .to_time_zone()
+            .map_err(|_| bad())?
+            .unwrap_or_else(|| zone(at)),
+    };
+    // A time skipped when the clocks go forward is moved forward past the gap
+    zone.to_zoned_datetime(time).map_err(|_| bad())
+}
+
+/// A time with its offset, as OTP takes it, e.g. "2026-10-24T08:30:00+11:00"
+pub fn rfc3339(time: &ZonedDateTime) -> String {
+    time.timestamp()
+        .display_with_offset(time.offset())
+        .to_string()
 }
 
 /// A time as the clock reads in a zone, e.g. "2026-10-24T08:30"
-pub fn local(time: DateTime<FixedOffset>, zone: Tz) -> String {
-    time.with_timezone(&zone).format(LOCAL).to_string()
+pub fn local(time: Timestamp, zone: &TimeZone) -> String {
+    zone.to_datetime(time).strftime(LOCAL).to_string()
 }
 
 /// The time now in a zone, so agents can say how long until something without their own clock
-pub fn now(zone: Tz) -> String {
-    local(Utc::now().fixed_offset(), zone)
+pub fn now(zone: &TimeZone) -> String {
+    local(Timestamp::now(), zone)
 }
 
 /// Seconds since 1970 as local time in a zone
-pub fn local_epoch(seconds: i64, zone: Tz) -> Option<String> {
-    Some(local(
-        DateTime::from_timestamp(seconds, 0)?.fixed_offset(),
-        zone,
-    ))
+pub fn local_epoch(seconds: i64, zone: &TimeZone) -> Option<String> {
+    Some(local(Timestamp::from_second(seconds).ok()?, zone))
 }
 
 /// One of OTP's times (ISO 8601 with an offset) as local time in a zone
-pub fn local_otp(text: &str, zone: Tz) -> String {
-    match DateTime::parse_from_rfc3339(text) {
+pub fn local_otp(text: &str, zone: &TimeZone) -> String {
+    match text.parse() {
         Ok(time) => local(time, zone),
         Err(_) => text.into(),
     }
@@ -99,19 +96,22 @@ mod tests {
 
     #[test]
     fn finds_zones() {
-        assert_eq!(zone(MELBOURNE), Tz::Australia__Melbourne);
-        assert_eq!(zone(AUCKLAND), Tz::Pacific__Auckland);
-        assert_eq!(zone(PERTH), Tz::Australia__Perth);
+        assert_eq!(zone(MELBOURNE).iana_name(), Some("Australia/Melbourne"));
+        assert_eq!(zone(AUCKLAND).iana_name(), Some("Pacific/Auckland"));
+        assert_eq!(zone(PERTH).iana_name(), Some("Australia/Perth"));
     }
 
     #[test]
     fn reads_local_times_where_the_trip_starts() {
         let time = parse("2026-10-24T08:30", MELBOURNE).unwrap();
-        assert_eq!(time.to_rfc3339(), "2026-10-24T08:30:00+11:00");
+        assert_eq!(rfc3339(&time), "2026-10-24T08:30:00+11:00");
         let time = parse("2026-10-24 08:30", PERTH).unwrap();
-        assert_eq!(time.to_rfc3339(), "2026-10-24T08:30:00+08:00");
+        assert_eq!(rfc3339(&time), "2026-10-24T08:30:00+08:00");
         let given = parse("2026-10-24T08:30:00+13:00", MELBOURNE).unwrap();
-        assert_eq!(given.to_rfc3339(), "2026-10-24T08:30:00+13:00");
+        assert_eq!(rfc3339(&given), "2026-10-24T08:30:00+13:00");
+        let named = parse("2026-10-24T08:30[Australia/Melbourne]", PERTH).unwrap();
+        assert_eq!(rfc3339(&named), "2026-10-24T08:30:00+11:00");
+        assert!(parse("2026-10-24T08:30[Nowhere/Atall]", PERTH).is_err());
         assert!(parse("tomorrow morning", MELBOURNE).is_err());
     }
 
@@ -119,12 +119,12 @@ mod tests {
     fn skips_the_hour_clocks_go_forward() {
         // Melbourne's clocks went from 2:00 to 3:00 on 2026-10-04
         let time = parse("2026-10-04T02:30", MELBOURNE).unwrap();
-        assert_eq!(time.to_rfc3339(), "2026-10-04T03:30:00+11:00");
+        assert_eq!(rfc3339(&time), "2026-10-04T03:30:00+11:00");
     }
 
     #[test]
     fn says_what_time_it_is_there() {
-        let (melbourne, auckland) = (now(zone(MELBOURNE)), now(zone(AUCKLAND)));
+        let (melbourne, auckland) = (now(&zone(MELBOURNE)), now(&zone(AUCKLAND)));
         assert_eq!(melbourne.len(), "2026-10-24T08:30".len());
         assert_ne!(melbourne, auckland);
     }
@@ -133,9 +133,9 @@ mod tests {
     fn gives_otps_times_as_local() {
         // A Melbourne tram, as OTP gives it in the graph's Auckland time
         let tram = "2026-10-22T17:07:00+13:00";
-        assert_eq!(local_otp(tram, zone(MELBOURNE)), "2026-10-22T15:07");
-        assert_eq!(local_otp(tram, zone(AUCKLAND)), "2026-10-22T17:07");
-        let midnight = local_epoch(1792580400, zone(MELBOURNE));
+        assert_eq!(local_otp(tram, &zone(MELBOURNE)), "2026-10-22T15:07");
+        assert_eq!(local_otp(tram, &zone(AUCKLAND)), "2026-10-22T17:07");
+        let midnight = local_epoch(1792580400, &zone(MELBOURNE));
         assert_eq!(midnight.as_deref(), Some("2026-10-21T22:00"));
     }
 }
