@@ -26,7 +26,7 @@ import shutil
 import sys
 import time
 import urllib.request
-from multiprocessing import Pool
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from osgeo import gdal
@@ -42,7 +42,6 @@ BUILD_VERSION = 3
 TILE = 256
 WORLD = 20037508.342789244  # half the width of the Web Mercator world, in metres
 NODATA = -32768
-
 
 
 def tile_bounds(z, x, y):
@@ -70,7 +69,6 @@ def tile_at(z, lng, lat):
     return min(max(x, 0), n - 1), min(max(y, 0), n - 1)
 
 
-
 def encode_terrarium(elevation):
     """Elevation in metres -> RGB, as (R*256 + G + B/256) - 32768."""
     value = elevation.astype(np.float64) + 32768
@@ -93,7 +91,6 @@ def halve(elevation):
     """Averages 2x2 pixels, e.g. 512px -> 256px for the next zoom out."""
     h, w = elevation.shape
     return elevation.reshape(h // 2, 2, w // 2, 2).mean(axis=(1, 3))
-
 
 
 def warp(vrt, bounds, size, resampling="bilinear"):
@@ -160,7 +157,6 @@ def tiles_with_data(cells, z, west, south, east, north):
         for y in range(y0, y1 + 1)
         if block_has_data(cells, z, x, y)
     ]
-
 
 
 def fill_voids(job):
@@ -278,8 +274,8 @@ def main(source_dir, out_dir):
 
     filled_dir = f"{building}/filled"
     os.makedirs(filled_dir)
-    with Pool() as pool:
-        sources = pool.map(fill_voids, [(source, filled_dir) for source in sources])
+    with ProcessPoolExecutor() as pool:
+        sources = list(pool.map(fill_voids, [(source, filled_dir) for source in sources]))
 
     vrt = f"{building}/elevation.vrt"
     gdal.BuildVRT(vrt, sources, srcNodata=NODATA, VRTNodata=NODATA)
@@ -301,9 +297,10 @@ def main(source_dir, out_dir):
     print(
         f"{len(blocks)} blocks for zooms {BLOCK_ZOOM}-{MAX_ZOOM}, {len(overviews)} tiles below, on {os.cpu_count()} cores"
     )
-    with Pool() as pool:
-        written = sum(pool.imap_unordered(build_block, blocks, chunksize=4))
-        written += sum(pool.imap_unordered(build_overview_tile, overviews))
+    # Not multiprocessing.Pool, which waits forever for the work of a worker killed for memory
+    with ProcessPoolExecutor() as pool:
+        written = sum(pool.map(build_block, blocks, chunksize=4))
+        written += sum(pool.map(build_overview_tile, overviews))
 
     write_png(f"{building}/empty.png", np.zeros((TILE, TILE)))
     with open(f"{building}/info.json", "w") as f:
