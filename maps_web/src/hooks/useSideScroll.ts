@@ -6,7 +6,8 @@ const DRAG_THRESHOLD = 5
 /**
  * Lets a row that scrolls sideways (with its scrollbar hidden) scroll on desktop too: the mouse
  * wheel scrolls it sideways, and it can be dragged with the mouse. Touch already swipes it.
- * Returns a ref callback, so it works on rows that only show up later.
+ * Marks the row with `data-more-start` / `data-more-end` while there's more to scroll that way,
+ * so its edges fade. Returns a ref callback, so it works on rows that only show up later.
  */
 export function useSideScroll<T extends HTMLElement>() {
   const [row, setRow] = useState<T | null>(null)
@@ -14,6 +15,17 @@ export function useSideScroll<T extends HTMLElement>() {
   useEffect(() => {
     if (!row) return
     const canScroll = () => row.scrollWidth > row.clientWidth
+
+    const markEdges = () => {
+      const end = row.scrollWidth - row.clientWidth
+      row.setAttribute('data-more-start', String(row.scrollLeft > 1))
+      row.setAttribute('data-more-end', String(row.scrollLeft < end - 1))
+    }
+    markEdges()
+    // The chips as well as the row, as their widths change when the font loads
+    const resizes = new ResizeObserver(markEdges)
+    resizes.observe(row)
+    for (const chip of row.children) resizes.observe(chip)
 
     const onWheel = (e: WheelEvent) => {
       // Trackpads already scroll sideways; only turn up-and-down wheels into sideways
@@ -54,12 +66,15 @@ export function useSideScroll<T extends HTMLElement>() {
       e.stopPropagation()
     }
 
+    row.addEventListener('scroll', markEdges, { passive: true })
     row.addEventListener('wheel', onWheel, { passive: false })
     row.addEventListener('pointerdown', onPointerDown)
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
     row.addEventListener('click', onClick, true)
     return () => {
+      resizes.disconnect()
+      row.removeEventListener('scroll', markEdges)
       row.removeEventListener('wheel', onWheel)
       row.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('pointermove', onPointerMove)
