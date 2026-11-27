@@ -5,6 +5,8 @@ import { Dialog } from './Dialog'
 import { Icon } from './icons'
 import './LayerPicker.css'
 
+const TITLE = 'Map type and overlays'
+
 interface LayerPickerProps {
   look: MapLook
   onChange: (look: MapLook) => void
@@ -85,9 +87,9 @@ export function LayerPicker({ look, onChange, hasTerrain, asSheet }: LayerPicker
       <button
         type="button"
         className="layer-picker__button"
-        aria-label="Map type and overlays"
+        aria-label={TITLE}
         aria-expanded={isOpen}
-        title="Map type and overlays"
+        title={TITLE}
         onClick={() => setIsOpen(!isOpen)}
       >
         <Icon name="layers" />
@@ -95,20 +97,11 @@ export function LayerPicker({ look, onChange, hasTerrain, asSheet }: LayerPicker
 
       {isOpen &&
         (asSheet ? (
-          <Dialog
-            title="Map type and overlays"
-            className="layer-sheet"
-            asSheet
-            onClose={() => setIsOpen(false)}
-          >
+          <Dialog title={TITLE} className="layer-sheet" asSheet onClose={() => setIsOpen(false)}>
             <div className="layer-sheet__body">{options}</div>
           </Dialog>
         ) : (
-          <div
-            className="layer-picker__panel glass"
-            role="dialog"
-            aria-label="Map type and overlays"
-          >
+          <div className="layer-picker__panel glass" role="dialog" aria-label={TITLE}>
             {options}
           </div>
         ))}

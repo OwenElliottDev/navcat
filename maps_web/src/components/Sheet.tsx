@@ -126,8 +126,10 @@ export function Sheet({ children, contentKey, topRef, onClose }: SheetProps) {
   }, [isPhone, topRef, contentKey])
 
   // Each render too, ahead of the observer: the map is fitted around the sheet's new height on
-  // the next frame, before the observer has run
-  useLayoutEffect(() => remeasure.current?.())
+  // the next frame, before the observer has run. Not while dragging, when the content can't change
+  useLayoutEffect(() => {
+    if (!drag.current) remeasure.current?.()
+  })
 
   const full = viewportHeight - marks.top
   const half = Math.min(Math.round(viewportHeight * 0.45), full)

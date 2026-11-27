@@ -23,7 +23,7 @@ import { TransitCard } from './TransitCard'
 interface PanelProps {
   panelRef: RefObject<HTMLElement | null>
   topRef: RefObject<HTMLDivElement | null>
-  /** The layers button, on phones, where it sits under the top bar */
+  /** The layers button, shown on phones under the top bar */
   layers: ReactNode
 }
 
@@ -122,10 +122,9 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
   const body = panelBody()
 
   // The layers button is outside the top bar, to go under the sheet, so CSS can't place it below
-  const hasLayers = layers !== null
   useLayoutEffect(() => {
     const top = topRef.current
-    if (!top || !hasLayers) return
+    if (!top || !isPhone) return
     const update = () =>
       document.documentElement.style.setProperty(
         '--top-bar-bottom',
@@ -135,7 +134,7 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
     const observer = new ResizeObserver(update)
     observer.observe(top)
     return () => observer.disconnect()
-  }, [topRef, hasLayers])
+  }, [topRef, isPhone])
 
   return (
     <aside ref={panelRef} className="panel" hidden={isNavigating}>
@@ -145,7 +144,7 @@ export function Panel({ panelRef, topRef, layers }: PanelProps) {
       >
         <PanelTop />
       </div>
-      {layers && <div className="panel__layers">{layers}</div>}
+      {isPhone && <div className="panel__layers">{layers}</div>}
       {body && (
         // The sheet re-opens to its low height whenever it starts showing something new
         <Sheet contentKey={body.key} topRef={topRef} onClose={body.onClose}>

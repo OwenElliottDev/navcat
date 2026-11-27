@@ -82,7 +82,7 @@ export function TripData() {
     'transitPlan',
     useTransitPlan(isTransit ? from : null, isTransit ? to : null, {
       time: tripTime,
-      modes: onlyModes.length ? transitModes.filter((mode) => onlyModes.includes(mode)) : null,
+      modes: onlyModes.length ? onlyModes : null,
     }),
   )
   useKeep('browseResults', useBrowse(browse))

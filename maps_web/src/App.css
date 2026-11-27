@@ -77,6 +77,11 @@
   top: env(safe-area-inset-top, 0px);
 }
 
+/* The layers control is left empty on phones, where the button is under the top bar */
+.maplibregl-ctrl:empty {
+  display: none;
+}
+
 /* Phones: a floating top bar plus the bottom sheet */
 
 @media (max-width: 640px) {
@@ -95,7 +100,7 @@
   /* Under the right of the top bar, and under the sheet when that's at full height */
   .panel__layers {
     position: fixed;
-    top: calc(var(--top-bar-bottom, 0px) + 8px);
+    top: calc(var(--top-bar-bottom) + 8px);
     right: 8px;
     z-index: 1;
   }

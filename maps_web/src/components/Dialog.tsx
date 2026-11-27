@@ -24,18 +24,35 @@ export function Dialog({ title, onClose, children, className, asSheet }: DialogP
   }, [])
 
   const dragStart = useRef<number | null>(null)
+  const isClosing = useRef(false)
 
-  /** A sheet slides away before it closes */
+  /** A sheet slides away before it closes. Closed with close(), so focus goes back to the opener */
   function dismiss() {
     const dialog = ref.current
-    // No transition to wait for with reduced motion
-    if (!asSheet || !dialog || parseFloat(getComputedStyle(dialog).transitionDuration) === 0) {
-      onClose()
+    if (!dialog || isClosing.current) return
+    if (!asSheet || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      dialog.close()
       return
     }
-    if (dialog.style.translate === '0 100%') return // already on its way
-    dialog.style.translate = '0 100%'
-    dialog.addEventListener('transitionend', (e) => e.target === dialog && onClose())
+    isClosing.current = true
+    // An animation rather than a transition, so it also takes over from the sliding in
+    dialog
+      .animate([{ translate: getComputedStyle(dialog).translate }, { translate: '0 100%' }], {
+        duration: 250,
+        easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+        fill: 'forwards',
+      })
+      .finished.then(
+        () => dialog.close(),
+        () => {}, // cancelled by unmounting
+      )
+  }
+
+  function startDrag(e: PointerEvent) {
+    if (!ref.current) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragStart.current = e.clientY
+    ref.current.dataset.dragging = 'true'
   }
 
   function moveDrag(e: PointerEvent) {
@@ -63,18 +80,23 @@ export function Dialog({ title, onClose, children, className, asSheet }: DialogP
         e.preventDefault()
         dismiss()
       }}
-      // A click on the backdrop lands on the <dialog> itself
-      onClick={(e) => e.target === e.currentTarget && dismiss()}
+      // A click on the backdrop lands on the <dialog> itself, as does one on its padding
+      onClick={(e) => {
+        if (e.target !== e.currentTarget) return
+        const box = e.currentTarget.getBoundingClientRect()
+        const inside =
+          e.clientX >= box.left &&
+          e.clientX <= box.right &&
+          e.clientY >= box.top &&
+          e.clientY <= box.bottom
+        if (!inside) dismiss()
+      }}
     >
       {asSheet && (
         <div
           className="dialog__grip"
           aria-hidden="true"
-          onPointerDown={(e) => {
-            e.currentTarget.setPointerCapture(e.pointerId)
-            dragStart.current = e.clientY
-            ref.current!.dataset.dragging = 'true'
-          }}
+          onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}

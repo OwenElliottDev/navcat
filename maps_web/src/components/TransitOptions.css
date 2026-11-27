@@ -1,4 +1,6 @@
+/* Menus open from the row rather than their chip, whose width and line change with its label */
 .transit-options {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -15,10 +17,6 @@
   width: 100%;
   opacity: 0;
   pointer-events: none;
-}
-
-.option-menu {
-  position: relative;
 }
 
 /* A small chevron, like the opening hours' */
@@ -45,8 +43,7 @@
   box-shadow: var(--shadow-lg);
 }
 
-/* The last menu in the row opens leftwards, to stay on the screen */
-.option-menu:not(:first-child):last-child .option-menu__list {
+.option-menu__list--end {
   left: auto;
   right: 0;
 }

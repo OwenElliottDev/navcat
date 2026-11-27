@@ -45,13 +45,14 @@ export default function App() {
     <>
       <TripData />
       <MapCanvas />
-      {!isPhone && <MapControl position="top-right">{layerPicker}</MapControl>}
+      {/* Always added, so it stays above the 3D button after the layout changes */}
+      <MapControl position="top-right">{!isPhone && layerPicker}</MapControl>
       <MapControl position="top-right">
         <PitchToggle is3d={isTilted} />
       </MapControl>
       <MapLayers />
       <Navigation />
-      <Panel panelRef={panelRef} topRef={topRef} layers={isPhone ? layerPicker : null} />
+      <Panel panelRef={panelRef} topRef={topRef} layers={layerPicker} />
       <Popups />
     </>
   )

@@ -1,6 +1,6 @@
 import './AvoidOptions.css'
 
-interface AvoidOption {
+export interface AvoidChip {
   id: string
   label: string
   isOn: boolean
@@ -8,7 +8,7 @@ interface AvoidOption {
 }
 
 /** Things for a trip to avoid, like tolls and traffic lights, or steep hills. */
-export function AvoidOptions({ options }: { options: AvoidOption[] }) {
+export function AvoidOptions({ options }: { options: AvoidChip[] }) {
   if (!options.length) return null
 
   return (

@@ -24,6 +24,9 @@
   /* Set by the bottom sheet on phones, so map controls can sit above it */
   --sheet-visible: 0px;
 
+  /* Set on phones to where the top bar ends, for the layers button under it */
+  --top-bar-bottom: 0px;
+
   /* Below the page, behind Safari's toolbar, where the map carries on */
   --under-toolbar: 0px;
 
@@ -221,7 +224,7 @@ body {
   text-underline-offset: 2px;
 }
 
-/* Small rounded toggle, e.g. categories, cycling styles and transit modes */
+/* Small rounded toggle, e.g. categories, cycling styles and things to avoid */
 .chip {
   height: 32px;
   padding: 0 14px;
@@ -249,10 +252,6 @@ body {
   color: var(--paper);
   background: var(--ink);
   border-color: var(--ink);
-}
-
-.chip:disabled {
-  cursor: not-allowed;
 }
 
 .chip:focus-visible {

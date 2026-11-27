@@ -80,12 +80,24 @@ test('a departure time is sent as earliestDeparture', async ({ page, stack }) =>
   await planJourney(page)
   await page.getByRole('button', { name: 'Leave now' }).click()
   await page.getByRole('menuitemradio', { name: 'Depart at' }).click()
-  await page.getByLabel('Departure time').fill('2026-10-12T08:00')
-  await expect(page.getByRole('button', { name: /12 Oct, 8:00/ })).toBeVisible()
+  await page.getByLabel('Departure time', { exact: true }).fill('2026-10-12T08:00')
+  await expect(page.getByRole('button', { name: /^Departure time, 12 Oct, 8:00/ })).toBeVisible()
 
   await expect
     .poll(() => planRequests(stack).at(-1)!.variables!.dateTime)
     .toEqual({ earliestDeparture: '2026-10-11T21:00:00.000Z' })
+})
+
+test('the option menus work from the keyboard', async ({ page }) => {
+  await planJourney(page)
+  const when = page.getByRole('button', { name: 'Leave now' })
+  await when.click()
+  await expect(page.getByRole('menuitemradio', { name: 'Leave now' })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('menuitemradio', { name: 'Depart at' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(when).toBeFocused()
 })
 
 test('no connection explains itself', async ({ page }) => {

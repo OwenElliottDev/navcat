@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useClickOutside } from '../hooks/useClickOutside'
 import type { TripTime } from '../types'
 import { formatDateTime } from '../utils/format'
@@ -35,19 +35,54 @@ const WHEN_LABELS: Record<When, string> = {
 function OptionMenu({
   label,
   menuLabel,
+  closeOnPick = false,
+  alignEnd = false,
   children,
 }: {
   label: string
   menuLabel: string
-  children: (close: () => void) => ReactNode
+  /** Closes once a choice is made, for a menu of one choice */
+  closeOnPick?: boolean
+  /** Opens from the row's right edge rather than its left */
+  alignEnd?: boolean
+  children: ReactNode
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const list = useRef<HTMLDivElement>(null)
   useClickOutside(ref, isOpen, () => setIsOpen(false))
+  const items = () => [...(list.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
+
+  useEffect(() => {
+    if (!isOpen) return
+    const all = items()
+    ;(all.find((item) => item.getAttribute('aria-checked') === 'true') ?? all[0])?.focus()
+  }, [isOpen])
+
+  function close() {
+    setIsOpen(false)
+    button.current?.focus()
+  }
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      close()
+      return
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    const all = items()
+    const at = all.indexOf(document.activeElement as HTMLElement)
+    const step = e.key === 'ArrowDown' ? 1 : -1
+    e.preventDefault()
+    all[(at + step + all.length) % all.length]?.focus()
+  }
 
   return (
     <div ref={ref} className="option-menu">
       <button
+        ref={button}
         type="button"
         className="chip option-menu__button"
         aria-haspopup="menu"
@@ -57,8 +92,15 @@ function OptionMenu({
         {label}
       </button>
       {isOpen && (
-        <div className="option-menu__list" role="menu" aria-label={menuLabel}>
-          {children(() => setIsOpen(false))}
+        <div
+          ref={list}
+          className={alignEnd ? 'option-menu__list option-menu__list--end' : 'option-menu__list'}
+          role="menu"
+          aria-label={menuLabel}
+          onKeyDown={onKeyDown}
+          onClick={(e) => closeOnPick && e.target !== e.currentTarget && close()}
+        >
+          {children}
         </div>
       )}
     </div>
@@ -108,41 +150,55 @@ export function TransitOptions({
     else onTimeChange({ type: when, time: time?.time ?? localNow() })
   }
 
+  const timeLabel = time?.type === 'arriveBy' ? 'Arrival time' : 'Departure time'
+
+  function openTimePicker() {
+    const input = timeInput.current
+    if (!input) return
+    try {
+      input.showPicker()
+    } catch {
+      // Not allowed or not supported here: browsers that open pickers on focus still can
+      input.focus()
+      input.click()
+    }
+  }
+
   function toggleMode(mode: string) {
     onOnlyChange(modes.filter((m) => (m === mode) !== only.includes(m)))
   }
 
   return (
     <div className="transit-options">
-      <OptionMenu label={WHEN_LABELS[when]} menuLabel="When">
-        {(close) =>
-          (Object.keys(WHEN_LABELS) as When[]).map((option) => (
-            <OptionItem
-              key={option}
-              role="menuitemradio"
-              isOn={option === when}
-              onClick={() => {
-                changeWhen(option)
-                close()
-              }}
-            >
-              {WHEN_LABELS[option]}
-            </OptionItem>
-          ))
-        }
+      <OptionMenu label={WHEN_LABELS[when]} menuLabel="When" closeOnPick>
+        {(Object.keys(WHEN_LABELS) as When[]).map((option) => (
+          <OptionItem
+            key={option}
+            role="menuitemradio"
+            isOn={option === when}
+            onClick={() => changeWhen(option)}
+          >
+            {WHEN_LABELS[option]}
+          </OptionItem>
+        ))}
       </OptionMenu>
       {time && (
         // A chip like the others, over the browser's own picker (whose text can't match them:
         // phones need 16px in fields)
         <span className="transit-options__time">
-          <button type="button" className="chip" onClick={() => timeInput.current?.showPicker()}>
+          <button
+            type="button"
+            className="chip"
+            aria-label={`${timeLabel}, ${formatDateTime(time.time)}`}
+            onClick={openTimePicker}
+          >
             {formatDateTime(time.time)}
           </button>
           <input
             ref={timeInput}
             type="datetime-local"
             tabIndex={-1}
-            aria-label={time.type === 'arriveBy' ? 'Arrival time' : 'Departure time'}
+            aria-label={timeLabel}
             value={time.time}
             onChange={(e) =>
               onTimeChange(e.target.value ? { ...time, time: e.target.value } : null)
@@ -155,19 +211,18 @@ export function TransitOptions({
         <OptionMenu
           label={only.length ? only.map(transitModeLabel).join(', ') : 'Any transport'}
           menuLabel="Use only these kinds of transport"
+          alignEnd
         >
-          {() =>
-            modes.map((mode) => (
-              <OptionItem
-                key={mode}
-                role="menuitemcheckbox"
-                isOn={only.includes(mode)}
-                onClick={() => toggleMode(mode)}
-              >
-                {transitModeLabel(mode)}
-              </OptionItem>
-            ))
-          }
+          {modes.map((mode) => (
+            <OptionItem
+              key={mode}
+              role="menuitemcheckbox"
+              isOn={only.includes(mode)}
+              onClick={() => toggleMode(mode)}
+            >
+              {transitModeLabel(mode)}
+            </OptionItem>
+          ))}
         </OptionMenu>
       )}
     </div>

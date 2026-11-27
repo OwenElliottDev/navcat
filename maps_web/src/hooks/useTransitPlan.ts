@@ -9,7 +9,7 @@ const OUTSIDE_AREA = 'One of the points is outside the area public transport cov
 // OTP's routing error codes
 const NO_JOURNEY_MESSAGES: Record<string, string> = {
   NO_TRANSIT_CONNECTION:
-    'No public transport connects these places. If you’ve turned modes off, try allowing more.',
+    'No public transport connects these places. If you’ve picked only some kinds of transport, try allowing more.',
   NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW: 'No services around that time. Try another time.',
   OUTSIDE_SERVICE_PERIOD: 'There are no timetables for that date yet.',
   OUTSIDE_BOUNDS: OUTSIDE_AREA,

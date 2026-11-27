@@ -8,7 +8,7 @@ import { selectBrowsing, selectIsTransit, selectProfile } from '../store/selecto
 import type { Category, End, PhotonFeature } from '../types'
 import { describePlace, snapshotToWaypoint, toSnapshot, toWaypoint } from '../utils/places'
 import { categoryShortcut, recentShortcut, savedPlaceShortcut } from '../utils/shortcuts'
-import { AvoidOptions } from './AvoidOptions'
+import { AvoidOptions, type AvoidChip } from './AvoidOptions'
 import { CategoryChips } from './CategoryChips'
 import { DirectionsForm } from './DirectionsForm'
 import { SearchBar } from './SearchBar'
@@ -115,25 +115,21 @@ export function PanelTop() {
   ]
 
   // What a drive can avoid, or steep hills for a walk or ride
-  const avoidOptions = [
-    ...routeOptions.avoid.map(({ id }) => ({
-      id,
-      label: CAR_AVOID_LABELS[id] ?? id,
-      isOn: avoid.includes(id),
-      onToggle: () =>
-        actions.setAvoid(avoid.includes(id) ? avoid.filter((a) => a !== id) : [...avoid, id]),
-    })),
-    ...(routeOptions.steepHills
-      ? [
-          {
-            id: 'steepHills',
-            label: 'Steep hills',
-            isOn: avoidSteepHills,
-            onToggle: () => actions.setAvoidSteepHills(!avoidSteepHills),
-          },
-        ]
-      : []),
-  ]
+  const avoidOptions: AvoidChip[] = routeOptions.avoid.map(({ id }) => ({
+    id,
+    label: CAR_AVOID_LABELS[id] ?? id,
+    isOn: avoid.includes(id),
+    onToggle: () =>
+      actions.setAvoid(avoid.includes(id) ? avoid.filter((a) => a !== id) : [...avoid, id]),
+  }))
+  if (routeOptions.steepHills) {
+    avoidOptions.push({
+      id: 'steepHills',
+      label: 'Steep hills',
+      isOn: avoidSteepHills,
+      onToggle: () => actions.setAvoidSteepHills(!avoidSteepHills),
+    })
+  }
 
   return (
     <>

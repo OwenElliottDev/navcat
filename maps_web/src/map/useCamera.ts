@@ -41,9 +41,7 @@ function paddingAround({ panel, top }: Overlays, map: Map): Padding {
 
   const topBar = top.current?.getBoundingClientRect().bottom ?? 0
   // The height the sheet is opening to, which it may not have reached yet
-  const sheet = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--sheet-visible'),
-  )
+  const sheet = parseFloat(document.documentElement.style.getPropertyValue('--sheet-visible'))
   const bottom = height - viewportHeight() + (sheet || 0) + 20
   return leaveRoom({ top: topBar + 20, right: MARGIN, bottom, left: MARGIN }, height)
 }
@@ -61,12 +59,15 @@ export function useCamera(overlays: Overlays) {
         requestAnimationFrame(() => {
           if (!map) return
           const { top, right, bottom, left } = paddingAround(overlays, map)
-          map.flyTo({
-            center: [at.lng, at.lat],
+          const options = {
+            center: [at.lng, at.lat] as [number, number],
             zoom: Math.max(map.getZoom(), minZoom),
             // Not `padding`, which stays on the map and is added to the padding of later fits
-            offset: [(left - right) / 2, (top - bottom) / 2],
-          })
+            offset: [(left - right) / 2, (top - bottom) / 2] as [number, number],
+          }
+          // With reduced motion flyTo jumps and drops the offset; easeTo jumps and keeps it
+          if (matchMedia('(prefers-reduced-motion: reduce)').matches) map.easeTo(options)
+          else map.flyTo(options)
         })
       },
       /** `flat` also turns the map back to top-down and north-up, after navigating */
