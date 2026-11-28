@@ -231,10 +231,10 @@ services:
       - /data/${GRAPHHOPPER_GRAPH:-default-gh}
 
   maps-planetiler:
-    image: ghcr.io/onthegomap/planetiler:latest
+    image: ghcr.io/onthegomap/planetiler:0.10.2
     profiles: ["setup"]
     environment:
-      JAVA_TOOL_OPTIONS: "-Xmx6g"
+      JAVA_TOOL_OPTIONS: "-Xmx${PLANETILER_MEMORY:-6g}"
     volumes:
       - ${MAPS_DATA_DIR:-./maps_data}/tiles:/data
       - ${MAPS_DATA_DIR:-./maps_data}/osm:/osm:ro
