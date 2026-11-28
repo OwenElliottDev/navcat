@@ -162,7 +162,8 @@ test('on phones the map layers open in a sheet over the place card', async ({ pa
   await page.mouse.down()
   await page.mouse.move(x, y + 30, { steps: 5 })
   await page.mouse.up()
-  await expect(layers).toBeVisible()
+  // Back where it was, so the next press lands on the grip
+  await expect.poll(bottom).toBe(page.viewportSize()!.height)
   await page.mouse.move(x, y)
   await page.mouse.down()
   await page.mouse.move(x, y + 150, { steps: 5 })
