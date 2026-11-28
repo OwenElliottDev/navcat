@@ -176,7 +176,9 @@ download_transit() {
 build_transit() {
   in_data 'if [ -e transit/graph.obj ]; then mv transit/graph.obj transit/graph.obj.old; fi'
   if ! heavy run_otp_build; then
-    in_data 'if [ -e transit/graph.obj.old ]; then mv transit/graph.obj.old transit/graph.obj; fi'
+    # A build killed while saving leaves part of a graph that OTP can't load
+    in_data 'rm -f transit/graph.obj
+      if [ -e transit/graph.obj.old ]; then mv transit/graph.obj.old transit/graph.obj; fi'
     return 1
   fi
   in_data 'rm -f transit/graph.obj.old'
@@ -231,14 +233,11 @@ setup() {
       download_places
     fi
   fi
-  if ! data_has 'tiles/$TILES_FILE'; then
-    run_planetiler
-  elif [ -n "$new_map" ]; then
+  # Built aside even the first time, so a failed build doesn't leave data that looks done
+  if ! data_has 'tiles/$TILES_FILE' || [ -n "$new_map" ]; then
     build_tiles
   fi
-  if ! data_has graphhopper/default-gh; then
-    run_graphhopper_import
-  elif [ -n "$new_map" ]; then
+  if ! data_has graphhopper/default-gh || [ -n "$new_map" ]; then
     build_routing
   elif routing_config_changed; then
     echo "The routing config has changed since the graph was built"
@@ -248,7 +247,7 @@ setup() {
     download_transit
   fi
   if ! data_has transit/graph.obj; then
-    run_otp_build
+    build_transit
   elif transit_graph_outdated; then
     echo "The public transport graph was built by another version of OTP"
     build_transit
