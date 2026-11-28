@@ -27,6 +27,7 @@ import sys
 import time
 import urllib.request
 from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 
 import numpy as np
 from osgeo import gdal
@@ -251,6 +252,13 @@ def is_up_to_date(out_dir, source):
         return False
 
 
+def workers():
+    """Not multiprocessing.Pool, which waits forever for the work of a worker killed for memory.
+    Spawned, not forked, so workers don't share the parent's open GDAL files and their read
+    positions, which garbles reads when several read the same file."""
+    return ProcessPoolExecutor(mp_context=get_context("spawn"))
+
+
 def main(source_dir, out_dir):
     if os.environ.get("WAIT_FOR"):
         wait_for(os.environ["WAIT_FOR"])
@@ -274,7 +282,7 @@ def main(source_dir, out_dir):
 
     filled_dir = f"{building}/filled"
     os.makedirs(filled_dir)
-    with ProcessPoolExecutor() as pool:
+    with workers() as pool:
         sources = list(pool.map(fill_voids, [(source, filled_dir) for source in sources]))
 
     vrt = f"{building}/elevation.vrt"
@@ -297,8 +305,7 @@ def main(source_dir, out_dir):
     print(
         f"{len(blocks)} blocks for zooms {BLOCK_ZOOM}-{MAX_ZOOM}, {len(overviews)} tiles below, on {os.cpu_count()} cores"
     )
-    # Not multiprocessing.Pool, which waits forever for the work of a worker killed for memory
-    with ProcessPoolExecutor() as pool:
+    with workers() as pool:
         written = sum(pool.map(build_block, blocks, chunksize=4))
         written += sum(pool.map(build_overview_tile, overviews))
 
