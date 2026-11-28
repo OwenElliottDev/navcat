@@ -17,7 +17,8 @@ export interface DirectionsSlice {
   avoid: string[]
   avoidSteepHills: boolean
   tripTime: TripTime | null
-  excludedModes: string[]
+  /** The kinds of transport to keep to; any when empty */
+  onlyModes: string[]
   chosenItinerary: Itinerary | null
   /** The point on the route under the elevation chart's cursor */
   elevationAt: LngLat | null
@@ -37,8 +38,9 @@ export interface DirectionsSlice {
   setAvoid: (avoid: string[]) => void
   setAvoidSteepHills: (avoidSteepHills: boolean) => void
   setTripTime: (tripTime: TripTime | null) => void
-  setExcludedModes: (excludedModes: string[]) => void
-  chooseItinerary: (itinerary: Itinerary) => void
+  setOnlyModes: (onlyModes: string[]) => void
+  /** null goes back to the list of options */
+  chooseItinerary: (itinerary: Itinerary | null) => void
   setElevationAt: (elevationAt: LngLat | null) => void
 }
 
@@ -48,7 +50,7 @@ export const createDirectionsSlice: StateCreator<Store, [], [], DirectionsSlice>
   avoid: [],
   avoidSteepHills: false,
   tripTime: null,
-  excludedModes: [],
+  onlyModes: [],
   chosenItinerary: null,
   elevationAt: null,
 
@@ -112,7 +114,7 @@ export const createDirectionsSlice: StateCreator<Store, [], [], DirectionsSlice>
   setAvoid: (avoid) => set({ avoid }),
   setAvoidSteepHills: (avoidSteepHills) => set({ avoidSteepHills }),
   setTripTime: (tripTime) => set({ tripTime }),
-  setExcludedModes: (excludedModes) => set({ excludedModes }),
+  setOnlyModes: (onlyModes) => set({ onlyModes }),
   chooseItinerary: (chosenItinerary) => set({ chosenItinerary }),
   setElevationAt: (elevationAt) => set({ elevationAt }),
 })

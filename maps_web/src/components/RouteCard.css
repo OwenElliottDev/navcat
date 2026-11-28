@@ -29,8 +29,10 @@
 }
 
 .route-start {
-  border-radius: 22px;
-  padding: 0 22px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  border-radius: 18px;
 }
 
 .steps {

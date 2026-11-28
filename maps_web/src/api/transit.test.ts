@@ -85,6 +85,25 @@ describe('planTransit', () => {
     })
   })
 
+  it("puts the quickest journeys first, otherwise in OTP's order", async () => {
+    const node = (start: string, duration: number) => ({ start, end: 'e', duration, legs: [] })
+    answer({
+      data: {
+        planConnection: {
+          routingErrors: [],
+          edges: [
+            { node: node('walk', 3540) },
+            { node: node('first tram', 1740) },
+            { node: node('quick tram', 1560) },
+            { node: node('later tram', 1740) },
+          ],
+        },
+      },
+    })
+    const journeys = await planTransit(FROM, TO, { time: null, modes: null })
+    expect(journeys.map((j) => j.start)).toEqual(['quick tram', 'first tram', 'later tram', 'walk'])
+  })
+
   it('sends the time and modes only when set', async () => {
     const noJourney = { data: { planConnection: { routingErrors: [], edges: [] } } }
     answer(noJourney)

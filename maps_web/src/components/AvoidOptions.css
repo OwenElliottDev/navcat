@@ -1,0 +1,27 @@
+.avoid-options {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.avoid-options__label {
+  flex: none;
+  margin-right: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* One row on phones, scrolling sideways */
+@media (max-width: 640px) {
+  .avoid-options {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .avoid-options::-webkit-scrollbar {
+    display: none;
+  }
+}

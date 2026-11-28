@@ -55,12 +55,9 @@ test('drive options @screenshot', async ({ page }) => {
 test('walk options @screenshot', async ({ page }) => {
   await openApp(page)
   await planRoute(page)
-  await page.getByText('Additional options').click()
-  await page.getByRole('switch', { name: 'Avoid steep hills' }).click()
-  await expect(page.getByRole('switch', { name: 'Avoid steep hills' })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  )
+  const steep = page.getByRole('button', { name: 'Steep hills' })
+  await steep.click()
+  await expect(steep).toHaveAttribute('aria-pressed', 'true')
   await shoot(page.locator('.panel__top'), 'directions-walk-options.png')
 })
 
@@ -71,7 +68,7 @@ test('transit card @screenshot', async ({ page, isMobile }) => {
     .getByRole('group', { name: 'Travel mode' })
     .getByRole('button', { name: 'Transit' })
     .click()
-  await expect(page.locator('.legs > li')).toHaveCount(3)
+  await expect(page.locator('.itinerary')).toHaveCount(2)
   await shoot(panel(page, isMobile), 'directions-transit.png')
 })
 

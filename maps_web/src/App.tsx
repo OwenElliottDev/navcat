@@ -5,6 +5,7 @@ import { Navigation } from './components/Navigation'
 import { Panel } from './components/Panel'
 import { PitchToggle } from './components/PitchToggle'
 import { Popups } from './components/Popups'
+import { PHONE_QUERY, useMediaQuery } from './hooks/useMediaQuery'
 import { useStoredLook } from './hooks/useStoredLook'
 import { MapCanvas } from './map/MapCanvas'
 import { MapControl } from './map/MapControl'
@@ -21,8 +22,7 @@ export default function App() {
   // What covers the map, so the camera can keep things in view around it
   const panelRef = useRef<HTMLElement>(null)
   const topRef = useRef<HTMLDivElement>(null)
-  const sheetRef = useRef<HTMLDivElement>(null)
-  const overlays = useMemo(() => ({ panel: panelRef, top: topRef, sheet: sheetRef }), [])
+  const overlays = useMemo(() => ({ panel: panelRef, top: topRef }), [])
   const camera = useCamera(overlays)
   useEffect(() => {
     useAppStore.setState({ camera })
@@ -35,19 +35,24 @@ export default function App() {
   const isNavigating = useAppStore(selectIsNavigating)
   useMapLook(look, terrain, isTilted, isNavigating)
 
+  // On phones the layers button sits under the search bar rather than with the map controls
+  const isPhone = useMediaQuery(PHONE_QUERY)
+  const layerPicker = (
+    <LayerPicker look={look} onChange={setLook} hasTerrain={terrain !== null} asSheet={isPhone} />
+  )
+
   return (
     <>
       <TripData />
       <MapCanvas />
-      <MapControl position="top-right">
-        <LayerPicker look={look} onChange={setLook} hasTerrain={terrain !== null} />
-      </MapControl>
+      {/* Always added, so it stays above the 3D button after the layout changes */}
+      <MapControl position="top-right">{!isPhone && layerPicker}</MapControl>
       <MapControl position="top-right">
         <PitchToggle is3d={isTilted} />
       </MapControl>
       <MapLayers />
       <Navigation />
-      <Panel panelRef={panelRef} topRef={topRef} sheetRef={sheetRef} />
+      <Panel panelRef={panelRef} topRef={topRef} layers={layerPicker} />
       <Popups />
     </>
   )

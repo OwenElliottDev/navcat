@@ -1,37 +1,82 @@
+/* Menus open from the row rather than their chip, whose width and line change with its label */
 .transit-options {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.transit-options__control {
-  height: 34px;
-  padding: 0 8px;
-  font: inherit;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.transit-options__control:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
-.transit-options__time {
-  flex: 1;
-  min-width: 0;
-}
-
-.transit-options__modes {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-/* Off modes are struck through, so it's clear they're excluded rather than just unselected */
-.mode-chip[aria-pressed='false'] {
-  text-decoration: line-through;
+.transit-options__time {
+  position: relative;
+}
+
+/* Only there for its picker, which opens from where it is */
+.transit-options__time input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* A small chevron, like the opening hours' */
+.option-menu__button::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin: 0 2px 3px 2px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.option-menu__list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 4;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.option-menu__list--end {
+  left: auto;
+  right: 0;
+}
+
+.option-menu__item {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.option-menu__item:hover,
+.option-menu__item:focus-visible {
+  background: var(--surface);
+  outline: none;
+}
+
+.option-menu__item .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.option-menu__item[aria-checked='false'] .icon {
+  visibility: hidden;
 }

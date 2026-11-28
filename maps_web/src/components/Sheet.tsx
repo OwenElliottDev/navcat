@@ -4,7 +4,6 @@ import {
   useState,
   type PointerEvent,
   type ReactNode,
-  type Ref,
   type RefObject,
 } from 'react'
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
@@ -27,10 +26,11 @@ interface SheetProps {
   children: ReactNode
   /** When this changes (new content), the sheet opens to its low height again. */
   contentKey: string
+  /** When this changes (another view of the same content), only the scrolling starts again */
+  scrollKey?: string
   /** The bar a full-height sheet stops under, leaving the same gap as above it */
   topRef: RefObject<HTMLElement | null>
   onClose: () => void
-  ref?: Ref<HTMLDivElement>
 }
 
 interface Drag {
@@ -57,7 +57,7 @@ interface Marks {
  * Content marks what shows at peek height with `data-sheet-peek` (e.g. a place's name and
  * type) and at low height with `data-sheet-low` (e.g. its buttons).
  */
-export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps) {
+export function Sheet({ children, contentKey, scrollKey, topRef, onClose }: SheetProps) {
   const isPhone = useMediaQuery(PHONE_QUERY)
   const viewportHeight = useViewportHeight()
   const [snap, setSnap] = useState<Snap>('low')
@@ -66,6 +66,7 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
   const drag = useRef<Drag | null>(null)
   const contentEl = useRef<HTMLDivElement | null>(null)
   const innerEl = useRef<HTMLDivElement | null>(null)
+  const remeasure = useRef<(() => void) | null>(null)
 
   const [lastKey, setLastKey] = useState(contentKey)
   if (contentKey !== lastKey) {
@@ -76,7 +77,7 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
   // New content starts at its top, which the lower heights are sized for
   useLayoutEffect(() => {
     contentEl.current?.scrollTo({ top: 0 })
-  }, [contentKey])
+  }, [contentKey, scrollKey])
 
   // Re-measure as the content (e.g. a place's details loading) or the top bar changes size
   useLayoutEffect(() => {
@@ -116,11 +117,21 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
     }
 
     measure(false)
+    remeasure.current = () => measure(true)
     const observer = new ResizeObserver(() => measure(true))
     observer.observe(inner)
     if (topRef.current) observer.observe(topRef.current)
-    return () => observer.disconnect()
+    return () => {
+      remeasure.current = null
+      observer.disconnect()
+    }
   }, [isPhone, topRef, contentKey])
+
+  // Each render too, ahead of the observer: the map is fitted around the sheet's new height on
+  // the next frame, before the observer has run. Not while dragging, when the content can't change
+  useLayoutEffect(() => {
+    if (!drag.current) remeasure.current?.()
+  })
 
   const full = viewportHeight - marks.top
   const half = Math.min(Math.round(viewportHeight * 0.45), full)
@@ -144,7 +155,7 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
 
   if (!isPhone) {
     return (
-      <div ref={ref} className="panel__body">
+      <div ref={contentEl} className="panel__body">
         {children}
       </div>
     )
@@ -207,7 +218,7 @@ export function Sheet({ children, contentKey, topRef, onClose, ref }: SheetProps
   }
 
   return (
-    <div ref={ref} className="sheet glass" style={{ height }} data-dragging={dragHeight !== null}>
+    <div className="sheet glass" style={{ height }} data-dragging={dragHeight !== null}>
       <button
         type="button"
         className="sheet__handle"

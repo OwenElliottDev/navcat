@@ -27,7 +27,9 @@ test('journey options list times, duration and the lines they use', async ({ pag
   await expect(options.nth(0).locator('.route-badge')).toHaveText('19')
   // A train line with no number goes by its name
   await expect(options.nth(1).locator('.route-badge')).toHaveText('Craigieburn')
-  await expect(options.nth(0)).toHaveAttribute('aria-pressed', 'true')
+  // Each leg in order: the walk to the stop, the tram, the walk from it
+  await expect(options.nth(0).locator('.itinerary__legs > *')).toHaveCount(3)
+  await expect(options.nth(0).locator('.itinerary__walk')).toHaveCount(2)
 
   // Leaving now: no time or mode filter sent
   expect(planRequests(stack).at(-1)!.variables).toEqual({
@@ -36,8 +38,18 @@ test('journey options list times, duration and the lines they use', async ({ pag
   })
 })
 
-test('the selected journey is broken into walks and rides', async ({ page }) => {
+test('an opened journey is broken into walks and rides', async ({ page, isMobile }) => {
   await planJourney(page)
+  // Nothing to start until a journey is opened
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toHaveCount(0)
+  // On phones the sheet stays where it is
+  const sheet = page.locator('.sheet')
+  const sheetAt = isMobile ? (await sheet.boundingBox())!.y : 0
+  await page.locator('.itinerary').nth(0).click()
+  await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeInViewport({
+    ratio: 1,
+  })
+  if (isMobile) expect((await sheet.boundingBox())!.y).toBe(sheetAt)
 
   const legs = page.locator('.legs > li')
   await expect(legs).toHaveCount(3)
@@ -46,40 +58,58 @@ test('the selected journey is broken into walks and rides', async ({ page }) => 
   await expect(legs.nth(1)).toContainText('8:10 am Flinders St/Elizabeth St #1')
   await expect(legs.nth(1)).toContainText('8:20 am Queen Victoria Market/Elizabeth St #7')
 
+  await page.getByRole('button', { name: 'Options' }).click()
   await page.locator('.itinerary').nth(1).click()
-  await expect(page.locator('.itinerary').nth(1)).toHaveAttribute('aria-pressed', 'true')
   await expect(legs.nth(1)).toContainText('Train towards Craigieburn')
   await expect(legs.nth(2)).toContainText('Walk 600 m to Destination')
 })
 
-test('turning a mode off plans with the rest', async ({ page, stack }) => {
+test('any transport is used until some kinds are picked', async ({ page, stack }) => {
   await planJourney(page)
-  const modes = page.getByRole('group', { name: 'Use these kinds of transport' })
-  await expect(modes.getByRole('button')).toHaveText(['Train', 'Tram', 'Bus'])
+  await page.getByRole('button', { name: 'Any transport' }).click()
+  const modes = page.getByRole('menu', { name: 'Use only these kinds of transport' })
+  const mode = (name: string) => modes.getByRole('menuitemcheckbox', { name })
+  await expect(modes.getByRole('menuitemcheckbox')).toHaveText(['Train', 'Tram', 'Bus'])
+  await expect(modes.getByRole('menuitemcheckbox', { checked: true })).toHaveCount(0)
 
-  await modes.getByRole('button', { name: 'Tram' }).click()
+  await mode('Train').click()
+  await mode('Bus').click()
+  await expect(mode('Train')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('button', { name: 'Train, Bus' })).toBeVisible()
   await expect(page.locator('.itinerary')).toHaveCount(1)
   expect(planRequests(stack).at(-1)!.variables!.modes).toEqual({
     transit: { transit: [{ mode: 'RAIL' }, { mode: 'BUS' }] },
   })
-})
 
-test('the last mode left on cannot be turned off', async ({ page }) => {
-  await planJourney(page)
-  const modes = page.getByRole('group', { name: 'Use these kinds of transport' })
-  await modes.getByRole('button', { name: 'Tram' }).click()
-  await modes.getByRole('button', { name: 'Bus' }).click()
-  await expect(modes.getByRole('button', { name: 'Train' })).toBeDisabled()
+  // With none picked it's any again
+  await mode('Train').click()
+  await mode('Bus').click()
+  await expect(page.locator('.itinerary')).toHaveCount(2)
+  expect(planRequests(stack).at(-1)!.variables).not.toHaveProperty('modes')
 })
 
 test('a departure time is sent as earliestDeparture', async ({ page, stack }) => {
   await planJourney(page)
-  await page.getByRole('combobox', { name: 'When' }).selectOption('departAt')
-  await page.getByLabel('Departure time').fill('2026-10-12T08:00')
+  await page.getByRole('button', { name: 'Leave now' }).click()
+  await page.getByRole('menuitemradio', { name: 'Depart at' }).click()
+  await page.getByLabel('Departure time', { exact: true }).fill('2026-10-12T08:00')
+  await expect(page.getByRole('button', { name: /^Departure time, 12 Oct, 8:00/ })).toBeVisible()
 
   await expect
     .poll(() => planRequests(stack).at(-1)!.variables!.dateTime)
     .toEqual({ earliestDeparture: '2026-10-11T21:00:00.000Z' })
+})
+
+test('the option menus work from the keyboard', async ({ page }) => {
+  await planJourney(page)
+  const when = page.getByRole('button', { name: 'Leave now' })
+  await when.click()
+  await expect(page.getByRole('menuitemradio', { name: 'Leave now' })).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('menuitemradio', { name: 'Depart at' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(when).toBeFocused()
 })
 
 test('no connection explains itself', async ({ page }) => {

@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useLayoutEffect, type ReactNode, type RefObject } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { PHONE_QUERY, useMediaQuery } from '../hooks/useMediaQuery'
 import { useAppStore } from '../store'
@@ -23,13 +23,24 @@ import { TransitCard } from './TransitCard'
 interface PanelProps {
   panelRef: RefObject<HTMLElement | null>
   topRef: RefObject<HTMLDivElement | null>
-  sheetRef: RefObject<HTMLDivElement | null>
+  /** The layers button, shown on phones under the top bar */
+  layers: ReactNode
 }
 
 /** The side panel on desktop, or the top bar and bottom sheet on phones. */
-export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
+export function Panel({ panelRef, topRef, layers }: PanelProps) {
   const isPhone = useMediaQuery(PHONE_QUERY)
-  const { mode, place, browse, waypoints, route, transitPlan, browseResults, camera } = useAppStore(
+  const {
+    mode,
+    place,
+    browse,
+    waypoints,
+    route,
+    transitPlan,
+    browseResults,
+    camera,
+    isJourneyOpen,
+  } = useAppStore(
     useShallow((s) => ({
       mode: s.mode,
       place: s.place,
@@ -39,6 +50,8 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
       transitPlan: s.transitPlan,
       browseResults: s.browseResults,
       camera: s.camera,
+      // The first journey is on the map until one is opened
+      isJourneyOpen: s.chosenItinerary !== null && s.chosenItinerary === selectItinerary(s),
     })),
   )
   const actions = useAppStore.getState()
@@ -81,8 +94,8 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
         content: isTransit ? (
           <TransitCard
             plan={transitPlan}
-            selected={itinerary}
-            onSelect={actions.chooseItinerary}
+            opened={isJourneyOpen ? itinerary : null}
+            onOpen={actions.chooseItinerary}
             onLegClick={(at) => camera?.flyTo(at, 16)}
             onStart={actions.startNavigation}
           />
@@ -97,6 +110,7 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
           />
         ),
         key: `directions:${profile}`,
+        scrollKey: String(isJourneyOpen),
         onClose: actions.closeDirections,
       }
     }
@@ -120,14 +134,38 @@ export function Panel({ panelRef, topRef, sheetRef }: PanelProps) {
 
   const body = panelBody()
 
+  // The layers button is outside the top bar, to go under the sheet, so CSS can't place it below
+  useLayoutEffect(() => {
+    const top = topRef.current
+    if (!top || !isPhone) return
+    const update = () =>
+      document.documentElement.style.setProperty(
+        '--top-bar-bottom',
+        `${top.getBoundingClientRect().bottom}px`,
+      )
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(top)
+    return () => observer.disconnect()
+  }, [topRef, isPhone])
+
   return (
     <aside ref={panelRef} className="panel" hidden={isNavigating}>
-      <div ref={topRef} className="panel__top glass">
+      <div
+        ref={topRef}
+        className={mode === 'search' ? 'panel__top' : 'panel__top panel__top--card glass'}
+      >
         <PanelTop />
       </div>
+      {isPhone && <div className="panel__layers">{layers}</div>}
       {body && (
         // The sheet re-opens to its low height whenever it starts showing something new
-        <Sheet ref={sheetRef} contentKey={body.key} topRef={topRef} onClose={body.onClose}>
+        <Sheet
+          contentKey={body.key}
+          scrollKey={body.scrollKey}
+          topRef={topRef}
+          onClose={body.onClose}
+        >
           {body.content}
         </Sheet>
       )}

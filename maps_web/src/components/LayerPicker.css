@@ -20,7 +20,7 @@
   outline: 2px solid var(--accent);
 }
 
-/* Opens to the left of the button; upwards on phones, where the controls sit above the sheet */
+/* Opens to the left of the button */
 .layer-picker__panel {
   position: absolute;
   top: 0;
@@ -32,10 +32,18 @@
 }
 
 @media (max-width: 640px) {
-  .layer-picker__panel {
-    top: auto;
-    bottom: 0;
+  .layer-picker__button {
+    border-radius: 50%;
   }
+}
+
+/* Lighter than other dialogs', so the map shows as its type changes */
+.layer-sheet::backdrop {
+  background: rgba(10, 16, 16, 0.2);
+}
+
+.layer-sheet__body {
+  padding: 8px 20px 20px;
 }
 
 .layer-picker__heading {
