@@ -340,3 +340,14 @@ test('a fast pinch does not rotate the map, but a slow one with the same twist d
   await pinch(60, 140, 40, 2000)
   await expect(compass).toHaveAttribute('style', rotated)
 })
+
+test('the category chips fade out at an end with more to scroll to', async ({ page }) => {
+  await openApp(page)
+  const row = page.locator('.category-chips')
+  await expect(row).toHaveAttribute('data-more-start', 'false')
+  await expect(row).toHaveAttribute('data-more-end', 'true')
+
+  await row.evaluate((el) => (el.scrollLeft = el.scrollWidth))
+  await expect(row).toHaveAttribute('data-more-start', 'true')
+  await expect(row).toHaveAttribute('data-more-end', 'false')
+})
